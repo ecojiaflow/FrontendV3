@@ -1,0 +1,66 @@
+{
+  "products": {
+    "organicCoffee": {
+      "name": "Café biologique",
+      "brand": "Café Vert",
+      "description": "Café équitable 100% bio cultivé dans le respect de l'environnement et des producteurs. Torréfié artisanalement pour préserver ses arômes exceptionnels."
+    },
+    "organicShirt": {
+      "name": "T-shirt en coton bio",
+      "brand": "ÉcoMode",
+      "description": "T-shirt éthique fabriqué en coton biologique certifié. Confortable et respectueux de l'environnement."
+    },
+    "solidShampoo": {
+      "name": "Shampoing solide naturel",
+      "brand": "Cosmétique Bio",
+      "description": "Shampoing solide zéro déchet aux ingrédients 100% naturels. Formule douce et efficace pour tous types de cheveux."
+    },
+    "composter": {
+      "name": "Composteur de jardin",
+      "brand": "ÉcoJardin",
+      "description": "Composteur écologique fabriqué à partir de matériaux recyclés. Parfait pour transformer vos déchets organiques en engrais naturel."
+    },
+    "solarCharger": {
+      "name": "Chargeur solaire portable",
+      "brand": "ÉcoTech",
+      "description": "Chargeur solaire compact et puissant pour tous vos appareils. Solution écologique pour rester connecté."
+    },
+    "organicSeeds": {
+      "name": "Graines biologiques",
+      "brand": "Semences Bio",
+      "description": "Assortiment de graines biologiques pour votre potager. Variétés anciennes sélectionnées pour leur goût et leur résistance."
+    }
+  },
+  "tags": {
+    "organic": "Bio",
+    "fairtrade": "Commerce équitable",
+    "recyclable": "Recyclable",
+    "organicCotton": "Coton bio",
+    "local": "Local",
+    "ethical": "Éthique",
+    "zeroWaste": "Zéro déchet",
+    "natural": "Naturel",
+    "crueltyFree": "Non testé sur les animaux",
+    "recycled": "Recyclé",
+    "composting": "Compostage",
+    "sustainable": "Durable",
+    "solarEnergy": "Énergie solaire",
+    "sustainableAgriculture": "Agriculture durable"
+  },
+  "certifications": {
+    "ab": "Agriculture Biologique",
+    "fairtrade": "Commerce Équitable",
+    "rainforest": "Rainforest Alliance",
+    "gots": "GOTS",
+    "oekotex": "OEKO-TEX",
+    "cosmebio": "COSMEBIO",
+    "crueltyFree": "Cruelty Free",
+    "zeroWaste": "Zero Waste",
+    "cradleToCradle": "Cradle to Cradle",
+    "fsc": "FSC",
+    "energyStar": "Energy Star",
+    "tcoCertified": "TCO Certified",
+    "demeter": "Demeter",
+    "natureEtProgres": "Nature & Progrès"
+  }
+}
