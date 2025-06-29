@@ -62,5 +62,52 @@
     "tcoCertified": "TCO Certified",
     "demeter": "Demeter",
     "natureEtProgres": "Nature & Progrès"
+  },
+  "homepage": {
+    "hero": {
+      "title": "Trouvez des produits <highlight>éco-responsables</highlight>",
+      "subtitle": "Découvrez des milliers de produits éthiques et durables pour un mode de vie plus respectueux de la planète."
+    }
+  },
+  "common": {
+    "searchPlaceholder": "Rechercher un produit éthique...",
+    "searchingAlgolia": "Recherche Algolia...",
+    "discoverProducts": "Découvrir les produits",
+    "ecoProducts": "Produits éco-responsables",
+    "correspondingSearch": "correspondant(s) à votre recherche",
+    "available": "disponibles",
+    "filtered": "filtré",
+    "filtered_plural": "filtrés",
+
+    "resultsFoundMs": "{{count}} résultat trouvé en {{time}}ms",
+    "resultsFoundMs_plural": "{{count}} résultats trouvés en {{time}}ms",
+
+    "searchResults": "Résultats pour « {{query}} »",
+    "productsFound_one": "{{count}} produit",
+    "productsFound_other": "{{count}} produits",
+    
+    "filters": "Filtres",
+    "ecoScoreMin": "Score écologique minimum",
+    "allScores": "Tous les scores",
+    "excellent": "Excellent (≥ 80%)",
+    "veryGood": "Très bon (≥ 60%)",
+    "good": "Bon (≥ 40%)",
+    "availabilityZone": "Zone de disponibilité",
+    "allZones": "Toutes les zones",
+    "france": "France",
+    "europe": "Europe",
+    "usa": "États-Unis",
+    "aiConfidence": "Confiance IA minimum",
+    "allLevels": "Tous niveaux",
+    "certified": "Certifié (≥ 80%)",
+    "validated": "Validé (≥ 60%)",
+    "analyzing": "En cours (≥ 40%)",
+    "filterResults": "Filtrer les résultats",
+    "reset": "Réinitialiser",
+    "apply": "Appliquer",
+    "hideFilters": "Masquer les filtres",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "searchInProgress": "Recherche en cours..."
   }
 }
