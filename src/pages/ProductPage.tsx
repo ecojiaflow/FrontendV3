@@ -46,7 +46,7 @@ interface Product {
 const fallbackImage = "/fallback.png";
 
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://ecolojiabackendv3.onrender.com";
 
 const ProductPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
