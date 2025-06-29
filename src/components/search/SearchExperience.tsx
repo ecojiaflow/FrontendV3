@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import ProductHit from '../ProductHit';
 import NoResultsFound from '../NoResultsFound';
-import searchClient, { ALGOLIA_INDEX_NAME } from '../../lib/algolia';
+import { searchClient, ALGOLIA_INDEX_NAME } from '../lib/algolia';
 
 interface Props {
   hideSearchBox?: boolean;
