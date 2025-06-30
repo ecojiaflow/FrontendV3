@@ -13,8 +13,6 @@ export const en = {
     certifications: 'Certifications',
     tags: 'Tags',
     seeProduct: 'View product',
-    viewProduct: 'View product',
-    confidence: 'Confidence',
     buy: 'Buy this product',
     back: 'Back',
     close: 'Close',
@@ -32,7 +30,9 @@ export const en = {
     noResults: 'No products match your search.',
     backToHome: '← Back to home',
     
-    // NOUVELLES CLÉS MANQUANTES AJOUTÉES :
+    // NOUVELLES CLÉS POUR LA NAVIGATION FONCTIONNELLE :
+    confidence: 'Confidence',
+    viewProduct: 'View product',
     searchingAlgolia: 'Searching...',
     discoverProducts: 'Discover our products',
     correspondingSearch: 'matching your search',
@@ -62,23 +62,8 @@ export const en = {
     searchInProgress: 'Search in progress...',
     previous: 'Previous',
     next: 'Next',
-    resultsFoundMs: '{{count}} result{{count === 1 ? "" : "s"}} found in {{time}}ms',
-    
-    // Clés pour ProductPage
-    productNotFound: 'Product not found',
-    productNotFoundDesc: 'This product does not exist or is no longer available.',
-    previousPage: 'Previous page',
-    loadingProduct: 'Loading product...',
-    characteristics: 'Characteristics',
-    availableZones: 'Available zones',
-    analysisAI: 'AI Analysis',
-    ecoScore: 'Eco score',
-    buyProduct: 'Buy this product',
-    ethicalPartner: 'Link to eco-responsible partner',
-    noAffiliateLink: 'No affiliate link available',
-    seeOtherProducts: 'See other products'
+    resultsFoundMs: '{{count}} result{{count === 1 ? "" : "s"}} found in {{time}}ms'
   },
-  
   homepage: {
     hero: {
       title: 'Find <highlight>eco-friendly</highlight> products',
@@ -103,7 +88,6 @@ export const en = {
       }
     }
   },
-  
   about: {
     title: 'About Ecolojia',
     subtitle: 'The search engine revolutionizing the discovery of eco-responsible products through artificial intelligence.',
@@ -172,7 +156,6 @@ export const en = {
       response: 'We respond within 48h • Suggestions and partnerships welcome'
     }
   },
-  
   privacy: {
     title: 'Privacy Policy',
     lastUpdated: 'Last updated',
@@ -243,7 +226,6 @@ export const en = {
       description: 'This policy may be updated occasionally. Important changes will be signaled by a banner on the site. The last update date is indicated at the top of this page.'
     }
   },
-  
   terms: {
     title: 'Terms of Use',
     lastUpdated: 'Last updated',
@@ -310,7 +292,6 @@ export const en = {
       description: 'These ToU are subject to French law. Any dispute will be submitted to the competent French courts.'
     }
   },
-  
   legal: {
     title: 'Legal Notice',
     subtitle: 'Legal information and contact details',
@@ -363,7 +344,6 @@ export const en = {
       description: 'This legal notice was updated on {{date}} and may be modified at any time. It is the user\'s responsibility to regularly check the current version.'
     }
   },
-  
   footer: {
     quickLinks: 'Quick Links',
     legal: 'Legal',
@@ -381,7 +361,6 @@ export const en = {
     madeWith: 'Made with love for the planet',
     certifications: 'Our certifications'
   },
-  
   accessibility: {
     searchInput: 'Search products',
     searchButton: 'Search',
@@ -391,21 +370,19 @@ export const en = {
     allCategories: 'All categories',
     ethicalScore: 'Ethical score'
   },
-  
   affiliate: {
     disclaimer: 'This is an affiliate link. We may earn a commission on purchases.'
   },
-  
   categories: {
     alimentaire: 'Food',
+    cosmétique: 'Cosmetics',
+    cosmetic: 'Cosmetics',
+    hygiène: 'Hygiene', 
+    hygiene: 'Hygiene',
     mode: 'Fashion',
     beauté: 'Beauty',
     maison: 'Home',
     electronique: 'Electronics',
-    jardin: 'Garden',
-    cosmétique: 'Cosmetics',
-    cosmetic: 'Cosmetics',
-    hygiène: 'Hygiene',
-    hygiene: 'Hygiene'
+    jardin: 'Garden'
   }
 };
