@@ -7,9 +7,6 @@ import { useTranslation } from 'react-i18next';
 import ProductHit from '../components/ProductHit';
 import { fetchRealProducts } from '../api/realApi';
 import { Product } from '../types';
-import { SEOHead } from '../components/SEOHead';
-import { useSEO } from '../hooks/useSEO';
-import { usePerformanceMonitoring } from '../utils/performance';
 
 // Composant NoResultsFound
 const NoResultsFound: React.FC<{ query: string; onEnrichRequest: (query: string) => void }> = ({ query, onEnrichRequest }) => {
@@ -36,7 +33,6 @@ const HomePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { recordSearch } = usePerformanceMonitoring();
   
   // États de recherche
   const [allResults, setAllResults] = useState<Product[]>([]);
@@ -95,19 +91,6 @@ const HomePage: React.FC = () => {
     return `product-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }, []);
 
-  // SEO dynamique
-  useSEO({
-    title: currentQuery 
-      ? `"${currentQuery}" - Produits éco-responsables | Ecolojia`
-      : 'Ecolojia - Trouvez des produits éco-responsables et durables',
-    description: currentQuery
-      ? `Découvrez ${searchStats.nbHits} produits éco-responsables pour "${currentQuery}". Scores écologiques vérifiés par IA.`
-      : 'Découvrez des milliers de produits éthiques avec des scores écologiques vérifiés par IA. Shampoing bio, vêtements éthiques, alimentation durable.',
-    keywords: currentQuery
-      ? `${currentQuery}, produits écologiques, bio, éthique, développement durable`
-      : 'produits écologiques, bio, éthique, développement durable, score écologique, IA'
-  });
-
   // Fonction pour paginer les résultats côté client
   const paginateResults = (results: Product[], page: number) => {
     const startIndex = page * hitsPerPage;
@@ -123,6 +106,8 @@ const HomePage: React.FC = () => {
       const results = await fetchRealProducts('');
       const processingTime = Date.now() - startTime;
       
+      console.log('✅ Produits chargés:', results.length);
+      
       setAllResults(results);
       setSearchResults(paginateResults(results, 0));
       setOriginalResults(results);
@@ -133,9 +118,8 @@ const HomePage: React.FC = () => {
         processingTimeMS: processingTime 
       });
 
-      recordSearch('', results.length, processingTime);
     } catch (error) {
-      console.error('Erreur chargement initial:', error);
+      console.error('❌ Erreur chargement initial:', error);
       setAllResults([]);
       setSearchResults([]);
       setOriginalResults([]);
@@ -188,11 +172,9 @@ const HomePage: React.FC = () => {
         nbHits: results.length, 
         processingTimeMS: processingTime 
       });
-
-      recordSearch(searchQuery, results.length, processingTime);
       
     } catch (error) {
-      console.error('Erreur recherche:', error);
+      console.error('❌ Erreur recherche:', error);
       setAllResults([]);
       setSearchResults([]);
       setOriginalResults([]);
@@ -260,23 +242,7 @@ const HomePage: React.FC = () => {
 
   // Fonction pour enrichir la base de données
   const handleEnrichRequest = async (searchQuery: string) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/suggest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: searchQuery })
-      });
-      
-      if (response.ok) {
-        setTimeout(() => {
-          performSearch(searchQuery, 0);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Erreur enrichissement:', error);
-    }
+    console.log('📝 Suggestion produit:', searchQuery);
   };
 
   // Fonction pour appliquer les filtres
@@ -316,18 +282,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SEOHead
-        title={currentQuery 
-          ? `"${currentQuery}" - Produits éco-responsables | Ecolojia`
-          : undefined}
-        description={currentQuery
-          ? `Découvrez ${searchStats.nbHits} produits éco-responsables pour "${currentQuery}". Scores écologiques vérifiés par IA.`
-          : undefined}
-        keywords={currentQuery
-          ? `${currentQuery}, produits écologiques, bio, éthique`
-          : undefined}
-      />
-
       {/* Section Hero */}
       <section className="bg-eco-gradient py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -468,90 +422,6 @@ const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Panneau de filtres */}
-          {showFilters && (
-            <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-eco-leaf/10 animate-fade-in">
-              <h3 className="text-lg font-semibold text-eco-text mb-4">{t('common.filterResults') || 'Filtrer les résultats'}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
-                {/* Filtre par score écologique */}
-                <div>
-                  <label className="block text-sm font-medium text-eco-text mb-2">
-                    {t('common.ecoScoreMin') || 'Score écologique minimum'}
-                  </label>
-                  <select 
-                    value={filters.ecoScore}
-                    onChange={(e) => setFilters({...filters, ecoScore: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
-                  >
-                    <option value="">{t('common.allScores') || 'Tous les scores'}</option>
-                    <option value="0.8">{t('common.excellent') || 'Excellent (80%+)'}</option>
-                    <option value="0.6">{t('common.veryGood') || 'Très bon (60%+)'}</option>
-                    <option value="0.4">{t('common.good') || 'Bon (40%+)'}</option>
-                  </select>
-                </div>
-
-                {/* Filtre par zone */}
-                <div>
-                  <label className="block text-sm font-medium text-eco-text mb-2">
-                    {t('common.availabilityZone') || 'Zone de disponibilité'}
-                  </label>
-                  <select 
-                    value={filters.zone}
-                    onChange={(e) => setFilters({...filters, zone: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
-                  >
-                    <option value="">{t('common.allZones') || 'Toutes les zones'}</option>
-                    <option value="FR">{t('common.france') || 'France'}</option>
-                    <option value="EU">{t('common.europe') || 'Europe'}</option>
-                    <option value="US">{t('common.usa') || 'États-Unis'}</option>
-                  </select>
-                </div>
-
-                {/* Filtre par confiance IA */}
-                <div>
-                  <label className="block text-sm font-medium text-eco-text mb-2">
-                    {t('common.aiConfidence') || 'Confiance IA'}
-                  </label>
-                  <select 
-                    value={filters.confidence}
-                    onChange={(e) => setFilters({...filters, confidence: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
-                  >
-                    <option value="">{t('common.allLevels') || 'Tous les niveaux'}</option>
-                    <option value="0.8">{t('common.certified') || 'Certifié (80%+)'}</option>
-                    <option value="0.6">{t('common.validated') || 'Validé (60%+)'}</option>
-                    <option value="0.4">{t('common.analyzing') || 'En analyse (40%+)'}</option>
-                  </select>
-                </div>
-              </div>
-              
-              {/* Boutons d'action des filtres */}
-              <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {t('common.hideFilters') || 'Masquer les filtres'}
-                </button>
-                <div className="space-x-3">
-                  <button 
-                    onClick={resetFilters}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    {t('common.reset') || 'Réinitialiser'}
-                  </button>
-                  <button 
-                    onClick={applyFilters}
-                    className="px-4 py-2 bg-eco-leaf text-white rounded-lg hover:bg-eco-leaf/90 transition-colors"
-                  >
-                    {t('common.apply') || 'Appliquer'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Contenu principal */}
           {isSearching && searchResults.length === 0 ? (
             <div className="text-center py-12">
@@ -569,9 +439,7 @@ const HomePage: React.FC = () => {
                 {searchResults.map((product, index) => {
                   // Validation stricte des données produit
                   if (!product || !product.id) {
-                    if (import.meta.env.DEV) {
-                      console.warn('Produit invalide ignoré:', product);
-                    }
+                    console.warn('Produit invalide ignoré:', product);
                     return null;
                   }
 
@@ -656,10 +524,10 @@ const HomePage: React.FC = () => {
             <div className="text-center py-12">
               <Leaf className="h-16 w-16 text-eco-leaf/30 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-eco-text mb-2">
-                Aucun produit disponible
+                Chargement des produits...
               </h3>
               <p className="text-eco-text/70">
-                Revenez plus tard pour découvrir nos produits éco-responsables
+                Veuillez patienter pendant le chargement des produits éco-responsables
               </p>
             </div>
           )}

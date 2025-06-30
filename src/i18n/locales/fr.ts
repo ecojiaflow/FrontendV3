@@ -13,6 +13,8 @@ export const fr = {
     certifications: 'Certifications',
     tags: 'Tags',
     seeProduct: 'Voir le produit',
+    viewProduct: 'Voir le produit',
+    confidence: 'Confiance',
     buy: 'Acheter ce produit',
     back: 'Retour',
     close: 'Fermer',
