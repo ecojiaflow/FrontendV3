@@ -14,4 +14,4 @@
   VITE_ALGOLIA_APP_ID = "A2KJGZ2811"
   VITE_ALGOLIA_SEARCH_KEY = "085aeee2b3ec8efa66dabb7691a01b67"
   VITE_ALGOLIA_INDEX_NAME = "products"
-  VITE_API_URL = "https://ecolojiabackendv3.onrender.com"
+  VITE_API_URL = "https://ecolojia-backendv1.onrender.com"
