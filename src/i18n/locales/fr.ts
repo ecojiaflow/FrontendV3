@@ -13,6 +13,8 @@ export const fr = {
     certifications: 'Certifications',
     tags: 'Tags',
     seeProduct: 'Voir le produit',
+    viewProduct: 'Voir le produit',
+    confidence: 'Confiance IA',
     buy: 'Acheter ce produit',
     back: 'Retour',
     close: 'Fermer',
@@ -28,7 +30,7 @@ export const fr = {
     productsFound_one: '{{count}} produit trouvé',
     productsFound_other: '{{count}} produits trouvés',
     noResults: 'Aucun produit ne correspond à votre recherche.',
-    backToHome: '← Retour à l’accueil',
+    backToHome: '← Retour à l\'accueil',
     searchingAlgolia: 'Recherche en cours...',
     discoverProducts: 'Découvrir nos produits',
     correspondingSearch: 'correspondant à votre recherche',
@@ -58,6 +60,59 @@ export const fr = {
     searchInProgress: 'Recherche en cours...',
     previous: 'Précédent',
     next: 'Suivant',
-    resultsFoundMs: '{{count}} résultat{{count === 1 ? "" : "s"}} trouvé{{count === 1 ? "" : "s"}} en {{time}}ms'
+    resultsFoundMs: '{{count}} résultat{{count === 1 ? "" : "s"}} trouvé{{count === 1 ? "" : "s"}} en {{time}}ms',
+    loading: 'Chargement...',
+    error: 'Une erreur est survenue',
+    tryAgain: 'Réessayer',
+    addToCart: 'Ajouter au panier',
+    price: 'Prix',
+    currency: '€',
+    ecoScore: 'Score écologique'
+  },
+  home: {
+    heroTitle: 'Découvrez les produits écoresponsables',
+    heroSubtitle: 'Trouvez facilement des alternatives durables grâce à notre intelligence artificielle',
+    feature1: 'Recherche intelligente',
+    feature2: 'Scores écologiques',
+    feature3: 'Produits vérifiés',
+    searchResults: 'résultats trouvés',
+    searchTime: 'en',
+    gridView: 'Grille',
+    listView: 'Liste'
+  },
+  product: {
+    title: 'Détails du produit',
+    brand: 'Marque',
+    category: 'Catégorie',
+    zones: 'Zones disponibles',
+    affiliateLink: 'Lien d\'achat',
+    backToSearch: 'Retour à la recherche',
+    notFound: 'Produit non trouvé',
+    aiSummary: 'Résumé IA',
+    ethicalScore: 'Score éthique',
+    verificationStatus: 'Statut de vérification'
+  },
+  navigation: {
+    legal: 'Mentions légales',
+    privacy: 'Confidentialité',
+    terms: 'Conditions',
+    contact: 'Contact',
+    language: 'Langue'
+  },
+  footer: {
+    description: 'Découvrez des produits écoresponsables grâce à notre intelligence artificielle qui analyse et note chaque article selon des critères environnementaux et éthiques.',
+    quickLinks: 'Liens rapides',
+    legal: 'Légal',
+    terms: 'Conditions d\'utilisation',
+    privacy: 'Politique de confidentialité',
+    cookies: 'Gestion des cookies',
+    legalNotice: 'Mentions légales',
+    newsletter: 'Newsletter',
+    newsletterDescription: 'Recevez nos dernières découvertes de produits écoresponsables',
+    emailPlaceholder: 'Votre adresse e-mail',
+    gdprConsent: 'J\'accepte de recevoir la newsletter et la politique de confidentialité',
+    certifications: 'Certifications',
+    allRights: 'Tous droits réservés',
+    madeWith: 'Fait avec ❤️ pour la planète'
   }
 }
