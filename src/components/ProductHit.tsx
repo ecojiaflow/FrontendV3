@@ -1,17 +1,57 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Star, Shield, MapPin, Tag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface ProductHitProps {
   hit: any;
   onClick?: () => void;
+  viewMode?: 'grid' | 'list'; // Ajout pour compatibilité HomePage
 }
 
-const ProductHit: React.FC<ProductHitProps> = ({ hit, onClick }) => {
+const ProductHit: React.FC<ProductHitProps> = ({ hit, onClick, viewMode = 'grid' }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   // Image par défaut fiable
   const defaultImage = 'https://via.assets.so/img.jpg?w=300&h=200&tc=gray&bg=%23f3f4f6&t=Image%20non%20disponible';
+  
+  // 🎯 FONCTION CRITIQUE: Gestion de la navigation
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Si une fonction onClick est fournie, l'utiliser en priorité
+    if (onClick) {
+      onClick();
+      return;
+    }
+    
+    // Sinon, navigation directe
+    const slug = hit.slug || hit.objectID || hit.id;
+    
+    console.log('🔗 ProductHit - Navigation vers produit:', {
+      objectID: hit.objectID || hit.id,
+      slug: slug,
+      title: hit.title
+    });
+    
+    // Validation du slug
+    if (!slug || slug === 'undefined' || slug.trim() === '') {
+      console.error('❌ ProductHit - Slug invalide:', slug);
+      return;
+    }
+    
+    console.log('✅ ProductHit - Navigation vers:', `/product/${slug}`);
+    navigate(`/product/${slug}`);
+  };
+
+  // Support clavier pour l'accessibilité
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleClick(e as any);
+    }
+  };
   
   // Fonction pour gérer les erreurs d'image
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -42,7 +82,11 @@ const ProductHit: React.FC<ProductHitProps> = ({ hit, onClick }) => {
   return (
     <div 
       className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer group"
-      onClick={onClick}
+      onClick={handleClick}
+      onKeyPress={handleKeyPress}
+      tabIndex={0}
+      role="button"
+      aria-label={`Voir les détails de ${hit.title || 'ce produit'}`}
     >
       {/* Image du produit */}
       <div className="relative h-48 overflow-hidden">
@@ -125,7 +169,10 @@ const ProductHit: React.FC<ProductHitProps> = ({ hit, onClick }) => {
             </span>
           </span>
           
-          <button className="text-eco-leaf hover:text-eco-leaf-dark text-sm font-medium transition-colors">
+          <button 
+            className="text-eco-leaf hover:text-eco-leaf-dark text-sm font-medium transition-colors group-hover:underline"
+            onClick={handleClick}
+          >
             {t('common.viewProduct')}
           </button>
         </div>
