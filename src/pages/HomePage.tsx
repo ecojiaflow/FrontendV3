@@ -1,3 +1,4 @@
+// /src/pages/HomePage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Leaf, Search, X, ChevronDown, Filter, Grid, List } from 'lucide-react';
@@ -6,6 +7,9 @@ import { useTranslation } from 'react-i18next';
 import ProductHit from '../components/ProductHit';
 import { fetchRealProducts } from '../api/realApi';
 import { Product } from '../types';
+import { SEOHead } from '../components/SEOHead';
+import { useSEO } from '../hooks/useSEO';
+import { usePerformanceMonitoring } from '../utils/performance';
 
 // Composant NoResultsFound
 const NoResultsFound: React.FC<{ query: string; onEnrichRequest: (query: string) => void }> = ({ query, onEnrichRequest }) => {
@@ -32,6 +36,7 @@ const HomePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { recordSearch } = usePerformanceMonitoring();
   
   // États de recherche
   const [allResults, setAllResults] = useState<Product[]>([]);
@@ -52,11 +57,91 @@ const HomePage: React.FC = () => {
 
   const currentQuery = searchParams.get('q') || '';
 
+  // 🔧 FONCTION: Génération de slug sécurisée
+  const generateSecureSlug = useCallback((product: any): string => {
+    // 1. Vérifier slug existant
+    if (product.slug && 
+        typeof product.slug === 'string' && 
+        product.slug.trim() !== '' && 
+        product.slug !== 'undefined' && 
+        product.slug !== 'null') {
+      return product.slug.trim();
+    }
+    
+    // 2. Générer depuis le titre
+    const title = product.nameKey || product.title || '';
+    if (title && typeof title === 'string' && title.trim() !== '') {
+      const generatedSlug = title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Supprimer accents
+        .replace(/[^a-z0-9\s-]/g, '')   // Garder alphanumériques
+        .replace(/\s+/g, '-')           // Espaces → tirets
+        .replace(/-+/g, '-')            // Tirets multiples → simple
+        .replace(/^-|-$/g, '');         // Supprimer tirets début/fin
+      
+      if (generatedSlug && generatedSlug !== 'undefined' && generatedSlug.length > 0) {
+        return generatedSlug;
+      }
+    }
+    
+    // 3. Utiliser l'ID comme fallback
+    const id = product.id || product.objectID || '';
+    if (id && typeof id === 'string' && id !== 'undefined' && id.trim() !== '') {
+      return `product-${id}`;
+    }
+    
+    // 4. Fallback ultime d'urgence
+    return `product-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }, []);
+
+  // SEO dynamique
+  useSEO({
+    title: currentQuery 
+      ? `"${currentQuery}" - Produits éco-responsables | Ecolojia`
+      : 'Ecolojia - Trouvez des produits éco-responsables et durables',
+    description: currentQuery
+      ? `Découvrez ${searchStats.nbHits} produits éco-responsables pour "${currentQuery}". Scores écologiques vérifiés par IA.`
+      : 'Découvrez des milliers de produits éthiques avec des scores écologiques vérifiés par IA. Shampoing bio, vêtements éthiques, alimentation durable.',
+    keywords: currentQuery
+      ? `${currentQuery}, produits écologiques, bio, éthique, développement durable`
+      : 'produits écologiques, bio, éthique, développement durable, score écologique, IA'
+  });
+
   // Fonction pour paginer les résultats côté client
   const paginateResults = (results: Product[], page: number) => {
     const startIndex = page * hitsPerPage;
     const endIndex = startIndex + hitsPerPage;
     return results.slice(startIndex, endIndex);
+  };
+
+  // Chargement initial des produits
+  const loadInitialProducts = async () => {
+    try {
+      setIsSearching(true);
+      const startTime = Date.now();
+      const results = await fetchRealProducts('');
+      const processingTime = Date.now() - startTime;
+      
+      setAllResults(results);
+      setSearchResults(paginateResults(results, 0));
+      setOriginalResults(results);
+      setTotalPages(Math.ceil(results.length / hitsPerPage));
+      setCurrentPage(0);
+      setSearchStats({ 
+        nbHits: results.length, 
+        processingTimeMS: processingTime 
+      });
+
+      recordSearch('', results.length, processingTime);
+    } catch (error) {
+      console.error('Erreur chargement initial:', error);
+      setAllResults([]);
+      setSearchResults([]);
+      setOriginalResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Chargement initial des produits
@@ -81,32 +166,6 @@ const HomePage: React.FC = () => {
     }
   }, [searchParams]);
 
-  const loadInitialProducts = async () => {
-    try {
-      setIsSearching(true);
-      const startTime = Date.now();
-      const results = await fetchRealProducts('');
-      const processingTime = Date.now() - startTime;
-      
-      setAllResults(results);
-      setSearchResults(paginateResults(results, 0));
-      setOriginalResults(results);
-      setTotalPages(Math.ceil(results.length / hitsPerPage));
-      setCurrentPage(0);
-      setSearchStats({ 
-        nbHits: results.length, 
-        processingTimeMS: processingTime 
-      });
-    } catch (error) {
-      console.error('Erreur chargement initial:', error);
-      setAllResults([]);
-      setSearchResults([]);
-      setOriginalResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   // Fonction de recherche
   const performSearch = async (searchQuery: string, page: number = 0) => {
     if (searchQuery.length === 0) {
@@ -129,6 +188,8 @@ const HomePage: React.FC = () => {
         nbHits: results.length, 
         processingTimeMS: processingTime 
       });
+
+      recordSearch(searchQuery, results.length, processingTime);
       
     } catch (error) {
       console.error('Erreur recherche:', error);
@@ -181,12 +242,41 @@ const HomePage: React.FC = () => {
     setTimeout(scrollToResults, 100);
   };
 
+  // 🎯 FONCTION CRITIQUE: Navigation vers produit
+  const handleProductClick = (product: Product) => {
+    console.log('🔗 Navigation vers produit:', product);
+    
+    // Générer slug sécurisé
+    const secureSlug = generateSecureSlug(product);
+    
+    // Validation finale avant navigation
+    if (secureSlug && secureSlug !== 'undefined' && secureSlug.trim() !== '') {
+      console.log('✅ Navigation vers:', `/product/${secureSlug}`);
+      navigate(`/product/${secureSlug}`);
+    } else {
+      console.error('❌ Navigation bloquée - slug invalide:', secureSlug);
+    }
+  };
+
   // Fonction pour enrichir la base de données
   const handleEnrichRequest = async (searchQuery: string) => {
-    console.log('Demande d\'enrichissement pour:', searchQuery);
-    setTimeout(() => {
-      performSearch(searchQuery, 0);
-    }, 2000);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/suggest`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery })
+      });
+      
+      if (response.ok) {
+        setTimeout(() => {
+          performSearch(searchQuery, 0);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Erreur enrichissement:', error);
+    }
   };
 
   // Fonction pour appliquer les filtres
@@ -226,6 +316,18 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEOHead
+        title={currentQuery 
+          ? `"${currentQuery}" - Produits éco-responsables | Ecolojia`
+          : undefined}
+        description={currentQuery
+          ? `Découvrez ${searchStats.nbHits} produits éco-responsables pour "${currentQuery}". Scores écologiques vérifiés par IA.`
+          : undefined}
+        keywords={currentQuery
+          ? `${currentQuery}, produits écologiques, bio, éthique`
+          : undefined}
+      />
+
       {/* Section Hero */}
       <section className="bg-eco-gradient py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -234,11 +336,15 @@ const HomePage: React.FC = () => {
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-eco-text mb-6">
-            <span className="text-eco-leaf">Trouvez</span> des produits <span className="text-eco-leaf">éco-responsables</span>
+            {t('homepage.hero.title') === 'Find <highlight>eco-friendly</highlight> products' ? (
+              <>Find <span className="text-eco-leaf">eco-friendly</span> products</>
+            ) : (
+              <><span className="text-eco-leaf">Trouvez</span> des produits <span className="text-eco-leaf">éco-responsables</span></>
+            )}
           </h1>
           
           <p className="text-lg md:text-xl text-eco-text/80 max-w-3xl mx-auto mb-12">
-            {t('homepage.hero.subtitle') || 'Découvrez des produits respectueux de l\'environnement grâce à notre IA'}
+            {t('homepage.hero.subtitle')}
           </p>
 
           {/* Barre de recherche */}
@@ -271,6 +377,16 @@ const HomePage: React.FC = () => {
                 </button>
               )}
             </div>
+
+            {/* Indicateurs de recherche */}
+            {currentQuery && currentQuery.length >= 2 && (
+              <div className="mt-4 flex justify-center">
+                <div className="inline-flex items-center gap-2 text-sm text-eco-leaf bg-eco-leaf/10 px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 bg-eco-leaf rounded-full animate-pulse"></div>
+                  {t('common.searchingAlgolia') || 'Recherche en cours...'}
+                </div>
+              </div>
+            )}
             
             {!hasSearched && currentQuery.length === 0 && (
               <div className="mt-6">
@@ -340,17 +456,101 @@ const HomePage: React.FC = () => {
                 )}
               </button>
               <div className="flex border border-eco-leaf/20 rounded-lg overflow-hidden">
-                <button onClick={()=>setViewMode('grid')}
-                  className={`p-2 ${viewMode==='grid'?'bg-eco-leaf text-white':'hover:bg-eco-leaf/10'}`}>
-                  <Grid className="h-4 w-4"/>
+                <button onClick={() => setViewMode('grid')}
+                  className={`p-2 ${viewMode === 'grid' ? 'bg-eco-leaf text-white' : 'hover:bg-eco-leaf/10'}`}>
+                  <Grid className="h-4 w-4" />
                 </button>
-                <button onClick={()=>setViewMode('list')}
-                  className={`p-2 ${viewMode==='list'?'bg-eco-leaf text-white':'hover:bg-eco-leaf/10'}`}>
-                  <List className="h-4 w-4"/>
+                <button onClick={() => setViewMode('list')}
+                  className={`p-2 ${viewMode === 'list' ? 'bg-eco-leaf text-white' : 'hover:bg-eco-leaf/10'}`}>
+                  <List className="h-4 w-4" />
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Panneau de filtres */}
+          {showFilters && (
+            <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-eco-leaf/10 animate-fade-in">
+              <h3 className="text-lg font-semibold text-eco-text mb-4">{t('common.filterResults') || 'Filtrer les résultats'}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                {/* Filtre par score écologique */}
+                <div>
+                  <label className="block text-sm font-medium text-eco-text mb-2">
+                    {t('common.ecoScoreMin') || 'Score écologique minimum'}
+                  </label>
+                  <select 
+                    value={filters.ecoScore}
+                    onChange={(e) => setFilters({...filters, ecoScore: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
+                  >
+                    <option value="">{t('common.allScores') || 'Tous les scores'}</option>
+                    <option value="0.8">{t('common.excellent') || 'Excellent (80%+)'}</option>
+                    <option value="0.6">{t('common.veryGood') || 'Très bon (60%+)'}</option>
+                    <option value="0.4">{t('common.good') || 'Bon (40%+)'}</option>
+                  </select>
+                </div>
+
+                {/* Filtre par zone */}
+                <div>
+                  <label className="block text-sm font-medium text-eco-text mb-2">
+                    {t('common.availabilityZone') || 'Zone de disponibilité'}
+                  </label>
+                  <select 
+                    value={filters.zone}
+                    onChange={(e) => setFilters({...filters, zone: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
+                  >
+                    <option value="">{t('common.allZones') || 'Toutes les zones'}</option>
+                    <option value="FR">{t('common.france') || 'France'}</option>
+                    <option value="EU">{t('common.europe') || 'Europe'}</option>
+                    <option value="US">{t('common.usa') || 'États-Unis'}</option>
+                  </select>
+                </div>
+
+                {/* Filtre par confiance IA */}
+                <div>
+                  <label className="block text-sm font-medium text-eco-text mb-2">
+                    {t('common.aiConfidence') || 'Confiance IA'}
+                  </label>
+                  <select 
+                    value={filters.confidence}
+                    onChange={(e) => setFilters({...filters, confidence: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
+                  >
+                    <option value="">{t('common.allLevels') || 'Tous les niveaux'}</option>
+                    <option value="0.8">{t('common.certified') || 'Certifié (80%+)'}</option>
+                    <option value="0.6">{t('common.validated') || 'Validé (60%+)'}</option>
+                    <option value="0.4">{t('common.analyzing') || 'En analyse (40%+)'}</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Boutons d'action des filtres */}
+              <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {t('common.hideFilters') || 'Masquer les filtres'}
+                </button>
+                <div className="space-x-3">
+                  <button 
+                    onClick={resetFilters}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    {t('common.reset') || 'Réinitialiser'}
+                  </button>
+                  <button 
+                    onClick={applyFilters}
+                    className="px-4 py-2 bg-eco-leaf text-white rounded-lg hover:bg-eco-leaf/90 transition-colors"
+                  >
+                    {t('common.apply') || 'Appliquer'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Contenu principal */}
           {isSearching && searchResults.length === 0 ? (
@@ -366,28 +566,48 @@ const HomePage: React.FC = () => {
                   ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                   : "space-y-4"
               }>
-                {searchResults.map((product, index) => (
-                  <div
-                    key={`${product.id}-${index}`}
-                    onClick={() => navigate(`/product/${product.slug}`)}
-                    className="cursor-pointer animate-fade-in-up"
-                  >
-                    <ProductHit hit={{
-                      objectID: product.id,
-                      title: product.nameKey,
-                      description: product.descriptionKey,
-                      slug: product.slug,
-                      image_url: product.image,
-                      eco_score: product.ethicalScore / 5, // Normaliser 0-1
-                      tags: product.tagsKeys,
-                      zones_dispo: product.zonesDisponibles,
-                      verified_status: product.verifiedStatus,
-                      brand: product.brandKey,
-                      confidence_pct: product.confidencePct,
-                      confidence_color: product.confidenceColor
-                    }} />
-                  </div>
-                ))}
+                {searchResults.map((product, index) => {
+                  // Validation stricte des données produit
+                  if (!product || !product.id) {
+                    if (import.meta.env.DEV) {
+                      console.warn('Produit invalide ignoré:', product);
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      key={`${product.id}-${index}`}
+                      className="cursor-pointer animate-fade-in-up"
+                      style={{ 
+                        animationDelay: `${index * 50}ms`,
+                        animationFillMode: 'both'
+                      }}
+                      onClick={() => handleProductClick(product)}
+                    >
+                      <ProductHit 
+                        hit={{
+                          objectID: product.id,
+                          title: product.nameKey || 'Produit sans titre',
+                          description: product.descriptionKey || '',
+                          brand: product.brandKey || '',
+                          category: product.category || '',
+                          image_url: product.image || '',
+                          eco_score: product.ethicalScore || 0,
+                          slug: generateSecureSlug(product),
+                          tags: product.tagsKeys || [],
+                          zones_dispo: product.zonesDisponibles || [],
+                          verified_status: product.verifiedStatus || 'manual_review',
+                          ai_confidence: product.aiConfidence || 0,
+                          confidence_pct: product.confidencePct || 0,
+                          confidence_color: product.confidenceColor || 'yellow',
+                          price: product.price || 0
+                        }}
+                        viewMode={viewMode}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Pagination */}
