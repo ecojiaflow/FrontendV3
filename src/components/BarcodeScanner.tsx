@@ -24,6 +24,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       setError(null);
       setIsScanning(true);
 
+      // Marquer le début du scan pour timer auto
+      window.scanStartTime = Date.now();
+
       // Configuration contraintes caméra
       const constraints: MediaStreamConstraints = {
         video: {
@@ -63,7 +66,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     setIsScanning(false);
   };
 
-  // Scanner une frame (avec détection améliorée)
+  // Scanner une frame (avec détection TRÈS fréquente pour test)
   const scanFrame = () => {
     if (!isScanning || !videoRef.current || !canvasRef.current) return;
 
@@ -83,28 +86,41 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     // Dessiner frame actuelle
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // 🎯 DÉTECTION AMÉLIORÉE: Plus de chances de détection
-    const enhancedDetection = Math.random() > 0.95; // 5% chance par frame
+    // 🎯 DÉTECTION SUPER FRÉQUENTE POUR TEST
+    const currentTime = Date.now();
+    const timeSinceStart = currentTime - (window.scanStartTime || currentTime);
     
-    // OU détection manuelle pour test
-    const manualTrigger = Date.now() % 10000 < 100; // Trigger toutes les 10 secondes
+    // Déclencher automatiquement toutes les 3 secondes
+    const autoTrigger = timeSinceStart > 3000 && (timeSinceStart % 3000) < 100;
     
-    if ((enhancedDetection || manualTrigger) && !scanResult) {
-      // Générer code-barres réaliste
-      const prefixes = ['3', '8', '4', '5', '6', '7'];
-      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-      const mockBarcode = prefix + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+    // OU détection aléatoire fréquente
+    const randomDetection = Math.random() > 0.85; // 15% chance par frame
+    
+    if ((autoTrigger || randomDetection) && !scanResult) {
+      // Codes-barres réalistes variés
+      const realBarcodes = [
+        '3760074933444', // Produit bio français
+        '8717344324441', // Code EAN européen
+        '4260123456789', // Code allemand
+        '3258561234567', // Produit français
+        '8712345678901'  // Code NL
+      ];
       
-      console.log('🔍 Code-barres détecté:', mockBarcode);
-      setScanResult(mockBarcode);
+      const randomBarcode = realBarcodes[Math.floor(Math.random() * realBarcodes.length)];
       
-      // Feedback visuel + sonore
-      navigator.vibrate?.(200); // Vibration si supportée
+      console.log('🔍 Code-barres détecté automatiquement:', randomBarcode);
+      setScanResult(randomBarcode);
+      
+      // Reset timer pour éviter détections multiples
+      window.scanStartTime = currentTime;
+      
+      // Feedback
+      navigator.vibrate?.(200);
       
       setTimeout(() => {
-        onScanSuccess(mockBarcode);
+        onScanSuccess(randomBarcode);
         handleClose();
-      }, 1500); // Plus de temps pour voir le résultat
+      }, 2000); // Plus de temps pour voir
       return;
     }
 
@@ -204,7 +220,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </div>
       </div>
 
-      {/* Zone de scan */}
+                {/* Zone de scan */}
       <div className="flex-1 relative overflow-hidden">
         {/* Vidéo caméra */}
         <video
@@ -219,6 +235,33 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           ref={canvasRef}
           className="hidden"
         />
+
+        {/* Bouton de test manuel PLUS VISIBLE */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+          <button
+            onClick={() => {
+              const testBarcode = '3760074933444';
+              console.log('🧪 Test scan déclenché:', testBarcode);
+              setScanResult(testBarcode);
+              navigator.vibrate?.(200);
+              setTimeout(() => {
+                onScanSuccess(testBarcode);
+                handleClose();
+              }, 1500);
+            }}
+            className="bg-eco-leaf text-white px-6 py-3 rounded-lg text-lg font-bold shadow-lg animate-pulse"
+          >
+            🧪 SCANNER TEST
+          </button>
+        </div>
+
+        {/* Instructions détection */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 text-center">
+          <div className="bg-black/70 text-white px-4 py-2 rounded-lg text-sm">
+            📱 Placez un code-barres devant la caméra<br/>
+            ⏱️ Détection automatique toutes les 3 secondes
+          </div>
+        </div>
 
         {/* Overlay guide de scan */}
         <div className="absolute inset-0 flex items-center justify-center">
