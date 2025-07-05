@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Download, X, Leaf } from 'lucide-react';
+import { Smartphone, Download, X, Leaf, AlertCircle } from 'lucide-react';
 import { usePWA } from '../hooks/usePWA';
 
 const PWAInstallBanner: React.FC = () => {
@@ -7,80 +7,135 @@ const PWAInstallBanner: React.FC = () => {
   const [forceShow, setForceShow] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
+  const [installResult, setInstallResult] = useState('');
 
-  // Debug : Afficher les informations PWA
+  // Debug détaillé
   useEffect(() => {
     const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const userAgent = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
     
-    console.log('🔍 PWA Debug Info:', {
+    console.log('🔍 PWA Debug détaillé:', {
       isMobile,
+      isIOS,
+      isAndroid,
       isStandalone,
       showInstallBanner,
-      userAgent: userAgent.substring(0, 50) + '...'
+      hasBeforeInstallPrompt: 'onbeforeinstallprompt' in window,
+      userAgent: navigator.userAgent
     });
     
-    setDebugInfo(`Mobile: ${isMobile}, Standalone: ${isStandalone}, Banner: ${showInstallBanner}`);
+    setDebugInfo(`Mobile: ${isMobile}, iOS: ${isIOS}, Android: ${isAndroid}, Standalone: ${isStandalone}`);
   }, [isStandalone, showInstallBanner]);
 
-  // FORCER l'affichage après 2 secondes sur mobile
+  // Force affichage
   useEffect(() => {
     const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    console.log('📱 PWA Banner - isMobile:', isMobile, 'isStandalone:', isStandalone);
     
     if (isMobile && !isStandalone) {
       const timer = setTimeout(() => {
-        console.log('⏰ Timer déclenché - Affichage banner forcé');
+        console.log('⏰ Timer déclenché - Banner forcé');
         setForceShow(true);
       }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isStandalone]);
 
-  // Vérifier sessionStorage
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem('ecolojia-pwa-dismissed');
-    console.log('💾 SessionStorage dismissed:', dismissed);
-    if (dismissed) {
-      setForceShow(false);
-    }
-  }, []);
-
   const handleInstall = async () => {
-    console.log('🔧 Clic installation PWA...');
+    console.log('🔧 === DÉBUT INSTALLATION PWA ===');
     setIsInstalling(true);
+    setInstallResult('Installation en cours...');
     
     try {
-      const success = await triggerInstall();
-      console.log('📱 Résultat installation:', success);
+      // 1. Vérifier les conditions PWA
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const hasPromptAPI = 'onbeforeinstallprompt' in window;
       
-      if (!success) {
-        console.log('📱 API installation non disponible, toast simple');
-        showSimpleToast();
-      } else {
-        console.log('✅ Installation PWA réussie');
-        setForceShow(false);
+      console.log('📱 Conditions:', { isIOS, isAndroid, hasPromptAPI });
+      
+      if (isIOS) {
+        console.log('🍎 iOS détecté - Installation manuelle uniquement');
+        setInstallResult('iOS: Installation manuelle requise');
+        showIOSInstructions();
+        return;
       }
+      
+      // 2. Essayer l'API native
+      console.log('🚀 Tentative API native...');
+      const success = await triggerInstall();
+      console.log('📱 Résultat API native:', success);
+      
+      if (success) {
+        console.log('✅ Installation PWA native réussie');
+        setInstallResult('✅ Installation réussie !');
+        setForceShow(false);
+      } else {
+        console.log('❌ API native échouée - Fallback manuel');
+        setInstallResult('❌ API échouée - Instructions manuelles');
+        showManualInstructions();
+      }
+      
     } catch (error) {
       console.error('❌ Erreur installation:', error);
-      showSimpleToast();
+      setInstallResult(`❌ Erreur: ${error.message}`);
+      showManualInstructions();
     } finally {
       setIsInstalling(false);
+      console.log('🔧 === FIN INSTALLATION PWA ===');
     }
   };
 
-  const showSimpleToast = () => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const showIOSInstructions = () => {
+    const toast = document.createElement('div');
+    toast.innerHTML = `
+      <div style="
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%); 
+        background: white; 
+        border: 2px solid #7DDE4A;
+        border-radius: 12px; 
+        padding: 20px;
+        z-index: 10000;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        max-width: 320px;
+        text-align: center;
+      ">
+        <h3 style="margin: 0 0 15px 0; color: #1E3D2B;">📱 Installation iOS</h3>
+        <div style="margin: 15px 0; color: #666; line-height: 1.4;">
+          <p><strong>1.</strong> Touchez <span style="border: 1px solid #ccc; padding: 2px 6px; border-radius: 4px;">⎍</span> (Partager)</p>
+          <p><strong>2.</strong> Sélectionnez "Sur l'écran d'accueil"</p>
+          <p><strong>3.</strong> Touchez "Ajouter"</p>
+        </div>
+        <button onclick="this.closest('div').remove()" style="
+          background: #7DDE4A; 
+          color: white; 
+          border: none; 
+          padding: 10px 20px; 
+          border-radius: 8px; 
+          cursor: pointer;
+          font-weight: 500;
+        ">Compris</button>
+      </div>
+    `;
+    document.body.appendChild(toast);
     
-    let message = '';
-    if (isIOS) {
-      message = '💡 Safari → Partager → "Sur l\'écran d\'accueil"';
-    } else {
-      message = '💡 Menu navigateur → "Installer l\'application"';
-    }
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, 10000);
+  };
 
-    // Toast simple NON-BLOQUANT
+  const showManualInstructions = () => {
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    const message = isAndroid 
+      ? '💡 Menu Chrome (⋮) → "Installer l\'application"'
+      : '💡 Barre d\'adresse → Icône installation';
+
     const toast = document.createElement('div');
     toast.textContent = message;
     toast.style.cssText = `
@@ -103,11 +158,9 @@ const PWAInstallBanner: React.FC = () => {
     
     setTimeout(() => {
       if (toast.parentNode) {
-        document.body.removeChild(toast);
+        toast.remove();
       }
-    }, 4000);
-    
-    setForceShow(false);
+    }, 5000);
   };
 
   const handleDismiss = () => {
@@ -117,41 +170,33 @@ const PWAInstallBanner: React.FC = () => {
     sessionStorage.setItem('ecolojia-pwa-dismissed', 'true');
   };
 
-  // LOGIQUE AFFICHAGE avec debug
+  // Vérifier sessionStorage
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem('ecolojia-pwa-dismissed');
+    if (dismissed) {
+      setForceShow(false);
+    }
+  }, []);
+
   const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   const shouldShow = isMobile && (showInstallBanner || forceShow) && !isStandalone;
-  
-  console.log('🎯 shouldShow:', shouldShow, {
-    isMobile,
-    showInstallBanner,
-    forceShow,
-    isStandalone
-  });
 
-  // TOUJOURS afficher en mode debug sur mobile (temporaire)
-  const debugMode = true;
-  const finalShow = debugMode ? isMobile && !isStandalone : shouldShow;
-
-  if (!finalShow) {
-    return (
-      <div className="fixed bottom-20 right-4 bg-red-500 text-white p-2 rounded text-xs z-50 md:hidden">
-        Debug: {debugInfo}
-      </div>
-    );
+  if (!shouldShow) {
+    return null;
   }
 
   return (
     <>
-      {/* Debug info */}
-      <div className="fixed top-4 left-4 bg-blue-500 text-white p-2 rounded text-xs z-50 md:hidden">
-        Debug: {debugInfo}
+      {/* Debug info détaillé */}
+      <div className="fixed top-4 left-4 bg-blue-500 text-white p-2 rounded text-xs z-50 md:hidden max-w-xs">
+        <div>Debug: {debugInfo}</div>
+        {installResult && <div className="mt-1 text-yellow-200">Résultat: {installResult}</div>}
       </div>
 
       {/* Banner PWA */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-eco-leaf/20 shadow-lg z-40 block md:hidden">
         <div className="p-4">
           <div className="flex items-center space-x-4">
-            {/* Logo + App info */}
             <div className="flex items-center space-x-3 flex-1">
               <div className="w-12 h-12 bg-eco-leaf rounded-xl flex items-center justify-center">
                 <Leaf className="w-7 h-7 text-white" />
@@ -161,12 +206,11 @@ const PWAInstallBanner: React.FC = () => {
                   Installer ECOLOJIA
                 </h3>
                 <p className="text-xs text-eco-text/70 line-clamp-1">
-                  Accès rapide au scanner + mode hors ligne
+                  Scanner + mode hors ligne
                 </p>
               </div>
             </div>
 
-            {/* Boutons action */}
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleInstall}
@@ -176,7 +220,7 @@ const PWAInstallBanner: React.FC = () => {
                 {isInstalling ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Install...</span>
+                    <span>Test...</span>
                   </>
                 ) : (
                   <>
