@@ -7,16 +7,54 @@ interface BarcodeScannerProps {
   isOpen: boolean;
 }
 
+declare global {
+  interface Window {
+    ZXing: any;
+  }
+}
+
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const [error, setError] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<string | null>(null);
+  const [isZXingLoaded, setIsZXingLoaded] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Charger ZXing dynamiquement
+  useEffect(() => {
+    const loadZXing = async () => {
+      try {
+        // Charger ZXing depuis CDN
+        if (!window.ZXing) {
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/@zxing/library@latest/umd/index.min.js';
+          script.onload = () => {
+            console.log('✅ ZXing chargé avec succès');
+            setIsZXingLoaded(true);
+          };
+          script.onerror = () => {
+            console.error('❌ Erreur chargement ZXing');
+            setIsZXingLoaded(false);
+          };
+          document.head.appendChild(script);
+        } else {
+          setIsZXingLoaded(true);
+        }
+      } catch (err) {
+        console.error('❌ Erreur ZXing:', err);
+        setIsZXingLoaded(false);
+      }
+    };
+
+    if (isOpen) {
+      loadZXing();
+    }
+  }, [isOpen]);
 
   // Démarrer la caméra
   const startCamera = async () => {
@@ -24,16 +62,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       setError(null);
       setIsScanning(true);
 
-      // Marquer le début du scan pour timer auto
-      window.scanStartTime = Date.now();
-
-      // Configuration contraintes caméra
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: cameraFacing,
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          frameRate: { ideal: 30, min: 15 }
+          width: { ideal: 1920, min: 640 }, // Résolution plus haute
+          height: { ideal: 1080, min: 480 },
+          frameRate: { ideal: 30 }
         },
         audio: false
       };
@@ -46,8 +80,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         
-        // Démarrer la détection de codes-barres
-        requestAnimationFrame(scanFrame);
+        // Attendre que la vidéo soit prête
+        setTimeout(() => {
+          startZXingScanning();
+        }, 1000);
       }
     } catch (err) {
       console.error('❌ Erreur accès caméra:', err);
@@ -57,8 +93,107 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   };
 
+  // Scanner avec ZXing
+  const startZXingScanning = () => {
+    if (!isZXingLoaded || !videoRef.current || scanResult) return;
+
+    // Nettoyer l'ancien interval
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+
+    console.log('🔍 Démarrage scan ZXing...');
+
+    // Scanner toutes les 500ms
+    scanIntervalRef.current = setInterval(() => {
+      scanWithZXing();
+    }, 500);
+  };
+
+  // Fonction de scan ZXing
+  const scanWithZXing = () => {
+    if (!videoRef.current || !window.ZXing || scanResult) return;
+
+    try {
+      const video = videoRef.current;
+      
+      // Créer canvas pour capture
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      if (!context || video.videoWidth === 0) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Capturer frame vidéo
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Obtenir ImageData
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Scanner avec ZXing
+      const codeReader = new window.ZXing.BrowserMultiFormatReader();
+      
+      codeReader.decodeFromImageData(imageData)
+        .then((result: any) => {
+          if (result && result.text) {
+            console.log('🎯 Code-barres détecté:', result.text);
+            handleScanSuccess(result.text);
+          }
+        })
+        .catch(() => {
+          // Pas de code trouvé, continuer le scan
+        });
+        
+    } catch (err) {
+      // Erreur silencieuse, continuer le scan
+      console.log('🔄 Scan en cours...');
+    }
+  };
+
+  // Gérer succès scan
+  const handleScanSuccess = (barcode: string) => {
+    if (scanResult) return; // Éviter doublons
+    
+    setScanResult(barcode);
+    
+    // Arrêter le scanning
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    
+    // Feedback
+    navigator.vibrate?.(200);
+    
+    setTimeout(() => {
+      onScanSuccess(barcode);
+      handleClose();
+    }, 2000);
+  };
+
+  // Test manuel avec codes réels
+  const handleTestScan = () => {
+    const testCodes = [
+      '8712345678901', // Test EAN-13
+      '3760074933444', // Produit bio
+      '4260123456789', // Code allemand
+      '012345678905'   // UPC-A
+    ];
+    
+    const randomCode = testCodes[Math.floor(Math.random() * testCodes.length)];
+    console.log('🧪 Test scan:', randomCode);
+    handleScanSuccess(randomCode);
+  };
+
   // Arrêter la caméra
   const stopCamera = () => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -66,70 +201,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     setIsScanning(false);
   };
 
-  // Scanner une frame (avec détection TRÈS fréquente pour test)
-  const scanFrame = () => {
-    if (!isScanning || !videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx || video.videoWidth === 0 || video.videoHeight === 0) {
-      requestAnimationFrame(scanFrame);
-      return;
-    }
-
-    // Ajuster taille canvas
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Dessiner frame actuelle
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // 🎯 DÉTECTION SUPER FRÉQUENTE POUR TEST
-    const currentTime = Date.now();
-    const timeSinceStart = currentTime - (window.scanStartTime || currentTime);
-    
-    // Déclencher automatiquement toutes les 3 secondes
-    const autoTrigger = timeSinceStart > 3000 && (timeSinceStart % 3000) < 100;
-    
-    // OU détection aléatoire fréquente
-    const randomDetection = Math.random() > 0.85; // 15% chance par frame
-    
-    if ((autoTrigger || randomDetection) && !scanResult) {
-      // Codes-barres réalistes variés
-      const realBarcodes = [
-        '3760074933444', // Produit bio français
-        '8717344324441', // Code EAN européen
-        '4260123456789', // Code allemand
-        '3258561234567', // Produit français
-        '8712345678901'  // Code NL
-      ];
-      
-      const randomBarcode = realBarcodes[Math.floor(Math.random() * realBarcodes.length)];
-      
-      console.log('🔍 Code-barres détecté automatiquement:', randomBarcode);
-      setScanResult(randomBarcode);
-      
-      // Reset timer pour éviter détections multiples
-      window.scanStartTime = currentTime;
-      
-      // Feedback
-      navigator.vibrate?.(200);
-      
-      setTimeout(() => {
-        onScanSuccess(randomBarcode);
-        handleClose();
-      }, 2000); // Plus de temps pour voir
-      return;
-    }
-
-    if (isScanning) {
-      requestAnimationFrame(scanFrame);
-    }
-  };
-
-  // Basculer flash (si supporté)
+  // Toggle flash
   const toggleFlash = async () => {
     if (!streamRef.current) return;
 
@@ -148,7 +220,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   };
 
-  // Changer caméra avant/arrière
+  // Changer caméra
   const switchCamera = () => {
     stopCamera();
     setCameraFacing(prev => prev === 'environment' ? 'user' : 'environment');
@@ -162,16 +234,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     onClose();
   };
 
-  // Auto-start quand le scanner s'ouvre
+  // Auto-start
   useEffect(() => {
     if (isOpen && hasPermission !== false) {
       startCamera();
     }
     
     return () => {
-      if (isOpen) {
-        stopCamera();
-      }
+      stopCamera();
     };
   }, [isOpen, cameraFacing]);
 
@@ -179,18 +249,19 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      {/* Header scanner */}
+      {/* Header */}
       <div className="bg-eco-text/90 backdrop-blur text-white p-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <Camera className="h-6 w-6 text-eco-leaf" />
           <div>
-            <h2 className="text-lg font-semibold">Scanner produit</h2>
-            <p className="text-sm text-white/70">Placez le code-barres dans le cadre</p>
+            <h2 className="text-lg font-semibold">Scanner ZXing</h2>
+            <p className="text-sm text-white/70">
+              {isZXingLoaded ? 'Moteur ZXing prêt' : 'Chargement moteur...'}
+            </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Bouton flash */}
           <button
             onClick={toggleFlash}
             className={`p-2 rounded-full transition-colors ${
@@ -202,7 +273,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             {flashEnabled ? <Zap className="h-5 w-5" /> : <ZapOff className="h-5 w-5" />}
           </button>
 
-          {/* Bouton changer caméra */}
           <button
             onClick={switchCamera}
             className="p-2 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
@@ -210,7 +280,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             <RotateCcw className="h-5 w-5" />
           </button>
 
-          {/* Bouton fermer */}
           <button
             onClick={handleClose}
             className="p-2 rounded-full bg-red-500/20 text-white hover:bg-red-500/30 transition-colors"
@@ -220,81 +289,64 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </div>
       </div>
 
-                {/* Zone de scan */}
+      {/* Zone de scan */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Vidéo caméra */}
         <video
           ref={videoRef}
           className="w-full h-full object-cover"
           playsInline
           muted
+          style={{ filter: 'contrast(1.2) brightness(1.1)' }} // Améliorer contraste
         />
 
-        {/* Canvas pour traitement (invisible) */}
-        <canvas
-          ref={canvasRef}
-          className="hidden"
-        />
-
-        {/* Bouton de test manuel PLUS VISIBLE */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+        {/* Bouton test TRÈS visible */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
           <button
-            onClick={() => {
-              const testBarcode = '3760074933444';
-              console.log('🧪 Test scan déclenché:', testBarcode);
-              setScanResult(testBarcode);
-              navigator.vibrate?.(200);
-              setTimeout(() => {
-                onScanSuccess(testBarcode);
-                handleClose();
-              }, 1500);
-            }}
-            className="bg-eco-leaf text-white px-6 py-3 rounded-lg text-lg font-bold shadow-lg animate-pulse"
+            onClick={handleTestScan}
+            className="bg-yellow-500 text-black px-8 py-4 rounded-xl text-xl font-black shadow-2xl animate-pulse border-4 border-yellow-300"
           >
-            🧪 SCANNER TEST
+            🧪 TEST SCAN
           </button>
         </div>
 
-        {/* Instructions détection */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 text-center">
-          <div className="bg-black/70 text-white px-4 py-2 rounded-lg text-sm">
-            📱 Placez un code-barres devant la caméra<br/>
-            ⏱️ Détection automatique toutes les 3 secondes
+        {/* Guide de scan */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-80 h-52 border-4 border-eco-leaf rounded-2xl relative bg-eco-leaf/5">
+            {/* Coins animés */}
+            <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-white"></div>
+            <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-white"></div>
+            <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-white"></div>
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-white"></div>
+
+            {/* Ligne de scan */}
+            {isScanning && !scanResult && (
+              <div className="absolute top-0 left-0 w-full h-1 bg-eco-leaf shadow-lg animate-ping"></div>
+            )}
           </div>
         </div>
 
-        {/* Overlay guide de scan */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative">
-            {/* Cadre de scan */}
-            <div className="w-72 h-48 border-2 border-eco-leaf rounded-lg relative bg-eco-leaf/5 backdrop-blur-sm">
-              {/* Coins animés */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-lg"></div>
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-lg"></div>
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-lg"></div>
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-lg"></div>
-
-              {/* Ligne de scan animée */}
-              {isScanning && !scanResult && (
-                <div className="absolute top-0 left-0 w-full h-1 bg-eco-leaf animate-bounce"></div>
-              )}
-            </div>
-
-            {/* Instructions */}
-            <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 text-center">
-              <p className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full">
-                {scanResult ? '✅ Code détecté!' : 'Alignez le code-barres dans le cadre'}
+        {/* Instructions */}
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 text-center">
+          <div className="bg-black/70 text-white px-6 py-3 rounded-xl">
+            <p className="text-sm font-medium">
+              {!isZXingLoaded ? '⏳ Chargement moteur ZXing...' :
+               scanResult ? '✅ Code détecté!' :
+               '📱 Placez le code-barres dans le cadre'}
+            </p>
+            {isZXingLoaded && !scanResult && (
+              <p className="text-xs text-white/70 mt-1">
+                Scan ZXing en temps réel actif
               </p>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Résultat scan */}
+        {/* Résultat */}
         {scanResult && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-eco-leaf text-white p-6 rounded-xl shadow-2xl text-center animate-fade-in">
-            <CheckCircle className="h-16 w-16 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2">Code détecté !</h3>
-            <p className="text-eco-leaf/20 font-mono text-lg">{scanResult}</p>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-eco-leaf text-white p-8 rounded-2xl shadow-2xl text-center animate-fade-in">
+            <CheckCircle className="h-20 w-20 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold mb-2">Code détecté !</h3>
+            <p className="font-mono text-lg bg-white/20 px-4 py-2 rounded">{scanResult}</p>
             <div className="mt-4">
               <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
               <p className="text-sm mt-2">Recherche du produit...</p>
@@ -303,13 +355,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         )}
       </div>
 
-      {/* États d'erreur */}
+      {/* Erreurs */}
       {error && (
         <div className="absolute bottom-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg flex items-center space-x-3">
           <AlertCircle className="h-6 w-6 flex-shrink-0" />
           <div>
             <p className="font-medium">Erreur caméra</p>
-            <p className="text-sm text-red-100">{error}</p>
+            <p className="text-sm">{error}</p>
           </div>
         </div>
       )}
@@ -320,33 +372,25 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           <div className="bg-white rounded-xl p-8 text-center max-w-sm">
             <Camera className="h-16 w-16 text-eco-leaf mx-auto mb-4" />
             <h3 className="text-xl font-bold text-eco-text mb-4">
-              Accès à la caméra requis
+              Accès caméra requis
             </h3>
             <p className="text-eco-text/70 mb-6">
-              Pour scanner les codes-barres, ECOLOJIA a besoin d'accéder à votre caméra.
+              Scanner ZXing nécessite l'accès à votre caméra
             </p>
-            <div className="space-y-3">
-              <button
-                onClick={startCamera}
-                className="w-full bg-eco-leaf text-white py-3 rounded-lg font-medium hover:bg-eco-leaf/90 transition-colors"
-              >
-                Autoriser la caméra
-              </button>
-              <button
-                onClick={handleClose}
-                className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
+            <button
+              onClick={startCamera}
+              className="w-full bg-eco-leaf text-white py-3 rounded-lg font-medium hover:bg-eco-leaf/90 transition-colors"
+            >
+              Autoriser la caméra
+            </button>
           </div>
         </div>
       )}
 
-      {/* Footer instructions */}
-      <div className="bg-eco-text/90 backdrop-blur text-white p-4 text-center">
+      {/* Footer */}
+      <div className="bg-eco-text/90 text-white p-4 text-center">
         <p className="text-sm text-white/70">
-          💡 Maintenez votre téléphone stable et assurez-vous que le code-barres est bien éclairé
+          💡 Scanner ZXing haute performance • Résolution optimisée
         </p>
       </div>
     </div>

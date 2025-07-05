@@ -1,125 +1,153 @@
-import React, { useState, useEffect } from 'react';
-import { Smartphone, Download, X, Leaf } from 'lucide-react';
-import { usePWA } from '../hooks/usePWA';
+import { useState, useEffect } from 'react';
 
-const PWAInstallBanner: React.FC = () => {
-  const { showInstallBanner, triggerInstall, dismissBanner, isStandalone } = usePWA();
-  const [forceShow, setForceShow] = useState(false);
+interface PWAInstallPrompt {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
-  // Force l'affichage après 2 secondes SEULEMENT sur mobile
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+export const usePWA = () => {
+  const [installPrompt, setInstallPrompt] = useState<PWAInstallPrompt | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
   useEffect(() => {
-    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      const timer = setTimeout(() => {
-        if (!isStandalone) {
-          console.log('📱 Affichage banner PWA mobile forcé');
-          setForceShow(true);
+    // Détecter si PWA est déjà installée
+    const checkInstallation = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        (window.navigator as any).standalone ||
+                        document.referrer.includes('android-app://');
+      
+      setIsStandalone(standalone);
+      setIsInstalled(standalone);
+    };
+
+    checkInstallation();
+
+    // Écouter l'événement beforeinstallprompt avec debug
+    const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('🎯 beforeinstallprompt event reçu');
+      e.preventDefault();
+      const promptEvent = e as BeforeInstallPromptEvent;
+      
+      setInstallPrompt({
+        prompt: () => promptEvent.prompt(),
+        userChoice: promptEvent.userChoice
+      });
+      
+      console.log('💾 Prompt d\'installation sauvegardé');
+      
+      // Afficher le banner après 3 secondes si pas installé
+      setTimeout(() => {
+        if (!isInstalled) {
+          console.log('📱 Affichage banner installation');
+          setShowInstallBanner(true);
         }
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isStandalone]);
+      }, 3000);
+    };
 
-  // Ne pas afficher si déjà installé
-  if (isStandalone) {
-    return null;
-  }
+    // Écouter l'installation réussie
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+      setShowInstallBanner(false);
+      
+      // Analytics : Installation PWA
+      if (typeof gtag !== 'undefined') {
+        gtag('event', 'pwa_install', {
+          event_category: 'PWA',
+          event_label: 'install_success'
+        });
+      }
+    };
 
-  // Afficher SEULEMENT si mobile ET (hook dit oui OU forcé)
-  const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const shouldShow = isMobile && (showInstallBanner || forceShow);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
-  if (!shouldShow) {
-    return null;
-  }
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [isInstalled]);
 
-  const handleInstall = async () => {
-    console.log('🔧 Tentative installation PWA...');
+  // Déclencher l'installation avec debug
+  const triggerInstall = async () => {
+    console.log('🔧 triggerInstall appelé, installPrompt:', !!installPrompt);
     
-    // Essayer l'API native d'installation
-    const success = await triggerInstall();
-    
-    if (!success) {
-      console.log('📱 API installation non disponible, instructions manuelles');
-      showManualInstructions();
-    } else {
-      console.log('✅ Installation PWA réussie');
+    if (!installPrompt) {
+      console.log('❌ Pas de prompt d\'installation disponible');
+      return false;
     }
+
+    try {
+      console.log('📱 Affichage prompt installation...');
+      await installPrompt.prompt();
+      
+      const choice = await installPrompt.userChoice;
+      console.log('👤 Choix utilisateur:', choice.outcome);
+      
+      if (choice.outcome === 'accepted') {
+        setIsInstalled(true);
+        setShowInstallBanner(false);
+        setInstallPrompt(null);
+        
+        console.log('✅ Installation PWA acceptée');
+        
+        // Analytics
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'pwa_install_accepted', {
+            event_category: 'PWA',
+            event_label: 'user_accepted'
+          });
+        }
+        
+        return true;
+      } else {
+        console.log('❌ Installation PWA refusée');
+        // Analytics
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'pwa_install_dismissed', {
+            event_category: 'PWA',
+            event_label: 'user_dismissed'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur installation PWA:', error);
+    }
+
+    setInstallPrompt(null);
+    return false;
   };
 
-  const showManualInstructions = () => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
-    
-    let instructions = '';
-    
-    if (isIOS) {
-      instructions = 'Sur Safari :\n1. Touchez le bouton Partager (carré avec flèche)\n2. Faites défiler et touchez "Sur l\'écran d\'accueil"\n3. Touchez "Ajouter"';
-    } else if (isAndroid) {
-      instructions = 'Sur Chrome :\n1. Touchez le menu (3 points verticaux)\n2. Touchez "Installer l\'application"\n3. Confirmez l\'installation';
-    } else {
-      instructions = 'Dans votre navigateur :\n1. Cherchez l\'icône d\'installation dans la barre d\'adresse\n2. Ou Menu → "Installer ECOLOJIA"';
-    }
-
-    // Utiliser une popup custom au lieu de alert
-    const popup = document.createElement('div');
-    popup.innerHTML = `
-      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
-        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 400px; text-align: center;">
-          <h3 style="margin: 0 0 20px 0; color: #1E3D2B;">📱 Installer ECOLOJIA</h3>
-          <p style="margin: 0 0 20px 0; line-height: 1.5; color: #666;">${instructions}</p>
-          <button onclick="this.closest('div').remove()" style="background: #7DDE4A; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Compris</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(popup);
+  // Masquer le banner manuellement
+  const dismissBanner = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem('ecolojia_install_dismissed', Date.now().toString());
   };
 
-  return (
-    <>
-      {/* Banner mobile SEULEMENT */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-eco-leaf/20 shadow-lg z-40 animate-fade-in-up block md:hidden">
-        <div className="p-4">
-          <div className="flex items-center space-x-4">
-            {/* Logo + App info */}
-            <div className="flex items-center space-x-3 flex-1">
-              <div className="w-12 h-12 bg-eco-leaf rounded-xl flex items-center justify-center">
-                <Leaf className="w-7 h-7 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-eco-text text-sm">
-                  Installer ECOLOJIA
-                </h3>
-                <p className="text-xs text-eco-text/70 line-clamp-1">
-                  Accès rapide au scanner + mode hors ligne
-                </p>
-              </div>
-            </div>
+  // Vérifier si le banner a été masqué récemment
+  const wasBannerDismissedRecently = () => {
+    const dismissed = localStorage.getItem('ecolojia_install_dismissed');
+    if (!dismissed) return false;
+    
+    const dismissedTime = parseInt(dismissed);
+    const daysSinceDismissal = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+    
+    return daysSinceDismissal < 7; // Ne pas re-afficher pendant 7 jours
+  };
 
-            {/* Boutons action */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleInstall}
-                className="bg-eco-leaf text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 hover:bg-eco-leaf/90 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span>Installer</span>
-              </button>
-              
-              <button
-                onClick={dismissBanner}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Fermer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+  return {
+    installPrompt: !!installPrompt,
+    isInstalled,
+    isStandalone,
+    showInstallBanner: showInstallBanner && !wasBannerDismissedRecently(),
+    triggerInstall,
+    dismissBanner
+  };
 };
-
-export default PWAInstallBanner;
