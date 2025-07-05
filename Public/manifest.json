@@ -1,7 +1,7 @@
 {
-  "name": "ECOLOJIA - Moteur de recherche écoresponsable",
+  "name": "ECOLOJIA - Moteur de recherche ecoresponsable",
   "short_name": "ECOLOJIA",
-  "description": "Trouvez des produits éco-responsables avec des scores vérifiés par IA",
+  "description": "Trouvez des produits eco-responsables avec des scores verifies par IA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -12,44 +12,8 @@
   "categories": ["shopping", "lifestyle", "productivity"],
   "icons": [
     {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
       "type": "image/png",
       "purpose": "maskable any"
     },
@@ -65,27 +29,7 @@
       "name": "Scanner un produit",
       "short_name": "Scanner",
       "description": "Scanner un code-barres pour analyser un produit",
-      "url": "/scan",
-      "icons": [
-        {
-          "src": "/icons/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Recherche rapide",
-      "short_name": "Recherche",
-      "description": "Rechercher des produits écoresponsables",
-      "url": "/?quick=true",
-      "icons": [
-        {
-          "src": "/icons/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "url": "/scan"
     }
-  ],
-  "related_applications": [],
-  "prefer_related_applications": false
+  ]
 }
