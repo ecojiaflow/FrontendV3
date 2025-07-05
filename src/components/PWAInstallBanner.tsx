@@ -6,49 +6,61 @@ const PWAInstallBanner: React.FC = () => {
   const { showInstallBanner, triggerInstall, dismissBanner, isStandalone } = usePWA();
   const [forceShow, setForceShow] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
-  // Force l'affichage après 2 secondes SEULEMENT sur mobile
+  // Debug : Afficher les informations PWA
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const userAgent = navigator.userAgent;
+    
+    console.log('🔍 PWA Debug Info:', {
+      isMobile,
+      isStandalone,
+      showInstallBanner,
+      userAgent: userAgent.substring(0, 50) + '...'
+    });
+    
+    setDebugInfo(`Mobile: ${isMobile}, Standalone: ${isStandalone}, Banner: ${showInstallBanner}`);
+  }, [isStandalone, showInstallBanner]);
+
+  // FORCER l'affichage après 2 secondes sur mobile
   useEffect(() => {
     const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    if (isMobile) {
+    console.log('📱 PWA Banner - isMobile:', isMobile, 'isStandalone:', isStandalone);
+    
+    if (isMobile && !isStandalone) {
       const timer = setTimeout(() => {
-        if (!isStandalone) {
-          console.log('📱 Affichage banner PWA mobile forcé');
-          setForceShow(true);
-        }
+        console.log('⏰ Timer déclenché - Affichage banner forcé');
+        setForceShow(true);
       }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isStandalone]);
 
-  // Ne pas afficher si déjà installé
-  if (isStandalone) {
-    return null;
-  }
-
-  // Afficher SEULEMENT si mobile ET (hook dit oui OU forcé)
-  const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const shouldShow = isMobile && (showInstallBanner || forceShow);
-
-  if (!shouldShow) {
-    return null;
-  }
+  // Vérifier sessionStorage
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem('ecolojia-pwa-dismissed');
+    console.log('💾 SessionStorage dismissed:', dismissed);
+    if (dismissed) {
+      setForceShow(false);
+    }
+  }, []);
 
   const handleInstall = async () => {
-    console.log('🔧 Tentative installation PWA...');
+    console.log('🔧 Clic installation PWA...');
     setIsInstalling(true);
     
     try {
-      // Essayer l'API native d'installation
       const success = await triggerInstall();
+      console.log('📱 Résultat installation:', success);
       
       if (!success) {
         console.log('📱 API installation non disponible, toast simple');
         showSimpleToast();
       } else {
         console.log('✅ Installation PWA réussie');
-        setForceShow(false); // Masquer le banner
+        setForceShow(false);
       }
     } catch (error) {
       console.error('❌ Erreur installation:', error);
@@ -58,7 +70,6 @@ const PWAInstallBanner: React.FC = () => {
     }
   };
 
-  // REMPLACER showManualInstructions par un toast simple NON-BLOQUANT
   const showSimpleToast = () => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     
@@ -69,7 +80,7 @@ const PWAInstallBanner: React.FC = () => {
       message = '💡 Menu navigateur → "Installer l\'application"';
     }
 
-    // Toast simple en haut, NON-BLOQUANT
+    // Toast simple NON-BLOQUANT
     const toast = document.createElement('div');
     toast.textContent = message;
     toast.style.cssText = `
@@ -86,59 +97,58 @@ const PWAInstallBanner: React.FC = () => {
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       max-width: 90%;
       text-align: center;
-      animation: slideDown 0.3s ease-out;
     `;
-    
-    // Ajouter l'animation CSS
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes slideDown {
-        from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
-        to { transform: translateX(-50%) translateY(0); opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
     
     document.body.appendChild(toast);
     
-    // Supprimer automatiquement après 4 secondes
     setTimeout(() => {
       if (toast.parentNode) {
-        toast.style.animation = 'slideDown 0.3s ease-out reverse';
-        setTimeout(() => {
-          if (toast.parentNode) {
-            document.body.removeChild(toast);
-          }
-          if (style.parentNode) {
-            document.head.removeChild(style);
-          }
-        }, 300);
+        document.body.removeChild(toast);
       }
     }, 4000);
     
-    // Masquer le banner après affichage du toast
     setForceShow(false);
   };
 
   const handleDismiss = () => {
+    console.log('❌ Banner fermé par utilisateur');
     setForceShow(false);
     dismissBanner();
-    
-    // Masquer pour toute la session
     sessionStorage.setItem('ecolojia-pwa-dismissed', 'true');
   };
 
-  // Vérifier si déjà fermé cette session
-  useEffect(() => {
-    if (sessionStorage.getItem('ecolojia-pwa-dismissed')) {
-      setForceShow(false);
-    }
-  }, []);
+  // LOGIQUE AFFICHAGE avec debug
+  const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const shouldShow = isMobile && (showInstallBanner || forceShow) && !isStandalone;
+  
+  console.log('🎯 shouldShow:', shouldShow, {
+    isMobile,
+    showInstallBanner,
+    forceShow,
+    isStandalone
+  });
+
+  // TOUJOURS afficher en mode debug sur mobile (temporaire)
+  const debugMode = true;
+  const finalShow = debugMode ? isMobile && !isStandalone : shouldShow;
+
+  if (!finalShow) {
+    return (
+      <div className="fixed bottom-20 right-4 bg-red-500 text-white p-2 rounded text-xs z-50 md:hidden">
+        Debug: {debugInfo}
+      </div>
+    );
+  }
 
   return (
     <>
-      {/* Banner mobile SEULEMENT - NON BLOQUANT */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-eco-leaf/20 shadow-lg z-40 animate-fade-in-up block md:hidden">
+      {/* Debug info */}
+      <div className="fixed top-4 left-4 bg-blue-500 text-white p-2 rounded text-xs z-50 md:hidden">
+        Debug: {debugInfo}
+      </div>
+
+      {/* Banner PWA */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-eco-leaf/20 shadow-lg z-40 block md:hidden">
         <div className="p-4">
           <div className="flex items-center space-x-4">
             {/* Logo + App info */}
