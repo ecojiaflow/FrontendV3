@@ -1,15 +1,13 @@
 {
-  "name": "ECOLOJIA - Moteur de recherche ecoresponsable",
+  "name": "ECOLOJIA",
   "short_name": "ECOLOJIA",
-  "description": "Trouvez des produits eco-responsables avec des scores verifies par IA",
+  "description": "Scanner produits ecoresponsables",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#7DDE4A",
   "orientation": "portrait",
   "scope": "/",
-  "lang": "fr",
-  "categories": ["shopping", "lifestyle", "productivity"],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -22,14 +20,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Scanner un produit",
-      "short_name": "Scanner",
-      "description": "Scanner un code-barres pour analyser un produit",
-      "url": "/scan"
     }
   ]
 }
