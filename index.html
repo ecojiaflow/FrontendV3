@@ -28,43 +28,39 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Service Worker Registration - ACTIVÉ -->
+    <!-- PWA SANS Service Worker - Test installation native -->
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('✅ SW registered successfully:', registration.scope);
-              
-              // Écouter les mises à jour du SW
-              registration.addEventListener('updatefound', () => {
-                console.log('🔄 SW update found');
-              });
-            })
-            .catch((registrationError) => {
-              console.log('❌ SW registration failed:', registrationError);
-            });
-        });
+      // Écouter directement l'événement beforeinstallprompt
+      let deferredPrompt;
+      
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('🎯 beforeinstallprompt event fired! (SANS SW)');
+        e.preventDefault();
+        deferredPrompt = e;
         
-        // Écouter l'événement beforeinstallprompt
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-          console.log('🎯 beforeinstallprompt event fired!');
-          e.preventDefault();
-          deferredPrompt = e;
+        // Déclencher un événement custom pour le composant PWA
+        window.dispatchEvent(new CustomEvent('pwa-install-available', {
+          detail: { prompt: deferredPrompt }
+        }));
+      });
+      
+      // Écouter l'installation réussie
+      window.addEventListener('appinstalled', (e) => {
+        console.log('🎉 PWA installed successfully! (SANS SW)');
+        deferredPrompt = null;
+      });
+      
+      // Fallback après 3 secondes si pas d'événement
+      setTimeout(() => {
+        if (!deferredPrompt) {
+          console.log('⚡ SANS SW: Pas d\'événement beforeinstallprompt - Normal sur certains navigateurs');
           
-          // Déclencher un événement custom pour le composant PWA
-          window.dispatchEvent(new CustomEvent('pwa-install-available', {
-            detail: { prompt: deferredPrompt }
-          }));
-        });
-        
-        // Écouter l'installation réussie
-        window.addEventListener('appinstalled', (e) => {
-          console.log('🎉 PWA installed successfully!');
-          deferredPrompt = null;
-        });
-      }
+          // Forcer l'affichage du banner pour test manuel
+          window.dispatchEvent(new CustomEvent('pwa-force-banner'));
+        }
+      }, 3000);
+      
+      console.log('📱 PWA configurée SANS Service Worker pour test');
     </script>
   </body>
 </html>

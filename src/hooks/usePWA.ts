@@ -22,94 +22,118 @@ export const usePWA = () => {
                         (window.navigator as any).standalone ||
                         document.referrer.includes('android-app://');
       
-      console.log('📱 PWA installée ?', standalone);
+      console.log('📱 PWA installée ? (SANS SW):', standalone);
       setIsStandalone(standalone);
       
       if (!standalone) {
+        console.log('💡 PWA pas installée - Banner activé');
         setShowInstallBanner(true);
       }
     };
 
     checkInstallation();
 
-    // Écouter l'événement beforeinstallprompt NATIF
-    const handleBeforeInstallPrompt = (e: Event) => {
-      console.log('🎯 beforeinstallprompt event reçu NATIF');
-      e.preventDefault();
-      const promptEvent = e as BeforeInstallPromptEvent;
-      setInstallPrompt(promptEvent);
+    // Écouter l'événement custom depuis index.html
+    const handleCustomInstallEvent = (e: CustomEvent) => {
+      console.log('🎯 pwa-install-available event reçu (SANS SW)');
+      setInstallPrompt(e.detail.prompt);
       setShowInstallBanner(true);
     };
 
-    // Écouter l'événement custom depuis index.html
-    const handleCustomInstallEvent = (e: CustomEvent) => {
-      console.log('🎯 pwa-install-available event reçu CUSTOM');
-      setInstallPrompt(e.detail.prompt);
+    // Écouter l'événement de force banner
+    const handleForceBanner = () => {
+      console.log('⚡ Force banner PWA (SANS SW)');
       setShowInstallBanner(true);
     };
 
     // Écouter l'installation réussie
     const handleAppInstalled = () => {
-      console.log('🎉 PWA installée avec succès!');
+      console.log('🎉 PWA installée avec succès! (SANS SW)');
       setInstallPrompt(null);
       setShowInstallBanner(false);
       setIsStandalone(true);
     };
 
     // Ajouter les listeners
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('pwa-install-available', handleCustomInstallEvent as EventListener);
+    window.addEventListener('pwa-force-banner', handleForceBanner);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Fallback : Si pas d'événement après 5 secondes, forcer l'affichage
-    const fallbackTimer = setTimeout(() => {
-      if (!installPrompt && !isStandalone) {
-        console.log('⚡ Fallback : Pas d\'événement beforeinstallprompt détecté');
+    // Test de détection mobile amélioré
+    const isMobileDevice = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const mobileKeywords = ['android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'];
+      const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+      const isMobileScreen = window.innerWidth <= 768;
+      const isTouchDevice = 'ontouchstart' in window;
+      
+      console.log('📱 Détection mobile:', {
+        userAgent: userAgent.substring(0, 50),
+        isMobileUA,
+        isMobileScreen,
+        isTouchDevice,
+        finalResult: isMobileUA || (isMobileScreen && isTouchDevice)
+      });
+      
+      return isMobileUA || (isMobileScreen && isTouchDevice);
+    };
+
+    // Forcer affichage sur mobile après 2 secondes
+    if (isMobileDevice() && !isStandalone) {
+      const timer = setTimeout(() => {
+        console.log('⏰ Timer mobile - Force affichage banner (SANS SW)');
         setShowInstallBanner(true);
-      }
-    }, 5000);
+      }, 2000);
+      
+      return () => {
+        window.removeEventListener('pwa-install-available', handleCustomInstallEvent as EventListener);
+        window.removeEventListener('pwa-force-banner', handleForceBanner);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+        clearTimeout(timer);
+      };
+    }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('pwa-install-available', handleCustomInstallEvent as EventListener);
+      window.removeEventListener('pwa-force-banner', handleForceBanner);
       window.removeEventListener('appinstalled', handleAppInstalled);
-      clearTimeout(fallbackTimer);
     };
-  }, [installPrompt, isStandalone]);
+  }, [isStandalone]);
 
   // Déclencher l'installation avec debug
   const triggerInstall = async () => {
-    console.log('🔧 triggerInstall appelé, installPrompt:', !!installPrompt);
+    console.log('🔧 triggerInstall appelé (SANS SW), installPrompt:', !!installPrompt);
     
     if (!installPrompt) {
-      console.log('❌ Pas de prompt d\'installation disponible');
+      console.log('❌ Pas de prompt d\'installation disponible (SANS SW)');
+      console.log('💡 Test manuel: Vérifiez menu navigateur → "Installer l\'application"');
       return false;
     }
 
     try {
-      console.log('🚀 Déclenchement du prompt d\'installation...');
+      console.log('🚀 Déclenchement du prompt d\'installation... (SANS SW)');
       await installPrompt.prompt();
       
       const choiceResult = await installPrompt.userChoice;
-      console.log('👤 Choix utilisateur:', choiceResult.outcome);
+      console.log('👤 Choix utilisateur (SANS SW):', choiceResult.outcome);
       
       if (choiceResult.outcome === 'accepted') {
-        console.log('✅ Installation acceptée par l\'utilisateur');
+        console.log('✅ Installation acceptée par l\'utilisateur (SANS SW)');
         setInstallPrompt(null);
         setShowInstallBanner(false);
         return true;
       } else {
-        console.log('❌ Installation refusée par l\'utilisateur');
+        console.log('❌ Installation refusée par l\'utilisateur (SANS SW)');
         return false;
       }
     } catch (error) {
-      console.error('❌ Erreur lors de l\'installation:', error);
+      console.error('❌ Erreur lors de l\'installation (SANS SW):', error);
       return false;
     }
   };
 
   const dismissBanner = () => {
-    console.log('🙈 Banner PWA fermé');
+    console.log('🙈 Banner PWA fermé (SANS SW)');
     setShowInstallBanner(false);
   };
 
