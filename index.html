@@ -1,10 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ecolojia - Moteur de recherche écoresponsable</title>
+    
+    <!-- PWA Meta tags -->
+    <meta name="theme-color" content="#7DDE4A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ECOLOJIA">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     
     <!-- Plausible Analytics - Respectueux de la vie privée, sans cookies -->
     <script defer data-domain="ecolojia.com" src="https://plausible.io/js/script.js"></script>
@@ -12,5 +24,22 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration - DÉSACTIVÉ TEMPORAIREMENT -->
+    <!--
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('✅ SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('❌ SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+    -->
   </body>
 </html>

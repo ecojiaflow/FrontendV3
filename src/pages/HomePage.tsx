@@ -4,6 +4,7 @@ import { Leaf, Search, X, ChevronDown, Filter, Grid, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import ProductHit from '../components/ProductHit';
+import ScanFloatingButton from '../components/ScanFloatingButton';
 import { fetchRealProducts } from '../api/realApi';
 import { Product } from '../types';
 import { SEOHead } from '../components/SEOHead';
@@ -243,20 +244,17 @@ const HomePage: React.FC = () => {
 
   // 🎯 FONCTION CRITIQUE: Navigation vers produit
   const handleProductClick = (product: Product) => {
-    console.log('🚀 HomePage - Clic produit détecté:', {
-      id: product.id,
-      nameKey: product.nameKey,
-      slug: product.slug
-    });
+    console.log('🔗 Navigation vers produit:', product);
     
-    const slug = generateSecureSlug(product);
-    console.log('🔧 HomePage - Slug généré:', slug);
+    // Générer slug sécurisé
+    const secureSlug = generateSecureSlug(product);
     
-    if (slug && slug !== 'undefined') {
-      console.log('✅ HomePage - Navigation vers:', `/product/${slug}`);
-      navigate(`/product/${slug}`);
+    // Validation finale avant navigation
+    if (secureSlug && secureSlug !== 'undefined' && secureSlug.trim() !== '') {
+      console.log('✅ Navigation vers:', `/product/${secureSlug}`);
+      navigate(`/product/${secureSlug}`);
     } else {
-      console.error('❌ HomePage - Slug invalide:', slug);
+      console.error('❌ Navigation bloquée - slug invalide:', secureSlug);
     }
   };
 
@@ -338,13 +336,11 @@ const HomePage: React.FC = () => {
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-eco-text mb-6">
-            <span 
-              dangerouslySetInnerHTML={{ 
-                __html: t('homepage.hero.title')
-                  .replace('<highlight>', '<span class="text-eco-leaf">')
-                  .replace('</highlight>', '</span>')
-              }} 
-            />
+            {t('homepage.hero.title') === 'Find <highlight>eco-friendly</highlight> products' ? (
+              <>Find <span className="text-eco-leaf">eco-friendly</span> products</>
+            ) : (
+              <><span className="text-eco-leaf">Trouvez</span> des produits <span className="text-eco-leaf">éco-responsables</span></>
+            )}
           </h1>
           
           <p className="text-lg md:text-xl text-eco-text/80 max-w-3xl mx-auto mb-12">
@@ -573,30 +569,32 @@ const HomePage: React.FC = () => {
                 {searchResults.map((product, index) => {
                   // Validation stricte des données produit
                   if (!product || !product.id) {
-                    console.warn('Produit invalide ignoré:', product);
+                    if (import.meta.env.DEV) {
+                      console.warn('Produit invalide ignoré:', product);
+                    }
                     return null;
                   }
 
                   return (
                     <div
                       key={`${product.id}-${index}`}
-                      className="animate-fade-in-up"
+                      className="cursor-pointer animate-fade-in-up"
                       style={{ 
                         animationDelay: `${index * 50}ms`,
                         animationFillMode: 'both'
                       }}
+                      onClick={() => handleProductClick(product)}
                     >
                       <ProductHit 
                         hit={{
                           objectID: product.id,
-                          id: product.id,
                           title: product.nameKey || 'Produit sans titre',
                           description: product.descriptionKey || '',
                           brand: product.brandKey || '',
                           category: product.category || '',
                           image_url: product.image || '',
                           eco_score: product.ethicalScore || 0,
-                          slug: product.slug || generateSecureSlug(product),
+                          slug: generateSecureSlug(product),
                           tags: product.tagsKeys || [],
                           zones_dispo: product.zonesDisponibles || [],
                           verified_status: product.verifiedStatus || 'manual_review',
@@ -606,10 +604,6 @@ const HomePage: React.FC = () => {
                           price: product.price || 0
                         }}
                         viewMode={viewMode}
-                        onClick={() => {
-                          console.log('🚀 HomePage - ProductHit onClick déclenché pour:', product.id);
-                          handleProductClick(product);
-                        }}
                       />
                     </div>
                   );
@@ -671,6 +665,9 @@ const HomePage: React.FC = () => {
           )}
         </div>
       </section>
+
+      {/* Bouton scanner flottant PWA */}
+      <ScanFloatingButton />
     </div>
   );
 };

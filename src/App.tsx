@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import CategoryNavigation from './components/CategoryNavigation';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
+import PWAInstallBanner from './components/PWAInstallBanner';
 
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
@@ -14,6 +15,7 @@ import LegalPage from './pages/LegalPage';
 import ProductPage from './pages/ProductPage';
 import StatsPage from './pages/StatsPage';
 import CategoryPage from './pages/CategoryPage';
+import ProductNotFoundPage from './pages/ProductNotFoundPage';
 
 const App: React.FC = () => {
   return (
@@ -33,11 +35,13 @@ const App: React.FC = () => {
               <Route path="/product/:slug" element={<ProductPage />} />
               <Route path="/stats" element={<StatsPage />} />
               <Route path="/category/:category" element={<CategoryPage />} />
+              <Route path="/scan/not-found" element={<ProductNotFoundPage />} />
             </Routes>
           </main>
 
           <Footer />
           <CookieBanner />
+          <PWAInstallBanner />
         </div>
       </Router>
     </ErrorBoundary>
