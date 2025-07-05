@@ -19,28 +19,52 @@
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     
-    <!-- Plausible Analytics - Respectueux de la vie privée, sans cookies -->
-    <script defer data-domain="ecolojia.com" src="https://plausible.io/js/script.js"></script>
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Service Worker Registration - DÉSACTIVÉ TEMPORAIREMENT -->
-    <!--
+    <!-- Service Worker Registration - ACTIVÉ -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
-              console.log('✅ SW registered: ', registration);
+              console.log('✅ SW registered successfully:', registration.scope);
+              
+              // Écouter les mises à jour du SW
+              registration.addEventListener('updatefound', () => {
+                console.log('🔄 SW update found');
+              });
             })
             .catch((registrationError) => {
-              console.log('❌ SW registration failed: ', registrationError);
+              console.log('❌ SW registration failed:', registrationError);
             });
+        });
+        
+        // Écouter l'événement beforeinstallprompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+          console.log('🎯 beforeinstallprompt event fired!');
+          e.preventDefault();
+          deferredPrompt = e;
+          
+          // Déclencher un événement custom pour le composant PWA
+          window.dispatchEvent(new CustomEvent('pwa-install-available', {
+            detail: { prompt: deferredPrompt }
+          }));
+        });
+        
+        // Écouter l'installation réussie
+        window.addEventListener('appinstalled', (e) => {
+          console.log('🎉 PWA installed successfully!');
+          deferredPrompt = null;
         });
       }
     </script>
-    -->
   </body>
 </html>

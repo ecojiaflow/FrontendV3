@@ -12,9 +12,8 @@ interface BeforeInstallPromptEvent extends Event {
 
 export const usePWA = () => {
   const [installPrompt, setInstallPrompt] = useState<PWAInstallPrompt | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     // Détecter si PWA est déjà installée
@@ -23,114 +22,101 @@ export const usePWA = () => {
                         (window.navigator as any).standalone ||
                         document.referrer.includes('android-app://');
       
+      console.log('📱 PWA installée ?', standalone);
       setIsStandalone(standalone);
-      setIsInstalled(standalone);
+      
+      if (!standalone) {
+        setShowInstallBanner(true);
+      }
     };
 
     checkInstallation();
 
-    // Écouter l'événement beforeinstallprompt
+    // Écouter l'événement beforeinstallprompt NATIF
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('🎯 beforeinstallprompt event reçu NATIF');
       e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
-      
-      setInstallPrompt({
-        prompt: () => promptEvent.prompt(),
-        userChoice: promptEvent.userChoice
-      });
-      
-      // Afficher le banner après 3 secondes si pas installé
-      setTimeout(() => {
-        if (!isInstalled) {
-          setShowInstallBanner(true);
-        }
-      }, 3000);
+      setInstallPrompt(promptEvent);
+      setShowInstallBanner(true);
+    };
+
+    // Écouter l'événement custom depuis index.html
+    const handleCustomInstallEvent = (e: CustomEvent) => {
+      console.log('🎯 pwa-install-available event reçu CUSTOM');
+      setInstallPrompt(e.detail.prompt);
+      setShowInstallBanner(true);
     };
 
     // Écouter l'installation réussie
     const handleAppInstalled = () => {
-      setIsInstalled(true);
+      console.log('🎉 PWA installée avec succès!');
       setInstallPrompt(null);
       setShowInstallBanner(false);
-      
-      // Analytics : Installation PWA
-      if (typeof gtag !== 'undefined') {
-        gtag('event', 'pwa_install', {
-          event_category: 'PWA',
-          event_label: 'install_success'
-        });
-      }
+      setIsStandalone(true);
     };
 
+    // Ajouter les listeners
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-install-available', handleCustomInstallEvent as EventListener);
     window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Fallback : Si pas d'événement après 5 secondes, forcer l'affichage
+    const fallbackTimer = setTimeout(() => {
+      if (!installPrompt && !isStandalone) {
+        console.log('⚡ Fallback : Pas d\'événement beforeinstallprompt détecté');
+        setShowInstallBanner(true);
+      }
+    }, 5000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-install-available', handleCustomInstallEvent as EventListener);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      clearTimeout(fallbackTimer);
     };
-  }, [isInstalled]);
+  }, [installPrompt, isStandalone]);
 
-  // Déclencher l'installation
+  // Déclencher l'installation avec debug
   const triggerInstall = async () => {
-    if (!installPrompt) return false;
-
-    try {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      
-      if (choice.outcome === 'accepted') {
-        setIsInstalled(true);
-        setShowInstallBanner(false);
-        
-        // Analytics : Choix utilisateur
-        if (typeof gtag !== 'undefined') {
-          gtag('event', 'pwa_install_accepted', {
-            event_category: 'PWA',
-            event_label: 'user_accepted'
-          });
-        }
-        
-        return true;
-      } else {
-        // Analytics : Refus utilisateur
-        if (typeof gtag !== 'undefined') {
-          gtag('event', 'pwa_install_dismissed', {
-            event_category: 'PWA',
-            event_label: 'user_dismissed'
-          });
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erreur installation PWA:', error);
+    console.log('🔧 triggerInstall appelé, installPrompt:', !!installPrompt);
+    
+    if (!installPrompt) {
+      console.log('❌ Pas de prompt d\'installation disponible');
+      return false;
     }
 
-    setInstallPrompt(null);
-    return false;
+    try {
+      console.log('🚀 Déclenchement du prompt d\'installation...');
+      await installPrompt.prompt();
+      
+      const choiceResult = await installPrompt.userChoice;
+      console.log('👤 Choix utilisateur:', choiceResult.outcome);
+      
+      if (choiceResult.outcome === 'accepted') {
+        console.log('✅ Installation acceptée par l\'utilisateur');
+        setInstallPrompt(null);
+        setShowInstallBanner(false);
+        return true;
+      } else {
+        console.log('❌ Installation refusée par l\'utilisateur');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'installation:', error);
+      return false;
+    }
   };
 
-  // Masquer le banner manuellement
   const dismissBanner = () => {
+    console.log('🙈 Banner PWA fermé');
     setShowInstallBanner(false);
-    localStorage.setItem('ecolojia_install_dismissed', Date.now().toString());
-  };
-
-  // Vérifier si le banner a été masqué récemment
-  const wasBannerDismissedRecently = () => {
-    const dismissed = localStorage.getItem('ecolojia_install_dismissed');
-    if (!dismissed) return false;
-    
-    const dismissedTime = parseInt(dismissed);
-    const daysSinceDismissal = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
-    
-    return daysSinceDismissal < 7; // Ne pas re-afficher pendant 7 jours
   };
 
   return {
-    installPrompt: !!installPrompt,
-    isInstalled,
+    installPrompt,
+    showInstallBanner,
     isStandalone,
-    showInstallBanner: showInstallBanner && !wasBannerDismissedRecently(),
     triggerInstall,
     dismissBanner
   };
