@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Smartphone, Download, X, Leaf } from 'lucide-react';
 import { usePWA } from '../hooks/usePWA';
 
@@ -22,6 +22,8 @@ const PWAInstallBanner: React.FC = () => {
   }
 
   // Afficher soit si le hook dit oui, soit si on force pour test
+  const shouldShow = showInstallBanner || forceShow;
+
   if (!shouldShow) {
     return null;
   }
@@ -84,4 +86,62 @@ const PWAInstallBanner: React.FC = () => {
               
               <button
                 onClick={dismissBanner}
-                className="p-2
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Banner desktop discret */}
+      <div className="hidden md:block fixed top-20 right-4 max-w-sm bg-white rounded-xl shadow-lg border border-eco-leaf/20 z-30 animate-fade-in">
+        <div className="p-6">
+          <div className="flex items-start space-x-4">
+            <div className="w-10 h-10 bg-eco-leaf rounded-lg flex items-center justify-center flex-shrink-0">
+              <Smartphone className="w-5 h-5 text-white" />
+            </div>
+            
+            <div className="flex-1">
+              <h3 className="font-semibold text-eco-text mb-1">
+                Application ECOLOJIA
+              </h3>
+              <p className="text-sm text-eco-text/70 mb-4">
+                Scanner mobile + notifications + mode hors ligne
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleInstall}
+                  className="bg-eco-leaf text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 hover:bg-eco-leaf/90 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Installer</span>
+                </button>
+                
+                <button
+                  onClick={dismissBanner}
+                  className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
+                >
+                  Plus tard
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={dismissBanner}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default PWAInstallBanner;
