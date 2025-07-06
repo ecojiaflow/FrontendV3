@@ -78,12 +78,21 @@ const PWAInstallBanner: React.FC = () => {
       )}
 
       {!showBanner && isMobile && (
-        <button
-          onClick={resetBanner}
-          className="fixed bottom-4 right-4 bg-eco-leaf text-white p-3 rounded-full shadow-lg z-50 md:hidden"
-        >
-          <Smartphone className="w-5 h-5" />
-        </button>
+        <div className="fixed bottom-4 left-4 right-4 flex justify-between z-50 md:hidden">
+          <button
+            onClick={resetBanner}
+            className="bg-eco-leaf text-white p-3 rounded-full shadow-lg"
+          >
+            <Smartphone className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={() => alert('📸 Ouvrir le scanner')}
+            className="bg-eco-leaf text-white p-3 rounded-full shadow-lg"
+          >
+            📷
+          </button>
+        </div>
       )}
     </>
   );
