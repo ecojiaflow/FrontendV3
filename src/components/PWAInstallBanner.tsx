@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Leaf, Smartphone } from 'lucide-react';
+import { Download, X, Leaf, Smartphone, Camera } from 'lucide-react';
 
 const PWAInstallBanner: React.FC = () => {
   const [showBanner, setShowBanner] = useState(false);
@@ -78,7 +78,7 @@ const PWAInstallBanner: React.FC = () => {
       )}
 
       {!showBanner && isMobile && (
-        <div className="fixed bottom-4 left-4 right-4 flex justify-between z-50 md:hidden">
+        <div className="fixed bottom-6 left-4 right-4 flex justify-between z-50 md:hidden">
           <button
             onClick={resetBanner}
             className="bg-eco-leaf text-white p-3 rounded-full shadow-lg"
@@ -90,7 +90,7 @@ const PWAInstallBanner: React.FC = () => {
             onClick={() => alert('📸 Ouvrir le scanner')}
             className="bg-eco-leaf text-white p-3 rounded-full shadow-lg"
           >
-            📷
+            <Camera className="w-5 h-5" />
           </button>
         </div>
       )}
