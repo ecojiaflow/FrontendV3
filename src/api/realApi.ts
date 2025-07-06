@@ -1,6 +1,6 @@
 import { Product } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://ecolojiabackendv3.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://ecolojia-backend-working.onrender.com';
 
 interface BackendProduct {
   id: string;
