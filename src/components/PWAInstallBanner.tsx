@@ -107,7 +107,7 @@ const PWAInstallBanner: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 flex-1">
                 {/* Icône standard téléchargement */}
-                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-[#7DDE4A] rounded-lg flex items-center justify-center">
                   <Download className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
@@ -123,7 +123,7 @@ const PWAInstallBanner: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleInstall}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="bg-[#7DDE4A] hover:bg-[#6BCF3A] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   Installer
                 </button>
@@ -145,7 +145,7 @@ const PWAInstallBanner: React.FC = () => {
         <div className="fixed bottom-6 left-4 z-50 md:hidden">
           <button
             onClick={resetBanner}
-            className="bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors"
+            className="bg-[#7DDE4A] text-white p-3 rounded-full shadow-lg hover:bg-[#6BCF3A] transition-colors"
             title="Réafficher banner PWA"
           >
             <Smartphone className="w-5 h-5" />
