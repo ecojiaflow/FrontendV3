@@ -14,13 +14,12 @@ declare global {
 }
 
 /**
- * BarcodeScanner – version stable et minimale
- * -------------------------------------------------
- * • Flux vidéo lancé uniquement après clic utilisateur → permissions fiables
- * • Utilise ZXing decodeFromVideoDevice (gère lui‑même getUserMedia)
- * • Réinitialise proprement la caméra à la fermeture
- * • Interface ultra‑simple (Start / Close)
- * -------------------------------------------------
+ * BarcodeScanner – version AUTO‑START + fallback bouton
+ * --------------------------------------------------
+ * • Tente de lancer la caméra immédiatement à l'ouverture (navigation = geste utilisateur)
+ * • Si le navigateur refuse (NotAllowedError), affiche un bouton pour relancer manuellement
+ * • Utilise decodeFromVideoDevice pour simplifier
+ * --------------------------------------------------
  */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,8 +27,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   const [isZXingLoaded, setIsZXingLoaded] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needManualStart, setNeedManualStart] = useState(false);
 
-  /* Charger ZXing dynamiquement quand le scanner est ouvert */
+  /* Charger ZXing */
   useEffect(() => {
     if (!isOpen) return;
 
@@ -48,97 +48,96 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     loadZXing();
   }, [isOpen]);
 
-  /* Fonction qui démarre le scan après action utilisateur */
-  const startScan = async () => {
-    if (!isZXingLoaded) return;
-    setError(null);
+  /* Auto‑start quand ZXing prêt */
+  useEffect(() => {
+    if (isOpen && isZXingLoaded && !isScanning) {
+      startScan().catch(() => {
+        // permission refusée → montrer bouton manuel
+        setNeedManualStart(true);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isZXingLoaded, isOpen]);
 
+  const startScan = async () => {
+    setError(null);
+    setNeedManualStart(false);
+
+    if (!codeReaderRef.current) {
+      codeReaderRef.current = new window.ZXing.BrowserMultiFormatReader();
+    }
     try {
-      if (!codeReaderRef.current) {
-        codeReaderRef.current = new window.ZXing.BrowserMultiFormatReader();
-      }
-      // Utiliser la caméra arrière si disponible
       await codeReaderRef.current.decodeFromVideoDevice(
         null,
         videoRef.current!,
-        (result: any, err: any) => {
+        (result: any) => {
           if (result) {
             handleSuccess(result.getText());
           }
         },
         {
-          video: { facingMode: { ideal: 'environment' } }
+          video: { facingMode: { ideal: 'environment' } },
         }
       );
+      // s'assurer que la vidéo joue réellement
+      if (videoRef.current && videoRef.current.paused) {
+        await videoRef.current.play();
+      }
       setIsScanning(true);
-    } catch (e) {
-      setError('Impossible d\'accéder à la caméra.');
+    } catch (e: any) {
+      codeReaderRef.current?.reset();
+      throw e; // sera catché par l'appelant
     }
   };
 
-  /* Arrêter le scan et libérer la caméra */
   const stopScan = () => {
     try {
       codeReaderRef.current?.reset();
-    } catch {
-      /* noop */
-    }
+    } catch {/* noop */}
     setIsScanning(false);
   };
-
-  /* Nettoyage à la fermeture du composant */
-  useEffect(() => {
-    if (!isOpen) stopScan();
-    return () => stopScan();
-  }, [isOpen]);
 
   const handleSuccess = (code: string) => {
     stopScan();
     onScanSuccess(code);
   };
 
+  useEffect(() => {
+    if (!isOpen) stopScan();
+    return () => stopScan();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center z-50 p-4">
-      {/* Header */}
-      <div className="absolute top-4 right-4">
-        <button
-          onClick={() => {
-            stopScan();
-            onClose();
-          }}
-          className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-        >
-          <X className="h-6 w-6" />
-        </button>
-      </div>
+    <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
+      {/* Close */}
+      <button
+        onClick={() => {
+          stopScan();
+          onClose();
+        }}
+        className="absolute top-4 right-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
+      >
+        <X className="h-6 w-6" />
+      </button>
 
-      {/* Zone vidéo */}
-      <div className="w-full max-w-md aspect-[9/16] bg-black relative rounded-xl overflow-hidden">
+      {/* Video container */}
+      <div className="w-full max-w-md aspect-[9/16] bg-black rounded-xl overflow-hidden">
         <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
-
-        {/* Overlay guide */}
-        {isScanning && (
-          <div className="absolute inset-0 border-4 border-eco-leaf rounded-xl pointer-events-none" />
-        )}
       </div>
 
-      {/* Boutons */}
-      {!isScanning && (
+      {/* Fallback bouton */}
+      {needManualStart && (
         <button
-          onClick={startScan}
-          disabled={!isZXingLoaded}
-          className="mt-6 px-6 py-3 rounded-lg font-semibold text-white bg-eco-leaf disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => startScan().catch(() => setError('Accès caméra refusé.'))}
+          className="mt-6 px-6 py-3 rounded-lg font-semibold text-white bg-eco-leaf"
         >
-          {isZXingLoaded ? '🎥 Lancer la caméra' : '⏳ Chargement moteur…'}
+          🎥 Autoriser la caméra
         </button>
       )}
 
-      {/* Erreur */}
-      {error && (
-        <p className="mt-4 text-red-500 text-sm max-w-xs text-center">{error}</p>
-      )}
+      {error && <p className="mt-4 text-red-500 text-sm text-center max-w-xs">{error}</p>}
     </div>
   );
 };
