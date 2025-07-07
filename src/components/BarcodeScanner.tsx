@@ -13,12 +13,11 @@ interface BarcodeScannerProps {
 }
 
 /**
- * Scanner professionnel avec détection optimisée et UI moderne
- * ----------------------------------------------------------
- * • Détection haute fréquence (100ms) avec debounce
- * • Zone de scan centrée avec animations
- * • Feedback visuel et sonore
- * • Gestion optimisée des erreurs
+ * Scanner optimisé avec overlay transparent et détection simplifiée
+ * ---------------------------------------------------------------
+ * • Cadre totalement transparent pour visibilité maximale
+ * • Détection sur l'ensemble du flux vidéo
+ * • Traitement d'image simplifié et optimisé
  */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -44,7 +43,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         BarcodeFormat.UPC_A,
         BarcodeFormat.CODE_128,
         BarcodeFormat.CODE_39,
-        BarcodeFormat.ITF,
       ]);
       hints.set(DecodeHintType.TRY_HARDER, true);
       hints.set(DecodeHintType.ALSO_INVERTED, true);
@@ -62,9 +60,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       const constraints = {
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920, min: 640 },
-          height: { ideal: 1080, min: 480 },
-          frameRate: { ideal: 30, min: 15 },
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
         },
         audio: false,
       };
@@ -87,15 +84,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   }, []);
 
-  /* Boucle de scan haute fréquence */
+  /* Boucle de scan optimisée */
   const startScanningLoop = useCallback(() => {
     if (scanInterval.current) clearInterval(scanInterval.current);
     scanInterval.current = setInterval(() => {
       scanFrame();
-    }, 100); // Scan toutes les 100ms
+    }, 300); // Scan toutes les 300ms pour éviter la surcharge
   }, []);
 
-  /* Capture optimisée de la zone de scan */
+  /* Capture simplifiée - image complète */
   const scanFrame = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || !videoReady) return;
     
@@ -105,57 +102,45 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     
     if (!ctx || video.readyState < 2) return;
 
-    // Dimensions de la zone de scan (centre du video)
+    // Utiliser les dimensions complètes du video
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
-    const scanWidth = Math.min(videoWidth * 0.8, videoHeight * 0.4);
-    const scanHeight = scanWidth * 0.3; // Ratio 3:1
-    const x = (videoWidth - scanWidth) / 2;
-    const y = (videoHeight - scanHeight) / 2;
 
-    // Redimensionner canvas
-    canvas.width = scanWidth;
-    canvas.height = scanHeight;
+    // Redimensionner canvas aux dimensions video
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
 
-    // Capturer uniquement la zone de scan
-    ctx.drawImage(video, x, y, scanWidth, scanHeight, 0, 0, scanWidth, scanHeight);
+    // Capturer l'image complète
+    ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
 
-    // Améliorer le contraste
-    const imageData = ctx.getImageData(0, 0, scanWidth, scanHeight);
-    enhanceContrast(imageData);
-    ctx.putImageData(imageData, 0, 0);
-
-    // Tenter la lecture
-    await tryDecode(ctx, scanWidth, scanHeight);
+    // Tentative de lecture directe (sans rotation pour commencer)
+    await tryDirectDecode(ctx, videoWidth, videoHeight);
   }, [videoReady]);
 
-  /* Amélioration du contraste */
-  const enhanceContrast = (imageData: ImageData) => {
-    const data = imageData.data;
-    const factor = 1.5; // Facteur de contraste
+  /* Décodage direct sans rotation */
+  const tryDirectDecode = async (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    const reader = getReader();
     
-    for (let i = 0; i < data.length; i += 4) {
-      // Convertir en niveaux de gris
-      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-      const enhanced = Math.min(255, Math.max(0, (gray - 128) * factor + 128));
+    try {
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const result = await reader.decodeFromImageData(imageData);
       
-      data[i] = enhanced;     // R
-      data[i + 1] = enhanced; // G  
-      data[i + 2] = enhanced; // B
-      // Alpha reste inchangé
+      if (result?.text) {
+        return handleSuccess(result.text);
+      }
+    } catch (e) {
+      // Si échec, essayer avec rotations
+      await tryDecodeWithRotations(ctx, width, height);
     }
   };
 
-  /* Décodage avec rotations multiples */
-  const tryDecode = async (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  /* Décodage avec rotations en cas d'échec */
+  const tryDecodeWithRotations = async (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const reader = getReader();
-    const rotations = [0, 90, 180, 270];
+    const rotations = [90, 180, 270]; // Seulement si nécessaire
 
     for (const deg of rotations) {
       try {
-        ctx.save();
-        
-        // Appliquer la rotation
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = width;
         tempCanvas.height = height;
@@ -170,12 +155,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           const result = await reader.decodeFromImageData(imageData);
           
           if (result?.text) {
-            ctx.restore();
             return handleSuccess(result.text);
           }
         }
-        
-        ctx.restore();
       } catch (e) {
         // Ignorer les erreurs de décodage
       }
@@ -244,7 +226,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   return (
     <div className="fixed inset-0 bg-black flex flex-col z-50">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-black/50 backdrop-blur-sm">
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm">
         <div className="flex items-center space-x-3">
           <Camera className="h-6 w-6 text-white" />
           <h2 className="text-white font-semibold">Scanner de codes-barres</h2>
@@ -276,57 +258,64 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           className="hidden"
         />
 
-        {/* Overlay de scan */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          {/* Zone sombre */}
-          <div className="absolute inset-0 bg-black/50" />
+        {/* Overlay avec cadre TRANSPARENT */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {/* Zones sombres autour du cadre */}
+          <div className="absolute inset-0">
+            {/* Top */}
+            <div className="absolute top-0 left-0 right-0 h-1/3 bg-black/30" />
+            {/* Bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-black/30" />
+            {/* Left */}
+            <div className="absolute top-1/3 bottom-1/3 left-0 w-12 bg-black/30" />
+            {/* Right */}
+            <div className="absolute top-1/3 bottom-1/3 right-0 w-12 bg-black/30" />
+          </div>
           
-          {/* Fenêtre transparente */}
+          {/* Cadre de scan TRANSPARENT */}
           <div className="relative">
             <div 
-              className={`w-80 h-24 border-4 rounded-xl transition-all duration-300 ${
+              className={`w-80 h-24 border-2 rounded-lg transition-all duration-300 ${
                 scanAnimation 
                   ? 'border-green-400 shadow-lg shadow-green-400/50' 
-                  : 'border-white/80'
+                  : 'border-white/60'
               }`}
-              style={{
-                boxShadow: scanAnimation 
-                  ? '0 0 0 4px rgba(34, 197, 94, 0.3)' 
-                  : 'inset 0 0 0 1000px rgba(0,0,0,0.5)'
-              }}
             />
             
             {/* Coins animés */}
-            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-white rounded-tl-lg" />
-            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-white rounded-tr-lg" />
-            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-white rounded-bl-lg" />
-            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-white rounded-br-lg" />
+            <div className="absolute -top-1 -left-1 w-6 h-6 border-l-3 border-t-3 border-white rounded-tl-lg" />
+            <div className="absolute -top-1 -right-1 w-6 h-6 border-r-3 border-t-3 border-white rounded-tr-lg" />
+            <div className="absolute -bottom-1 -left-1 w-6 h-6 border-l-3 border-b-3 border-white rounded-bl-lg" />
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 border-r-3 border-b-3 border-white rounded-br-lg" />
             
             {/* Ligne de scan animée */}
-            <div className="absolute inset-0 overflow-hidden rounded-xl">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-eco-leaf to-transparent animate-pulse" />
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-eco-leaf animate-bounce" style={{
-                animation: 'scan 2s linear infinite'
-              }} />
+            <div className="absolute inset-0 overflow-hidden rounded-lg">
+              <div 
+                className="absolute left-0 right-0 h-0.5 bg-red-500 opacity-80 animate-pulse"
+                style={{
+                  top: '50%',
+                  animation: 'scan 2s ease-in-out infinite'
+                }}
+              />
             </div>
           </div>
         </div>
 
         {/* Instructions */}
         <div className="absolute bottom-32 left-0 right-0 px-6">
-          <div className="bg-black/70 backdrop-blur-sm rounded-xl p-4 text-center">
+          <div className="bg-black/60 backdrop-blur-sm rounded-xl p-4 text-center">
             <p className="text-white font-medium mb-2">
-              Centrez le code-barres dans le cadre
+              Placez le code-barres dans le cadre
             </p>
             <p className="text-white/70 text-sm">
-              Le scan se fait automatiquement
+              Maintenez l'appareil stable • Éclairage suffisant requis
             </p>
           </div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="p-6 bg-black/50 backdrop-blur-sm">
+      <div className="p-6 bg-black/80 backdrop-blur-sm">
         <div className="flex justify-center space-x-8">
           <button
             onClick={toggleTorch}
@@ -347,6 +336,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             <RotateCcw className="h-6 w-6" />
           </button>
         </div>
+        
+        {/* Debug info */}
+        <div className="mt-4 text-center">
+          <p className="text-white/50 text-xs">
+            {videoReady ? '✓ Caméra active' : '⏳ Initialisation...'}
+          </p>
+        </div>
       </div>
 
       {/* Erreur */}
@@ -362,13 +358,18 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </div>
       )}
 
-      {/* Styles CSS intégrés */}
+      {/* Styles CSS */}
       <style jsx>{`
         @keyframes scan {
-          0% { top: 0; }
-          50% { top: calc(100% - 2px); }
-          100% { top: 0; }
+          0% { top: 10%; }
+          50% { top: 90%; }
+          100% { top: 10%; }
         }
+        
+        .border-l-3 { border-left-width: 3px; }
+        .border-r-3 { border-right-width: 3px; }
+        .border-t-3 { border-top-width: 3px; }
+        .border-b-3 { border-bottom-width: 3px; }
       `}</style>
     </div>
   );
