@@ -22,6 +22,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   const [error, setError] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [isZXingLoaded, setIsZXingLoaded] = useState(false);
+  const [showTestButton, setShowTestButton] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -83,6 +84,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         // Attendre que la vidéo soit prête
         setTimeout(() => {
           startZXingScanning();
+          // Afficher bouton test après 10 secondes seulement
+          setTimeout(() => setShowTestButton(true), 10000);
         }, 1000);
       }
     } catch (err) {
@@ -173,17 +176,23 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }, 2000);
   };
 
-  // Test manuel avec codes réels
+  // Test manuel avec VRAIS codes de votre base
   const handleTestScan = () => {
-    const testCodes = [
-      '8712345678901', // Test EAN-13
-      '3760074933444', // Produit bio
-      '4260123456789', // Code allemand
-      '012345678905'   // UPC-A
+    // ✅ CODES RÉELS de votre base importée OpenFoodFacts
+    const realCodes = [
+      '5060853640124', // Super Berry Granola
+      '5014067133804', // Natural Proper Organic Bio Live Yeogurt  
+      '4260123456789', // Bio Datteln Getrocknet
+      '3760074933444', // Boisson au soja, sucré
+      '8712100000000', // Bio Organic Almond Drink
+      '4000417025005', // Kokosöl
+      '4260394010115', // Bio Kefir
+      '7622210951958', // Bio passata
+      '4000521006051'  // Frische Bio-Vollmilch
     ];
     
-    const randomCode = testCodes[Math.floor(Math.random() * testCodes.length)];
-    console.log('🧪 Test scan:', randomCode);
+    const randomCode = realCodes[Math.floor(Math.random() * realCodes.length)];
+    console.log('🧪 Test scan avec VRAI code:', randomCode);
     handleScanSuccess(randomCode);
   };
 
@@ -231,6 +240,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     stopCamera();
     setScanResult(null);
     setError(null);
+    setShowTestButton(false);
     onClose();
   };
 
@@ -254,7 +264,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         <div className="flex items-center space-x-3">
           <Camera className="h-6 w-6 text-eco-leaf" />
           <div>
-            <h2 className="text-lg font-semibold">Scanner ZXing</h2>
+            <h2 className="text-lg font-semibold">Scanner ECOLOJIA</h2>
             <p className="text-sm text-white/70">
               {isZXingLoaded ? 'Moteur ZXing prêt' : 'Chargement moteur...'}
             </p>
@@ -299,15 +309,17 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           style={{ filter: 'contrast(1.2) brightness(1.1)' }} // Améliorer contraste
         />
 
-        {/* Bouton test TRÈS visible */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
-          <button
-            onClick={handleTestScan}
-            className="bg-yellow-500 text-black px-8 py-4 rounded-xl text-xl font-black shadow-2xl animate-pulse border-4 border-yellow-300"
-          >
-            🧪 TEST SCAN
-          </button>
-        </div>
+        {/* Bouton test DISCRET (apparaît après 10s) */}
+        {showTestButton && !scanResult && (
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              onClick={handleTestScan}
+              className="bg-white/20 backdrop-blur text-white px-4 py-2 rounded-lg text-sm border border-white/30 hover:bg-white/30 transition-colors"
+            >
+              🧪 Test
+            </button>
+          </div>
+        )}
 
         {/* Guide de scan */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -335,7 +347,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             </p>
             {isZXingLoaded && !scanResult && (
               <p className="text-xs text-white/70 mt-1">
-                Scan ZXing en temps réel actif
+                49 produits bio dans la base • Scan temps réel
               </p>
             )}
           </div>
@@ -375,7 +387,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
               Accès caméra requis
             </h3>
             <p className="text-eco-text/70 mb-6">
-              Scanner ZXing nécessite l'accès à votre caméra
+              Scanner ECOLOJIA nécessite l'accès à votre caméra pour détecter les codes-barres
             </p>
             <button
               onClick={startCamera}
@@ -390,7 +402,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       {/* Footer */}
       <div className="bg-eco-text/90 text-white p-4 text-center">
         <p className="text-sm text-white/70">
-          💡 Scanner ZXing haute performance • Résolution optimisée
+          🌱 Scanner ECOLOJIA • 49 produits bio • Moteur ZXing haute performance
         </p>
       </div>
     </div>
