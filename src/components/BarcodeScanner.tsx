@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Camera, Zap } from 'lucide-react';
+import { X, Camera, Zap, RotateCw } from 'lucide-react';
 
 interface BarcodeScannerProps {
   onScanSuccess: (barcode: string) => void;
@@ -8,66 +8,93 @@ interface BarcodeScannerProps {
 }
 
 /**
- * Scanner robuste avec fallback multi-approches
- * --------------------------------------------
- * • Approche 1 : getUserMedia + Canvas natif
- * • Approche 2 : ZXing avec optimisations
- * • Approche 3 : Analyse pixel par pixel
+ * Scanner fiable avec ZXing natif + UI moderne
+ * -------------------------------------------
+ * • ZXing via CDN pour garantir la compatibilité
+ * • Détection simple et efficace
+ * • Pas de fallback complexe
  */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastScanRef = useRef<number>(0);
+  const readerRef = useRef<any>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [detectionCount, setDetectionCount] = useState(0);
   const [torch, setTorch] = useState(false);
+  const [scanCount, setScanCount] = useState(0);
 
-  // Codes de test intégrés pour validation
-  const testCodes = [
-    '5060853640124', // Super Seedy Granola
-    '5014067133804', // Natural Bio Yogurt  
-    '3017620425035', // Nutella
-    '8076809513821', // Barilla Pâtes Bio
-    '3033710074617'  // Evian
-  ];
+  /* Initialiser ZXing depuis CDN */
+  const initializeZXing = () => {
+    return new Promise((resolve) => {
+      if (window.ZXing) {
+        resolve(window.ZXing);
+        return;
+      }
 
-  /* Démarrage caméra optimisé */
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/@zxing/library@latest/umd/index.min.js';
+      script.onload = () => {
+        console.log('✅ ZXing chargé');
+        resolve(window.ZXing);
+      };
+      script.onerror = () => {
+        console.error('❌ Échec chargement ZXing');
+        resolve(null);
+      };
+      document.head.appendChild(script);
+    });
+  };
+
+  /* Créer le reader ZXing */
+  const createReader = async () => {
+    const ZXing = await initializeZXing();
+    if (!ZXing) return null;
+
+    try {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.EAN_13,
+        ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.CODE_128,
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+      readerRef.current = new ZXing.BrowserMultiFormatReader(hints);
+      console.log('✅ Reader ZXing créé');
+      return readerRef.current;
+    } catch (error) {
+      console.error('❌ Erreur création reader:', error);
+      return null;
+    }
+  };
+
+  /* Démarrer la caméra */
   const startCamera = async () => {
     setError(null);
     setIsScanning(true);
 
     try {
-      // Configuration optimale pour la détection
-      const constraints = {
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920, min: 640 },
-          height: { ideal: 1080, min: 480 },
-          focusMode: { ideal: 'continuous' },
-          exposureMode: { ideal: 'continuous' },
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
         },
         audio: false,
-      };
+      });
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          videoRef.current?.play().then(() => {
-            console.log('✅ Caméra démarrée:', {
-              width: videoRef.current?.videoWidth,
-              height: videoRef.current?.videoHeight
-            });
-            startScanning();
-          });
-        });
+        videoRef.current.onloadedmetadata = async () => {
+          await videoRef.current?.play();
+          console.log('✅ Vidéo démarrée');
+          startScanning();
+        };
       }
     } catch (err) {
       console.error('❌ Erreur caméra:', err);
@@ -76,153 +103,63 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   };
 
-  /* Boucle de scan robuste */
-  const startScanning = () => {
-    if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
-    
-    scanIntervalRef.current = setInterval(async () => {
-      await performScan();
-      setDetectionCount(prev => prev + 1);
-    }, 200); // Scan très fréquent
-  };
-
-  /* Analyse multi-approches */
-  const performScan = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx || video.readyState < 2) return;
-
-    // Configurer le canvas aux dimensions vidéo
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Capturer l'image
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Approche 1 : Analyse zones multiples
-    await scanMultipleZones(ctx, canvas.width, canvas.height);
-  };
-
-  /* Scan de zones multiples */
-  const scanMultipleZones = async (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // Zones à analyser : centre, tiers supérieur, tiers inférieur
-    const zones = [
-      { x: 0, y: height * 0.3, w: width, h: height * 0.4 }, // Centre
-      { x: 0, y: height * 0.1, w: width, h: height * 0.3 }, // Haut
-      { x: 0, y: height * 0.6, w: width, h: height * 0.3 }, // Bas
-      { x: 0, y: 0, w: width, h: height }, // Complète
-    ];
-
-    for (const zone of zones) {
-      const result = await analyzeZone(ctx, zone);
-      if (result) return result;
+  /* Démarrer le scan */
+  const startScanning = async () => {
+    const reader = await createReader();
+    if (!reader || !videoRef.current) {
+      setError('Impossible d\'initialiser le scanner');
+      return;
     }
+
+    console.log('🔍 Début du scan...');
+
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+
+    scanIntervalRef.current = setInterval(async () => {
+      await performScan(reader);
+    }, 400);
   };
 
-  /* Analyse d'une zone spécifique */
-  const analyzeZone = async (ctx: CanvasRenderingContext2D, zone: any) => {
+  /* Effectuer un scan */
+  const performScan = async (reader: any) => {
+    if (!videoRef.current) return;
+
+    const video = videoRef.current;
+    if (video.readyState < 2) return;
+
+    setScanCount(prev => prev + 1);
+
     try {
-      // Extraire la zone
-      const imageData = ctx.getImageData(zone.x, zone.y, zone.w, zone.h);
+      // Créer un canvas temporaire
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Capturer l'image
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convertir en ImageData
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      // Tenter le décodage
+      const result = await reader.decodeFromImageData(imageData);
       
-      // Améliorer le contraste
-      enhanceImageData(imageData);
-      
-      // Analyser avec différentes rotations
-      const rotations = [0, 90, 180, 270];
-      
-      for (const rotation of rotations) {
-        const result = await analyzeWithRotation(imageData, rotation);
-        if (result) return handleSuccess(result);
+      if (result && result.text) {
+        console.log('🎯 Code détecté:', result.text);
+        handleSuccess(result.text);
       }
     } catch (error) {
-      // Ignorer les erreurs de zone
+      // Ignorer les erreurs de scan normales
     }
   };
 
-  /* Amélioration d'image */
-  const enhanceImageData = (imageData: ImageData) => {
-    const data = imageData.data;
-    
-    for (let i = 0; i < data.length; i += 4) {
-      // Conversion en niveaux de gris avec contraste élevé
-      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-      const enhanced = gray > 128 ? 255 : 0; // Binarisation
-      
-      data[i] = enhanced;     // R
-      data[i + 1] = enhanced; // G
-      data[i + 2] = enhanced; // B
-      // data[i + 3] reste inchangé (alpha)
-    }
-  };
-
-  /* Analyse avec rotation */
-  const analyzeWithRotation = async (imageData: ImageData, rotation: number) => {
-    // Pour simplifier, on teste d'abord sans rotation
-    if (rotation === 0) {
-      return await simulateZXingDecode(imageData);
-    }
-    return null;
-  };
-
-  /* Simulation de décodage (fallback si ZXing ne marche pas) */
-  const simulateZXingDecode = async (imageData: ImageData) => {
-    // Approche de base : chercher des motifs de codes-barres
-    const width = imageData.width;
-    const height = imageData.height;
-    const data = imageData.data;
-    
-    // Analyser les lignes horizontales pour détecter des motifs
-    for (let y = Math.floor(height * 0.3); y < Math.floor(height * 0.7); y += 5) {
-      const lineData = [];
-      for (let x = 0; x < width; x += 2) {
-        const idx = (y * width + x) * 4;
-        lineData.push(data[idx]); // Valeur R
-      }
-      
-      // Détecter les transitions noir/blanc (caractéristiques des codes-barres)
-      const transitions = countTransitions(lineData);
-      
-      // Si beaucoup de transitions, probablement un code-barres
-      if (transitions > 20 && transitions < 100) {
-        // Retourner un code de test aléatoire pour simulation
-        const randomCode = testCodes[Math.floor(Math.random() * testCodes.length)];
-        console.log('🎯 Code détecté (simulation):', randomCode);
-        return randomCode;
-      }
-    }
-    
-    return null;
-  };
-
-  /* Compter les transitions noir/blanc */
-  const countTransitions = (lineData: number[]) => {
-    let transitions = 0;
-    let lastValue = lineData[0] > 128;
-    
-    for (let i = 1; i < lineData.length; i++) {
-      const currentValue = lineData[i] > 128;
-      if (currentValue !== lastValue) {
-        transitions++;
-        lastValue = currentValue;
-      }
-    }
-    
-    return transitions;
-  };
-
-  /* Succès avec debounce */
+  /* Succès */
   const handleSuccess = (code: string) => {
-    const now = Date.now();
-    if (now - lastScanRef.current < 3000) return; // Debounce 3s
-    
-    lastScanRef.current = now;
-    console.log('✅ CODE DÉTECTÉ:', code);
-    
+    console.log('✅ Scan réussi:', code);
     stopScanning();
     onScanSuccess(code);
   };
@@ -230,28 +167,53 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   /* Toggle torche */
   const toggleTorch = async () => {
     if (!streamRef.current) return;
-    
+
     try {
       const track = streamRef.current.getVideoTracks()[0];
-      await track.applyConstraints({
-        advanced: [{ torch: !torch }]
-      });
-      setTorch(!torch);
+      const capabilities = track.getCapabilities();
+
+      if ('torch' in capabilities) {
+        await track.applyConstraints({
+          advanced: [{ torch: !torch }]
+        });
+        setTorch(!torch);
+      }
     } catch (error) {
-      console.log('Torche non supportée');
+      console.log('Torche non disponible');
     }
   };
 
-  /* Arrêt du scan */
+  /* Redémarrer */
+  const restart = () => {
+    stopScanning();
+    setTimeout(() => {
+      startCamera();
+    }, 500);
+  };
+
+  /* Arrêter le scan */
   const stopScanning = () => {
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
-    
-    streamRef.current?.getTracks().forEach(track => track.stop());
-    streamRef.current = null;
+
+    if (readerRef.current) {
+      try {
+        readerRef.current.reset();
+      } catch (error) {
+        // Ignorer les erreurs de reset
+      }
+      readerRef.current = null;
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
     setIsScanning(false);
+    setScanCount(0);
   };
 
   /* Effects */
@@ -261,21 +223,30 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     } else {
       stopScanning();
     }
-    
+
     return () => stopScanning();
   }, [isOpen]);
+
+  // Déclarer le type global pour ZXing
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).ZXing = (window as any).ZXing || null;
+    }
+  }, []);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col z-50">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-black/80">
+      <div className="flex items-center justify-between p-4 bg-black/90">
         <div className="flex items-center space-x-3">
           <Camera className="h-6 w-6 text-white" />
           <div>
-            <h2 className="text-white font-semibold">Scanner</h2>
-            <p className="text-white/60 text-xs">Scans: {detectionCount}</p>
+            <h2 className="text-white font-semibold">Scanner de codes-barres</h2>
+            <p className="text-white/60 text-xs">
+              {isScanning ? `Tentatives: ${scanCount}` : 'Arrêté'}
+            </p>
           </div>
         </div>
         <button
@@ -283,13 +254,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             stopScanning();
             onClose();
           }}
-          className="p-2 rounded-full bg-white/10 text-white"
+          className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
         >
           <X className="h-6 w-6" />
         </button>
       </div>
 
-      {/* Zone vidéo */}
+      {/* Zone de scan */}
       <div className="flex-1 relative">
         <video
           ref={videoRef}
@@ -298,73 +269,97 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           playsInline
           autoPlay
         />
-        
-        <canvas
-          ref={canvasRef}
-          className="hidden"
-        />
 
-        {/* Overlay de scan */}
+        {/* Overlay */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-80 h-20 border-2 border-white/80 rounded-lg relative">
-            {/* Coins */}
-            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-white" />
-            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-white" />
-            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-white" />
-            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-white" />
+          {/* Zones sombres */}
+          <div className="absolute inset-0">
+            <div className="absolute top-0 left-0 right-0 h-1/3 bg-black/40" />
+            <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-black/40" />
+            <div className="absolute top-1/3 bottom-1/3 left-0 w-8 bg-black/40" />
+            <div className="absolute top-1/3 bottom-1/3 right-0 w-8 bg-black/40" />
+          </div>
+
+          {/* Cadre de scan */}
+          <div className="relative">
+            <div className="w-80 h-20 border-2 border-white/80 rounded-xl" />
             
+            {/* Coins */}
+            <div className="absolute -top-2 -left-2 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-xl" />
+            <div className="absolute -top-2 -right-2 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-xl" />
+            <div className="absolute -bottom-2 -left-2 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-xl" />
+            <div className="absolute -bottom-2 -right-2 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-xl" />
+
             {/* Ligne de scan */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 animate-pulse" />
+            <div className="absolute inset-0 overflow-hidden rounded-xl">
+              <div 
+                className="absolute left-0 right-0 h-1 bg-red-500 opacity-70"
+                style={{
+                  top: '50%',
+                  animation: isScanning ? 'scan 2s ease-in-out infinite' : 'none'
+                }}
+              />
             </div>
           </div>
         </div>
 
         {/* Instructions */}
-        <div className="absolute bottom-24 left-4 right-4">
-          <div className="bg-black/70 rounded-lg p-4 text-center">
-            <p className="text-white font-medium">
-              Placez le code-barres dans le cadre
+        <div className="absolute bottom-32 left-4 right-4">
+          <div className="bg-black/70 backdrop-blur-sm rounded-xl p-4 text-center">
+            <p className="text-white font-medium mb-1">
+              Centrez le code-barres dans le cadre
             </p>
-            <p className="text-white/60 text-sm mt-1">
-              {isScanning ? 'Analyse en cours...' : 'En attente'}
+            <p className="text-white/60 text-sm">
+              Maintenez l'appareil stable
             </p>
           </div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="p-4 bg-black/80">
+      <div className="p-6 bg-black/90">
         <div className="flex justify-center space-x-6">
           <button
             onClick={toggleTorch}
-            className={`p-3 rounded-full ${torch ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white'}`}
+            className={`p-4 rounded-full transition-colors ${
+              torch 
+                ? 'bg-yellow-500 text-black' 
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
           >
-            <Zap className="h-5 w-5" />
+            <Zap className="h-6 w-6" />
           </button>
-          
-          {/* Test bouton */}
+
           <button
-            onClick={() => handleSuccess(testCodes[0])}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm"
+            onClick={restart}
+            className="p-4 rounded-full bg-blue-600 text-white hover:bg-blue-700"
           >
-            Test
+            <RotateCw className="h-6 w-6" />
           </button>
         </div>
       </div>
 
       {/* Erreur */}
       {error && (
-        <div className="absolute top-20 left-4 right-4 bg-red-500/90 rounded-lg p-4">
-          <p className="text-white text-center">{error}</p>
+        <div className="absolute top-20 left-4 right-4 bg-red-500/90 rounded-xl p-4">
+          <p className="text-white font-medium text-center">{error}</p>
           <button
-            onClick={startCamera}
-            className="mt-2 w-full py-2 bg-white/20 rounded text-white"
+            onClick={restart}
+            className="mt-3 w-full py-2 bg-white/20 rounded-lg text-white"
           >
             Réessayer
           </button>
         </div>
       )}
+
+      {/* CSS */}
+      <style jsx>{`
+        @keyframes scan {
+          0% { top: 20%; opacity: 0; }
+          50% { opacity: 1; }
+          100% { top: 80%; opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 };
