@@ -92,7 +92,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
         {/* Cadre compact 80 % largeur, ratio 3:1 */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-4/5 max-w-sm aspect-[3/1] border-4 border-eco-leaf rounded-xl relative">
+          <div className="w-11/12 max-w-md aspect-[3/1] border-4 border-eco-leaf rounded-xl relative">
             <span className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-eco-leaf" />
             <span className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-eco-leaf" />
             <span className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-eco-leaf" />
