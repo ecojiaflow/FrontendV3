@@ -25,7 +25,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   const [showTestButton, setShowTestButton] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const codeReader = useRef<any>(null);
 
   useEffect(() => {
     const loadZXing = async () => {
@@ -58,7 +57,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
   const startCamera = async () => {
     try {
-      console.log("📷 startCamera()");
       setError(null);
       setIsScanning(true);
 
@@ -79,14 +77,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        console.log("🎥 Flux vidéo démarré", stream);
 
         setTimeout(() => {
-          if (videoRef.current?.videoWidth === 0) {
-            console.warn("⚠️ Flux vidéo vide (videoWidth = 0)");
-          } else {
-            console.log("✅ Flux vidéo actif", videoRef.current.videoWidth, videoRef.current.videoHeight);
-          }
           startZXingScanning();
           setTimeout(() => setShowTestButton(true), 10000);
         }, 1000);
@@ -104,10 +96,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
-    }
-
-    if (!codeReader.current && window.ZXing) {
-      codeReader.current = new window.ZXing.BrowserMultiFormatReader();
     }
 
     console.log('🔍 Démarrage scan ZXing...');
@@ -133,14 +121,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-      console.log("🔎 Analyse frame", imageData);
+      const codeReader = new window.ZXing.BrowserMultiFormatReader();
 
-      if (!imageData || imageData.data.length === 0) {
-        console.log("❌ ImageData vide, on saute ce scan.");
-        return;
-      }
-
-      codeReader.current.decodeFromImageData(imageData)
+      codeReader.decodeFromImageData(imageData)
         .then((result: any) => {
           if (result && result.text) {
             console.log('🎯 Code-barres détecté:', result.text);
@@ -148,10 +131,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           }
         })
         .catch(() => {
-          console.log("⏳ Aucun code détecté cette fois");
+          // continuer le scan
         });
     } catch (err) {
-      console.warn('⚠️ Erreur pendant scanWithZXing', err);
+      console.log('🔄 Scan en cours...');
     }
   };
 
