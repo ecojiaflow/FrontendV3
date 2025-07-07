@@ -13,10 +13,11 @@ interface BarcodeScannerProps {
 }
 
 /**
- * Scanner fiable + logs :
- * • Caméra auto‑start, fallback bouton
- * • Hints : EAN‑13, EAN‑8, UPC‑A, CODE‑128
- * • Débug : log chaque tentative et erreur
+ * Scanner fiable + cadre compact
+ * --------------------------------------------------
+ * • Auto‑start + fallback bouton
+ * • Hints : EAN‑13, EAN‑8, UPC‑A, CODE‑128
+ * • Cadre de visée ≈ 60% largeur vidéo, ratio 4:1 (look and feel apps pro)
  */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,7 +27,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   const [needManualStart, setNeedManualStart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // hints ZXing : formats + tryHarder
+  /* ZXing hints */
   const hints = new Map();
   hints.set(DecodeHintType.POSSIBLE_FORMATS, [
     BarcodeFormat.EAN_13,
@@ -36,7 +37,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   ]);
   hints.set(DecodeHintType.TRY_HARDER, true);
 
-  /** Demarre le decode continu */
   const startScan = async () => {
     setError(null);
     setNeedManualStart(false);
@@ -54,16 +54,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             console.log('🎯 Détection code', result.getText());
             handleSuccess(result.getText());
           }
-          if (err && !(err instanceof DOMException)) {
-            // DOMException fréquente quand pas de code dans la frame → on ignore
-            console.log('⏳ Frame sans code');
-          }
         },
         { video: { facingMode: { ideal: 'environment' } } },
       );
+      if (videoRef.current && videoRef.current.paused) await videoRef.current.play();
       setIsScanning(true);
-    } catch (e: any) {
-      console.warn('❌ getUserMedia error', e);
+    } catch (e) {
       setNeedManualStart(true);
       setError('Autorisez la caméra pour scanner.');
     }
@@ -79,7 +75,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     onScanSuccess(code);
   };
 
-  // Auto‑start à l'ouverture
   useEffect(() => {
     if (isOpen) startScan();
     return () => stopScan();
@@ -101,8 +96,22 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         <X className="h-6 w-6" />
       </button>
 
-      <div className="w-full max-w-md aspect-[9/16] bg-black rounded-xl overflow-hidden">
+      {/* Video */}
+      <div className="w-full max-w-md aspect-[9/16] bg-black rounded-xl overflow-hidden relative">
         <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+
+        {/* Cadre de visée */}
+        {isScanning && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-3/5 max-w-xs aspect-[4/1] border-4 border-eco-leaf rounded-xl relative">
+              {/* coins */}
+              <span className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-eco-leaf" />
+              <span className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-eco-leaf" />
+              <span className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-eco-leaf" />
+              <span className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-eco-leaf" />
+            </div>
+          </div>
+        )}
       </div>
 
       {needManualStart && (
