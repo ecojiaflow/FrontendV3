@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Camera, Zap } from 'lucide-react';
+import { X } from 'lucide-react';
 import {
   BrowserMultiFormatReader,
   DecodeHintType,
@@ -13,11 +13,11 @@ interface BarcodeScannerProps {
 }
 
 /**
- * Scanner avec détection GARANTIE + UI améliorée
- * ----------------------------------------------
- * • Retour à la méthode de détection qui fonctionnait
- * • UI moderne avec cadre transparent
- * • Optimisations visuelles uniquement
+ * Scanner complet – détection multi‑rotation (0°, 90°, 180°, 270°)
+ * ----------------------------------------------------------------
+ * • Démarre caméra via getUserMedia (caméra arrière par défaut).
+ * • Capture une frame toutes 500 ms, tente la lecture à 4 rotations.
+ * • Formats : EAN-13, EAN-8, UPC-A, CODE‑128.
  */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -27,10 +27,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
   const [error, setError] = useState<string | null>(null);
   const [needManualStart, setNeedManualStart] = useState(false);
-  const [torch, setTorch] = useState(false);
-  const [scanAnimation, setScanAnimation] = useState(false);
 
-  /* ZXing reader - configuration originale qui marchait */
+  /* ZXing reader avec hints */
   const getReader = () => {
     if (!readerRef.current) {
       const hints = new Map();
@@ -47,7 +45,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     return readerRef.current;
   };
 
-  /* Start camera - méthode originale */
+  /* Start camera + scanning */
   const startCamera = async () => {
     setError(null);
     setNeedManualStart(false);
@@ -69,13 +67,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   };
 
-  /* Scanning loop - méthode originale qui marchait */
+  /* Scanning loop */
   const startScanningLoop = () => {
     if (scanInterval.current) clearInterval(scanInterval.current);
     scanInterval.current = setInterval(() => scanFrame(), 500);
   };
 
-  /* Try decoding - EXACTEMENT comme l'original */
+  /* Try decoding at 0/90/180/270 deg */
   const tryDecodeRotations = async (ctx: CanvasRenderingContext2D, w: number, h: number) => {
     const reader = getReader();
     const rotations = [0, 90, 180, 270];
@@ -96,11 +94,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     return null;
   };
 
-  /* Capture & scan - EXACTEMENT comme l'original */
+  /* Capture & scan */
   const scanFrame = async () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
-    if (video.readyState < 2) return;
+    if (video.readyState < 2) return; // pas assez de données
 
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
@@ -112,33 +110,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     if (code) handleSuccess(code);
   };
 
-  /* Success avec animation */
+  /* Success */
   const handleSuccess = (code: string) => {
-    setScanAnimation(true);
-    setTimeout(() => {
-      setScanAnimation(false);
-      stopAll();
-      onScanSuccess(code);
-    }, 500);
-  };
-
-  /* Toggle torche */
-  const toggleTorch = async () => {
-    if (!streamRef.current) return;
-    
-    const track = streamRef.current.getVideoTracks()[0];
-    const capabilities = track.getCapabilities();
-    
-    if (capabilities.torch) {
-      try {
-        await track.applyConstraints({
-          advanced: [{ torch: !torch }]
-        });
-        setTorch(!torch);
-      } catch (e) {
-        console.error('Erreur torche:', e);
-      }
-    }
+    stopAll();
+    onScanSuccess(code);
   };
 
   /* Stop camera & loops */
@@ -160,130 +135,51 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col z-50">
-      {/* Header moderne */}
-      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm">
-        <div className="flex items-center space-x-3">
-          <Camera className="h-6 w-6 text-white" />
-          <h2 className="text-white font-semibold">Scanner de codes-barres</h2>
-        </div>
-        <button
-          onClick={() => {
-            stopAll();
-            onClose();
-          }}
-          className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-        >
-          <X className="h-6 w-6" />
-        </button>
-      </div>
+    <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
+      <button
+        onClick={() => {
+          stopAll();
+          onClose();
+        }}
+        className="absolute top-4 right-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
+      >
+        <X className="h-6 w-6" />
+      </button>
 
-      {/* Zone de scan */}
-      <div className="flex-1 relative overflow-hidden">
-        <video 
-          ref={videoRef} 
-          className="w-full h-full object-cover" 
-          muted 
-          playsInline 
-        />
+      <div className="w-full max-w-md aspect-[9/16] bg-black rounded-xl overflow-hidden relative">
+        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
 
-        {/* Overlay moderne avec cadre TRANSPARENT */}
+        {/* Cadre transparent avec bordures visibles uniquement */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {/* Zones sombres légères autour */}
-          <div className="absolute inset-0">
-            <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent" />
-            <div className="absolute top-1/3 bottom-1/3 left-0 w-8 bg-gradient-to-r from-black/40 to-transparent" />
-            <div className="absolute top-1/3 bottom-1/3 right-0 w-8 bg-gradient-to-l from-black/40 to-transparent" />
-          </div>
-          
-          {/* Cadre de scan */}
-          <div className="relative">
-            <div 
-              className={`w-80 h-24 border-2 rounded-xl transition-all duration-300 ${
-                scanAnimation 
-                  ? 'border-green-400 shadow-lg shadow-green-400/50 scale-105' 
-                  : 'border-white/70'
-              }`}
-            />
-            
-            {/* Coins dynamiques */}
-            <div className="absolute -top-2 -left-2 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-xl" />
-            <div className="absolute -top-2 -right-2 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-xl" />
-            <div className="absolute -bottom-2 -left-2 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-xl" />
-            <div className="absolute -bottom-2 -right-2 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-xl" />
-            
-            {/* Ligne de scan */}
-            <div className="absolute inset-0 overflow-hidden rounded-xl">
-              <div 
-                className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"
-                style={{
-                  top: '50%',
-                  animation: scanAnimation ? 'none' : 'scan 2s ease-in-out infinite'
-                }}
-              />
-            </div>
-            
-            {/* Animation de succès */}
-            {scanAnimation && (
-              <div className="absolute inset-0 border-4 border-green-400 rounded-xl animate-ping" />
-            )}
+          <div className="w-11/12 max-w-md aspect-[3/1] border-4 border-white/80 rounded-xl relative">
+            {/* Coins renforcés pour meilleure visibilité */}
+            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-white rounded-tl-lg" />
+            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-white rounded-tr-lg" />
+            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-white rounded-bl-lg" />
+            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-white rounded-br-lg" />
           </div>
         </div>
 
-        {/* Instructions */}
-        <div className="absolute bottom-32 left-0 right-0 px-6">
-          <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/10">
-            <p className="text-white font-medium mb-1">
+        {/* Instructions en bas */}
+        <div className="absolute bottom-4 left-4 right-4">
+          <div className="bg-black/70 rounded-lg p-3 text-center">
+            <p className="text-white text-sm font-medium">
               Centrez le code-barres dans le cadre
             </p>
-            <p className="text-white/70 text-sm">
-              Le scan se fait automatiquement
-            </p>
           </div>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="p-6 bg-black/80 backdrop-blur-sm">
-        <div className="flex justify-center space-x-6">
-          <button
-            onClick={toggleTorch}
-            className={`p-4 rounded-full transition-all ${
-              torch 
-                ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
-            <Zap className="h-6 w-6" />
-          </button>
-          
-          {needManualStart && (
-            <button
-              onClick={startCamera}
-              className="px-6 py-3 rounded-full bg-eco-leaf text-white font-semibold shadow-lg shadow-eco-leaf/30"
-            >
-              🎥 Autoriser la caméra
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Erreur */}
-      {error && (
-        <div className="absolute inset-x-4 top-20 bg-red-500/90 backdrop-blur-sm rounded-2xl p-4 border border-red-400">
-          <p className="text-white font-medium text-center">{error}</p>
-        </div>
+      {needManualStart && (
+        <button
+          onClick={startCamera}
+          className="mt-6 px-6 py-3 rounded-lg bg-eco-leaf text-white font-semibold"
+        >
+          🎥 Autoriser la caméra
+        </button>
       )}
 
-      {/* Styles CSS */}
-      <style jsx>{`
-        @keyframes scan {
-          0% { top: 10%; opacity: 0; }
-          50% { opacity: 1; }
-          100% { top: 90%; opacity: 0; }
-        }
-      `}</style>
+      {error && <p className="mt-4 text-red-500 text-sm text-center max-w-xs">{error}</p>}
     </div>
   );
 };
