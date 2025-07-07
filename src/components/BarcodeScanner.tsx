@@ -58,6 +58,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
   const startCamera = async () => {
     try {
+      console.log("📷 startCamera()");
       setError(null);
       setIsScanning(true);
 
@@ -80,6 +81,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         await videoRef.current.play();
 
         setTimeout(() => {
+          if (videoRef.current?.videoWidth === 0) {
+            setError("Flux vidéo indisponible. Veuillez réessayer.");
+            return;
+          }
           startZXingScanning();
           setTimeout(() => setShowTestButton(true), 10000);
         }, 1000);
@@ -103,8 +108,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       codeReader.current = new window.ZXing.BrowserMultiFormatReader();
     }
 
-    console.log('🔍 Démarrage scan ZXing...');
-
     scanIntervalRef.current = setInterval(() => {
       scanWithZXing();
     }, 500);
@@ -126,24 +129,16 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-      console.log("🔎 Analyse frame...", imageData);
-
-      if (!imageData || imageData.data.length === 0) {
-        console.log("❌ ImageData vide, on saute ce scan.");
-        return;
-      }
+      if (!imageData || imageData.data.length === 0) return;
 
       codeReader.current.decodeFromImageData(imageData)
         .then((result: any) => {
           if (result && result.text) {
-            console.log('🎯 Code-barres détecté:', result.text);
             handleScanSuccess(result.text);
           }
         })
         .catch(() => {});
-    } catch (err) {
-      console.log('🔄 Scan en cours...');
-    }
+    } catch (err) {}
   };
 
   const handleScanSuccess = (barcode: string) => {
@@ -172,7 +167,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     ];
 
     const randomCode = realCodes[Math.floor(Math.random() * realCodes.length)];
-    console.log('🧪 Test scan avec VRAI code:', randomCode);
     handleScanSuccess(randomCode);
   };
 
@@ -202,9 +196,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         });
         setFlashEnabled(!flashEnabled);
       }
-    } catch (err) {
-      console.warn('Flash non supporté:', err);
-    }
+    } catch (err) {}
   };
 
   const switchCamera = () => {
