@@ -79,11 +79,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        console.log("🎥 Flux vidéo démarré", stream);
 
         setTimeout(() => {
           if (videoRef.current?.videoWidth === 0) {
-            setError("Flux vidéo indisponible. Veuillez réessayer.");
-            return;
+            console.warn("⚠️ Flux vidéo vide (videoWidth = 0)");
+          } else {
+            console.log("✅ Flux vidéo actif", videoRef.current.videoWidth, videoRef.current.videoHeight);
           }
           startZXingScanning();
           setTimeout(() => setShowTestButton(true), 10000);
@@ -108,6 +110,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       codeReader.current = new window.ZXing.BrowserMultiFormatReader();
     }
 
+    console.log('🔍 Démarrage scan ZXing...');
+
     scanIntervalRef.current = setInterval(() => {
       scanWithZXing();
     }, 500);
@@ -129,16 +133,26 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-      if (!imageData || imageData.data.length === 0) return;
+      console.log("🔎 Analyse frame", imageData);
+
+      if (!imageData || imageData.data.length === 0) {
+        console.log("❌ ImageData vide, on saute ce scan.");
+        return;
+      }
 
       codeReader.current.decodeFromImageData(imageData)
         .then((result: any) => {
           if (result && result.text) {
+            console.log('🎯 Code-barres détecté:', result.text);
             handleScanSuccess(result.text);
           }
         })
-        .catch(() => {});
-    } catch (err) {}
+        .catch(() => {
+          console.log("⏳ Aucun code détecté cette fois");
+        });
+    } catch (err) {
+      console.warn('⚠️ Erreur pendant scanWithZXing', err);
+    }
   };
 
   const handleScanSuccess = (barcode: string) => {
@@ -167,6 +181,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     ];
 
     const randomCode = realCodes[Math.floor(Math.random() * realCodes.length)];
+    console.log('🧪 Test scan avec VRAI code:', randomCode);
     handleScanSuccess(randomCode);
   };
 
@@ -196,7 +211,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         });
         setFlashEnabled(!flashEnabled);
       }
-    } catch (err) {}
+    } catch (err) {
+      console.warn('Flash non supporté:', err);
+    }
   };
 
   const switchCamera = () => {
