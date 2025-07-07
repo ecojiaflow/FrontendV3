@@ -12,15 +12,20 @@ interface BarcodeScannerProps {
   isOpen: boolean;
 }
 
+/**
+ * Version TEST – détection continue + hints formats
+ * -------------------------------------------------
+ * • Utilise ZXing decodeFromVideoDevice (caméra arrière)
+ * • Scan continu, logs ⏳ Frame sans code puis 🎯 Détection code ...
+ * • Formats : EAN‑13, EAN‑8, UPC‑A, CODE‑128
+ */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scanInterval = useRef<NodeJS.Timeout | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
   const [needManualStart, setNeedManualStart] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /* Build ZXing reader with hints */
   const getReader = () => {
     if (!readerRef.current) {
       const hints = new Map();
@@ -31,90 +36,48 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         BarcodeFormat.CODE_128,
       ]);
       hints.set(DecodeHintType.TRY_HARDER, true);
-      hints.set(DecodeHintType.ALSO_INVERTED, true);
       readerRef.current = new BrowserMultiFormatReader(hints);
     }
     return readerRef.current;
   };
 
-  const startCamera = async () => {
+  const startScan = async () => {
     setError(null);
     setNeedManualStart(false);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        startScanningLoop();
-      }
+      await getReader().decodeFromVideoDevice(
+        null,
+        videoRef.current!,
+        (result, err) => {
+          if (result) {
+            console.log('🎯 Détection code', result.getText());
+            handleSuccess(result.getText());
+          } else if (err) {
+            console.log('⏳ Frame sans code');
+          }
+        },
+        { video: { facingMode: { ideal: 'environment' } } },
+      );
     } catch (e) {
-      setError('Accès caméra refusé.');
       setNeedManualStart(true);
+      setError('Autorisez la caméra pour scanner.');
     }
   };
 
-  const startScanningLoop = () => {
-    if (scanInterval.current) clearInterval(scanInterval.current);
-    scanInterval.current = setInterval(() => scanFrame(), 500);
-  };
-
-  const tryDecodeRotations = async (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-    const reader = getReader();
-    const rotations = [0, 90, 180, 270];
-
-    for (const deg of rotations) {
-      ctx.save();
-      ctx.clearRect(0, 0, w, h);
-      ctx.translate(w / 2, h / 2);
-      ctx.rotate((deg * Math.PI) / 180);
-      ctx.drawImage(videoRef.current as HTMLVideoElement, -w / 2, -h / 2, w, h);
-      const imageData = ctx.getImageData(0, 0, w, h);
-      ctx.restore();
-      try {
-        const result = await reader.decodeFromImageData(imageData);
-        if (result?.text) return result.text;
-      } catch {/* ignore */}
-    }
-    return null;
-  };
-
-  const scanFrame = async () => {
-    if (!videoRef.current) return;
-    const video = videoRef.current;
-    if (video.readyState < 2) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const code = await tryDecodeRotations(ctx, canvas.width, canvas.height);
-    if (code) handleSuccess(code);
+  const stopScan = () => {
+    readerRef.current?.reset();
   };
 
   const handleSuccess = (code: string) => {
-    stopAll();
+    stopScan();
     onScanSuccess(code);
   };
 
-  const stopAll = () => {
-    if (scanInterval.current) {
-      clearInterval(scanInterval.current);
-      scanInterval.current = null;
-    }
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  };
-
+  /* Auto‑start on open */
   useEffect(() => {
-    if (isOpen) startCamera();
-    return () => stopAll();
+    if (isOpen) startScan();
+    return () => stopScan();
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -123,7 +86,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
       <button
         onClick={() => {
-          stopAll();
+          stopScan();
           onClose();
         }}
         className="absolute top-4 right-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
@@ -132,16 +95,17 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       </button>
 
       <div className="w-full max-w-md aspect-[9/16] bg-black rounded-xl overflow-hidden relative">
-        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
 
+        {/* Cadre 80 % largeur, ratio 3:1 */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-11/12 max-w-md aspect-[3/1] border-4 border-eco-leaf rounded-xl relative" />
+          <div className="w-4/5 max-w-sm aspect-[3/1] border-4 border-eco-leaf rounded-xl" />
         </div>
       </div>
 
       {needManualStart && (
         <button
-          onClick={startCamera}
+          onClick={startScan}
           className="mt-6 px-6 py-3 rounded-lg bg-eco-leaf text-white font-semibold"
         >
           🎥 Autoriser la caméra
