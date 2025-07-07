@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, X } from 'lucide-react';
+import {
+  BrowserMultiFormatReader,
+  DecodeHintType,
+  BarcodeFormat,
+} from '@zxing/library';
 
 interface BarcodeScannerProps {
   onScanSuccess: (barcode: string) => void;
@@ -7,93 +12,65 @@ interface BarcodeScannerProps {
   isOpen: boolean;
 }
 
-declare global {
-  interface Window {
-    ZXing: any;
-  }
-}
-
 /**
- * BarcodeScanner – version AUTO‑START + fallback bouton
- * --------------------------------------------------
- * • Tente de lancer la caméra immédiatement à l'ouverture (navigation = geste utilisateur)
- * • Si le navigateur refuse (NotAllowedError), affiche un bouton pour relancer manuellement
- * • Utilise decodeFromVideoDevice pour simplifier
- * --------------------------------------------------
+ * Scanner fiable + logs :
+ * • Caméra auto‑start, fallback bouton
+ * • Hints : EAN‑13, EAN‑8, UPC‑A, CODE‑128
+ * • Débug : log chaque tentative et erreur
  */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReaderRef = useRef<any>(null);
-  const [isZXingLoaded, setIsZXingLoaded] = useState(false);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+
   const [isScanning, setIsScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [needManualStart, setNeedManualStart] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  /* Charger ZXing */
-  useEffect(() => {
-    if (!isOpen) return;
+  // hints ZXing : formats + tryHarder
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.CODE_128,
+  ]);
+  hints.set(DecodeHintType.TRY_HARDER, true);
 
-    const loadZXing = () => {
-      if (window.ZXing) {
-        setIsZXingLoaded(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/@zxing/library@latest/umd/index.min.js';
-      script.onload = () => setIsZXingLoaded(true);
-      script.onerror = () => setError('Erreur de chargement du moteur ZXing');
-      document.head.appendChild(script);
-    };
-
-    loadZXing();
-  }, [isOpen]);
-
-  /* Auto‑start quand ZXing prêt */
-  useEffect(() => {
-    if (isOpen && isZXingLoaded && !isScanning) {
-      startScan().catch(() => {
-        // permission refusée → montrer bouton manuel
-        setNeedManualStart(true);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isZXingLoaded, isOpen]);
-
+  /** Demarre le decode continu */
   const startScan = async () => {
     setError(null);
     setNeedManualStart(false);
 
     if (!codeReaderRef.current) {
-      codeReaderRef.current = new window.ZXing.BrowserMultiFormatReader();
+      codeReaderRef.current = new BrowserMultiFormatReader(hints);
     }
+
     try {
       await codeReaderRef.current.decodeFromVideoDevice(
         null,
         videoRef.current!,
-        (result: any) => {
+        (result, err) => {
           if (result) {
+            console.log('🎯 Détection code', result.getText());
             handleSuccess(result.getText());
           }
+          if (err && !(err instanceof DOMException)) {
+            // DOMException fréquente quand pas de code dans la frame → on ignore
+            console.log('⏳ Frame sans code');
+          }
         },
-        {
-          video: { facingMode: { ideal: 'environment' } },
-        }
+        { video: { facingMode: { ideal: 'environment' } } },
       );
-      // s'assurer que la vidéo joue réellement
-      if (videoRef.current && videoRef.current.paused) {
-        await videoRef.current.play();
-      }
       setIsScanning(true);
     } catch (e: any) {
-      codeReaderRef.current?.reset();
-      throw e; // sera catché par l'appelant
+      console.warn('❌ getUserMedia error', e);
+      setNeedManualStart(true);
+      setError('Autorisez la caméra pour scanner.');
     }
   };
 
   const stopScan = () => {
-    try {
-      codeReaderRef.current?.reset();
-    } catch {/* noop */}
+    codeReaderRef.current?.reset();
     setIsScanning(false);
   };
 
@@ -102,9 +79,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     onScanSuccess(code);
   };
 
+  // Auto‑start à l'ouverture
   useEffect(() => {
-    if (!isOpen) stopScan();
+    if (isOpen) startScan();
     return () => stopScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -122,16 +101,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         <X className="h-6 w-6" />
       </button>
 
-      {/* Video container */}
       <div className="w-full max-w-md aspect-[9/16] bg-black rounded-xl overflow-hidden">
-        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
       </div>
 
-      {/* Fallback bouton */}
       {needManualStart && (
         <button
-          onClick={() => startScan().catch(() => setError('Accès caméra refusé.'))}
-          className="mt-6 px-6 py-3 rounded-lg font-semibold text-white bg-eco-leaf"
+          onClick={startScan}
+          className="mt-6 px-6 py-3 rounded-lg bg-eco-leaf text-white font-semibold"
         >
           🎥 Autoriser la caméra
         </button>
