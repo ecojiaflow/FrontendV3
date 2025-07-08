@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface Props {
   label: string;
@@ -26,13 +26,19 @@ const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
         audio: false,
       });
       setStream(media);
+
       if (videoRef.current) {
         videoRef.current.srcObject = media;
+
+        await videoRef.current.play().catch((err) => {
+          console.warn("⚠️ play() a échoué :", err);
+        });
       }
+
       setIsCapturing(true);
     } catch (err) {
-      console.error("Erreur accès caméra", err);
-      setError("Caméra inaccessible");
+      console.error("❌ Erreur accès caméra", err);
+      setError("Impossible d'accéder à la caméra.");
     }
   };
 
@@ -44,23 +50,26 @@ const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const video = videoRef.current;
     const canvas = canvasRef.current;
+    const video = videoRef.current;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL("image/jpeg", 0.9);
-      setPreview(base64);
-      onCapture(base64);
-      stopCamera();
-    }
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const base64 = canvas.toDataURL("image/jpeg", 0.9);
+    setPreview(base64);
+    onCapture(base64);
+    stopCamera();
   };
 
-  const resetPhoto = () => setPreview(null);
+  const resetPhoto = () => {
+    setPreview(null);
+    stopCamera();
+  };
 
   return (
     <div className="space-y-2 text-center border rounded-xl p-4 shadow-sm bg-white">
@@ -86,6 +95,7 @@ const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
             ref={videoRef}
             autoPlay
             playsInline
+            muted
             className="w-full rounded-xl border"
           />
           <button
@@ -104,10 +114,4 @@ const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
         </button>
       )}
 
-      <canvas ref={canvasRef} className="hidden" />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-    </div>
-  );
-};
-
-export default PhotoCapture;
+      <c
