@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 
 interface Props {
@@ -115,4 +114,10 @@ const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
         </button>
       )}
 
-      <c
+      <canvas ref={canvasRef} className="hidden" />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  );
+};
+
+export default PhotoCapture;
