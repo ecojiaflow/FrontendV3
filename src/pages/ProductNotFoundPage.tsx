@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import PhotoCapture from "@/components/PhotoCapture";
+import PhotoCapture from "../components/PhotoCapture";
 import { Sparkles, CheckCircle, AlertTriangle } from "lucide-react";
 
 const ProductNotFoundPage: React.FC = () => {
