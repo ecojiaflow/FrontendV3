@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { stopScannerCamera } from "@/utils/scannerControl";
+import { stopScannerCamera } from "../utils/scannerControl";
 
 interface Props {
   label: string;
@@ -21,29 +21,29 @@ const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
 
   const startCamera = async () => {
     setError(null);
-    
+
     try {
       // Libérer d'abord la caméra du scanner
       stopScannerCamera();
-      
+
       // Attendre que la caméra soit totalement libérée
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const media = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: "environment",
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
         audio: false,
       });
-      
+
       setStream(media);
 
       if (videoRef.current) {
         videoRef.current.srcObject = media;
         videoRef.current.setAttribute('playsinline', 'true');
-        
+
         // Attendre que la vidéo soit prête
         videoRef.current.onloadedmetadata = async () => {
           try {
