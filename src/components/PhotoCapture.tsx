@@ -1,16 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
 
-interface PhotoCaptureProps {
+interface Props {
   label: string;
-  onCapture: (dataUrl: string) => void;
+  onCapture: (base64: string) => void;
   defaultImage?: string;
 }
 
-const PhotoCapture: React.FC<PhotoCaptureProps> = ({
-  label,
-  onCapture,
-  defaultImage,
-}) => {
+const PhotoCapture: React.FC<Props> = ({ label, onCapture, defaultImage }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -19,18 +15,14 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    return () => {
-      stopCamera();
-    };
+    return () => stopCamera();
   }, []);
 
   const startCamera = async () => {
     setError(null);
     try {
       const media = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-        },
+        video: { facingMode: "environment" },
         audio: false,
       });
       setStream(media);
@@ -40,15 +32,12 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({
       setIsCapturing(true);
     } catch (err) {
       console.error("Erreur accès caméra", err);
-      setError("Impossible d'accéder à la caméra.");
+      setError("Caméra inaccessible");
     }
   };
 
   const stopCamera = () => {
-    if (videoRef.current) videoRef.current.pause();
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
+    stream?.getTracks().forEach((track) => track.stop());
     setIsCapturing(false);
   };
 
@@ -61,66 +50,58 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    const context = canvas.getContext("2d");
-    if (context) {
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-      setPreview(dataUrl);
-      onCapture(dataUrl);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.9);
+      setPreview(base64);
+      onCapture(base64);
       stopCamera();
     }
   };
 
-  const reset = () => {
-    setPreview(null);
-  };
+  const resetPhoto = () => setPreview(null);
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border text-center space-y-3">
-      <h4 className="font-medium text-eco-text">{label}</h4>
+    <div className="space-y-2 text-center border rounded-xl p-4 shadow-sm bg-white">
+      <h3 className="font-semibold text-eco-text">{label}</h3>
 
-      {preview && (
-        <div>
+      {preview ? (
+        <div className="space-y-2">
           <img
             src={preview}
-            alt="Aperçu"
-            className="w-full max-h-60 object-contain rounded-lg"
+            alt="Prévisualisation"
+            className="rounded-xl max-h-48 mx-auto object-contain"
           />
           <button
-            onClick={reset}
-            className="mt-2 text-sm text-blue-600 underline"
+            onClick={resetPhoto}
+            className="text-sm text-blue-600 underline"
           >
             Reprendre la photo
           </button>
         </div>
-      )}
-
-      {!preview && (
+      ) : isCapturing ? (
         <div className="space-y-2">
-          {isCapturing ? (
-            <div className="space-y-2">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full max-h-64 rounded-lg border"
-              />
-              <button
-                onClick={takePhoto}
-                className="w-full px-4 py-2 bg-eco-leaf text-white rounded-lg font-semibold shadow"
-              >
-                📸 Capturer
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={startCamera}
-              className="w-full px-4 py-2 bg-gray-100 text-eco-text font-medium rounded-lg border"
-            >
-              📷 Ouvrir la caméra
-            </button>
-          )}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="w-full rounded-xl border"
+          />
+          <button
+            onClick={takePhoto}
+            className="bg-eco-leaf text-white px-4 py-2 rounded-lg font-semibold"
+          >
+            📸 Capturer
+          </button>
         </div>
+      ) : (
+        <button
+          onClick={startCamera}
+          className="border px-4 py-2 text-sm rounded-lg"
+        >
+          📷 Ouvrir la caméra
+        </button>
       )}
 
       <canvas ref={canvasRef} className="hidden" />
