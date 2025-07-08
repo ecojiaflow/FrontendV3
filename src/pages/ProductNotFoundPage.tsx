@@ -82,11 +82,30 @@ const ProductNotFoundPage: React.FC = () => {
 
       console.log('✅ Analyse terminée:', response);
       
-      if (response.success && response.product) {
-        console.log('🎯 Redirection vers produit:', response.product.slug);
-        navigate(`/product/${response.product.slug}`);
+      if (response.success) {
+        // Gestion des différents formats de réponse backend
+        let redirectPath = '';
+        
+        if (response.product && response.product.slug) {
+          // Format attendu : { product: { slug: "..." } }
+          redirectPath = `/product/${response.product.slug}`;
+        } else if (response.redirect_url) {
+          // Format actuel backend : { redirect_url: "/product/..." }
+          redirectPath = response.redirect_url;
+        } else if (response.productSlug) {
+          // Format alternatif : { productSlug: "..." }
+          redirectPath = `/product/${response.productSlug}`;
+        }
+        
+        if (redirectPath) {
+          console.log('🎯 Redirection vers:', redirectPath);
+          navigate(redirectPath);
+        } else {
+          console.error('❌ Aucune URL de redirection trouvée dans:', response);
+          setError('Produit créé mais impossible de le trouver. Rechargez la page.');
+        }
       } else {
-        const errorMsg = response.error || 'Erreur lors de l\'analyse. Réessayez.';
+        const errorMsg = response.error || response.message || 'Erreur lors de l\'analyse. Réessayez.';
         console.error('❌ Erreur backend:', errorMsg);
         setError(errorMsg);
       }
