@@ -184,7 +184,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
 // 📸 NOUVELLE FONCTION : Analyser les photos avec l'IA
 export async function analyzePhotos(data: AnalyzeRequest): Promise<AnalyzeResponse> {
   try {
-    console.log('🔄 Envoi vers:', `${API_BASE}/api/analyze-photos`);
+    console.log('🔄 Envoi vers:', `${API_BASE}/api/products/analyze-photos`);
     console.log('📦 Données envoyées:', {
       barcode: data.barcode,
       photosCount: Object.keys(data.photos).length,
@@ -193,7 +193,7 @@ export async function analyzePhotos(data: AnalyzeRequest): Promise<AnalyzeRespon
       nutritionSize: data.photos.nutrition.length
     });
     
-    const response = await fetch(`${API_BASE}/api/analyze-photos`, {
+    const response = await fetch(`${API_BASE}/api/products/analyze-photos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
