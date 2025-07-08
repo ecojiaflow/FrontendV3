@@ -22,6 +22,28 @@ interface BackendProduct {
   prices?: any;
 }
 
+// Interface pour la réponse d'analyse IA
+interface AnalyzeResponse {
+  success: boolean;
+  product?: {
+    slug: string;
+    name: string;
+    brand: string;
+    ecoScore: number;
+  };
+  error?: string;
+}
+
+// Interface pour les données d'analyse
+interface AnalyzeRequest {
+  barcode: string;
+  photos: {
+    front: string;
+    ingredients: string;
+    nutrition: string;
+  };
+}
+
 function adaptBackendToFrontend(backendProduct: BackendProduct): Product {
   if (!backendProduct.id) {
     console.error('❌ Produit sans ID:', backendProduct);
@@ -155,6 +177,113 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
 
   } catch (error) {
     console.error('❌ Erreur lors de la récupération du produit:', error);
+    return null;
+  }
+}
+
+// 📸 NOUVELLE FONCTION : Analyser les photos avec l'IA
+export async function analyzePhotos(data: AnalyzeRequest): Promise<AnalyzeResponse> {
+  try {
+    console.log('🔄 Envoi vers:', `${API_BASE}/api/analyze-photos`);
+    console.log('📦 Données envoyées:', {
+      barcode: data.barcode,
+      photosCount: Object.keys(data.photos).length,
+      frontSize: data.photos.front.length,
+      ingredientsSize: data.photos.ingredients.length,
+      nutritionSize: data.photos.nutrition.length
+    });
+    
+    const response = await fetch(`${API_BASE}/api/analyze-photos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erreur HTTP:', response.status, errorText);
+      
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: 'Endpoint d\'analyse non trouvé sur le serveur'
+        };
+      } else if (response.status === 500) {
+        return {
+          success: false,
+          error: 'Erreur serveur lors de l\'analyse'
+        };
+      } else {
+        return {
+          success: false,
+          error: `Erreur HTTP ${response.status}: ${errorText}`
+        };
+      }
+    }
+    
+    const result = await response.json();
+    console.log('📥 Response data:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erreur réseau analyzePhotos:', error);
+    
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return {
+        success: false,
+        error: 'Impossible de contacter le serveur. Vérifiez votre connexion.'
+      };
+    }
+    
+    return {
+      success: false,
+      error: `Erreur technique: ${error}`
+    };
+  }
+}
+
+// 🔍 Rechercher un produit par code-barres
+export async function searchProduct(barcode: string): Promise<Product | null> {
+  try {
+    console.log('🔍 Recherche produit par code-barres:', barcode);
+    
+    const url = `${API_BASE}/api/products/search/${barcode}`;
+    console.log('📡 URL appelée:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.status === 404) {
+      console.warn('⚠️ Produit non trouvé pour le code-barres:', barcode);
+      return null;
+    }
+
+    if (!response.ok) {
+      console.error(`❌ Erreur HTTP ${response.status}:`, response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('📊 Produit trouvé par code-barres:', data);
+
+    const convertedProduct = adaptBackendToFrontend(data);
+    console.log('🎯 Produit converti:', convertedProduct);
+    
+    return convertedProduct;
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la recherche par code-barres:', error);
     return null;
   }
 }
