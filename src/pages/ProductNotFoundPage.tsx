@@ -21,6 +21,9 @@ const ProductNotFoundPage: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug pour vérifier le code-barres au chargement
+  console.log('🔍 ProductNotFoundPage - barcode reçu:', barcode);
+
   const handlePhotoCapture = (photoType: 'front' | 'ingredients' | 'nutrition') => {
     return (base64: string) => {
       setPhotos(prev => ({
@@ -36,14 +39,32 @@ const ProductNotFoundPage: React.FC = () => {
       return;
     }
 
+    // Validation stricte du code-barres
+    const barcodeToSend = barcode?.trim() || '';
+    console.log('📦 Code-barres à envoyer:', `"${barcodeToSend}"`);
+    console.log('📏 Longueur code-barres:', barcodeToSend.length);
+
+    if (!barcodeToSend || barcodeToSend === '') {
+      setError('Code-barres manquant. Veuillez scanner le produit à nouveau.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
 
     try {
       console.log('🔄 Envoi photos pour analyse IA...');
+      console.log('📊 Données complètes:', {
+        barcode: barcodeToSend,
+        barcodeLength: barcodeToSend.length,
+        photosCount: 3,
+        frontSize: photos.front.length,
+        ingredientsSize: photos.ingredients.length,
+        nutritionSize: photos.nutrition.length
+      });
       
       const response = await realApi.analyzePhotos({
-        barcode: barcode || '',
+        barcode: barcodeToSend,
         photos: {
           front: photos.front,
           ingredients: photos.ingredients,
@@ -54,12 +75,15 @@ const ProductNotFoundPage: React.FC = () => {
       console.log('✅ Analyse terminée:', response);
       
       if (response.success && response.product) {
+        console.log('🎯 Redirection vers produit:', response.product.slug);
         navigate(`/product/${response.product.slug}`);
       } else {
-        setError('Erreur lors de l\'analyse. Réessayez.');
+        const errorMsg = response.error || 'Erreur lors de l\'analyse. Réessayez.';
+        console.error('❌ Erreur backend:', errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
-      console.error('❌ Erreur analyse:', err);
+      console.error('❌ Erreur analyse (catch):', err);
       setError('Impossible d\'analyser les photos. Vérifiez votre connexion.');
     } finally {
       setIsAnalyzing(false);
@@ -67,6 +91,7 @@ const ProductNotFoundPage: React.FC = () => {
   };
 
   const allPhotosReady = photos.front && photos.ingredients && photos.nutrition;
+  const barcodeValid = barcode && barcode.trim().length > 0;
 
   return (
     <div className="min-h-screen bg-eco-bg">
@@ -84,8 +109,13 @@ const ProductNotFoundPage: React.FC = () => {
                 Produit non trouvé
               </h1>
               <p className="text-sm text-gray-600">
-                Code-barres: {barcode}
+                Code-barres: {barcode || 'Non défini'}
               </p>
+              {!barcodeValid && (
+                <p className="text-xs text-red-600 mt-1">
+                  ⚠️ Code-barres manquant - Retournez scanner le produit
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -108,6 +138,23 @@ const ProductNotFoundPage: React.FC = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-red-700 text-center">{error}</p>
+            </div>
+          )}
+
+          {!barcodeValid && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+              <div className="text-center">
+                <p className="text-orange-700 font-medium mb-2">Code-barres requis</p>
+                <p className="text-orange-600 text-sm mb-3">
+                  Pour analyser un produit, nous avons besoin de son code-barres
+                </p>
+                <button
+                  onClick={() => navigate('/')}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-700"
+                >
+                  Retourner au scanner
+                </button>
+              </div>
             </div>
           )}
 
@@ -150,9 +197,9 @@ const ProductNotFoundPage: React.FC = () => {
 
           <button
             onClick={handleAnalyze}
-            disabled={!allPhotosReady || isAnalyzing}
+            disabled={!allPhotosReady || isAnalyzing || !barcodeValid}
             className={`w-full py-4 rounded-lg font-semibold flex items-center justify-center space-x-2 ${
-              allPhotosReady && !isAnalyzing
+              allPhotosReady && !isAnalyzing && barcodeValid
                 ? 'bg-eco-leaf text-white hover:bg-eco-leaf/90'
                 : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }`}
@@ -161,6 +208,10 @@ const ProductNotFoundPage: React.FC = () => {
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Analyse en cours...</span>
+              </>
+            ) : !barcodeValid ? (
+              <>
+                <span>❌ Code-barres requis</span>
               </>
             ) : (
               <>
