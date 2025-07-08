@@ -1,147 +1,201 @@
-import React, { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import PhotoCapture from "../components/PhotoCapture";
-import { Sparkles, CheckCircle, AlertTriangle } from "lucide-react";
+import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Upload, Loader2 } from 'lucide-react';
+import PhotoCapture from '../components/PhotoCapture';
+import { realApi } from '../services/realApi';
 
 const ProductNotFoundPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const barcode = searchParams.get("barcode");
-
-  const [photos, setPhotos] = useState({
-    front: null as string | null,
-    ingredients: null as string | null,
-    nutrition: null as string | null,
+  const { barcode } = useParams<{ barcode: string }>();
+  
+  const [photos, setPhotos] = useState<{
+    front: string | null;
+    ingredients: string | null;
+    nutrition: string | null;
+  }>({
+    front: null,
+    ingredients: null,
+    nutrition: null
   });
-
-  const [step, setStep] = useState<"photos" | "analyzing" | "done">("photos");
-  const [analysis, setAnalysis] = useState<any>(null);
+  
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const requiredPhotos = ["front", "ingredients"];
-  const hasAllRequired = requiredPhotos.every((key) => photos[key as keyof typeof photos]);
+  const handlePhotoCapture = (photoType: 'front' | 'ingredients' | 'nutrition') => {
+    return (base64: string) => {
+      setPhotos(prev => ({
+        ...prev,
+        [photoType]: base64
+      }));
+    };
+  };
 
   const handleAnalyze = async () => {
-    if (!barcode || !hasAllRequired) return;
-    setStep("analyzing");
+    if (!photos.front || !photos.ingredients || !photos.nutrition) {
+      setError('Veuillez capturer les 3 photos avant de continuer.');
+      return;
+    }
+
+    setIsAnalyzing(true);
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/analyze-photos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          barcode,
-          photos,
-          source: "user_photo_analysis",
-        }),
+      console.log('🔄 Envoi photos pour analyse IA...');
+      
+      const response = await realApi.analyzePhotos({
+        barcode: barcode || '',
+        photos: {
+          front: photos.front,
+          ingredients: photos.ingredients,
+          nutrition: photos.nutrition
+        }
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || "Erreur analyse");
-
-      setAnalysis(data);
-      setStep("done");
-
-      setTimeout(() => {
-        if (data.productSlug) {
-          navigate(`/product/${data.productSlug}`);
-        } else {
-          navigate("/");
-        }
-      }, 3000);
-    } catch (err: any) {
-      console.error("❌ Erreur OCR:", err);
-      setError(err.message || "Erreur inconnue");
-      setStep("photos");
+      console.log('✅ Analyse terminée:', response);
+      
+      if (response.success && response.product) {
+        // Rediriger vers la page du nouveau produit
+        navigate(`/product/${response.product.slug}`);
+      } else {
+        setError('Erreur lors de l\'analyse. Réessayez.');
+      }
+    } catch (err) {
+      console.error('❌ Erreur analyse:', err);
+      setError('Impossible d\'analyser les photos. Vérifiez votre connexion.');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
-  if (!barcode) {
-    return (
-      <div className="text-center py-20">
-        <AlertTriangle className="h-10 w-10 text-orange-500 mb-4 mx-auto" />
-        <h1 className="text-xl font-bold text-eco-text mb-2">Code-barres manquant</h1>
-        <button
-          onClick={() => navigate("/")}
-          className="px-4 py-2 bg-eco-leaf text-white rounded-lg"
-        >
-          Retour à l'accueil
-        </button>
-      </div>
-    );
-  }
+  const allPhotosReady = photos.front && photos.ingredients && photos.nutrition;
 
   return (
-    <main className="max-w-3xl mx-auto p-4 space-y-8">
-      <h1 className="text-2xl font-bold text-eco-text text-center">
-        Produit non trouvé
-      </h1>
-      <p className="text-center text-eco-text/70">
-        Merci de nous aider à enrichir notre base. Prenez les photos suivantes :
-      </p>
-
-      {step === "photos" && (
-        <div className="space-y-6">
-          <PhotoCapture
-            label="📦 Face avant"
-            onCapture={(img) => setPhotos((p) => ({ ...p, front: img }))}
-            defaultImage={photos.front || undefined}
-          />
-          <PhotoCapture
-            label="🧾 Liste des ingrédients"
-            onCapture={(img) => setPhotos((p) => ({ ...p, ingredients: img }))}
-            defaultImage={photos.ingredients || undefined}
-          />
-          <PhotoCapture
-            label="📊 Tableau nutritionnel (optionnel)"
-            onCapture={(img) => setPhotos((p) => ({ ...p, nutrition: img }))}
-            defaultImage={photos.nutrition || undefined}
-          />
-
-          <button
-            disabled={!hasAllRequired}
-            onClick={handleAnalyze}
-            className="w-full py-3 bg-eco-leaf text-white font-semibold rounded-xl disabled:opacity-40"
-          >
-            🌿 Analyser avec l’IA
-          </button>
-
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-              ❌ {error}
-            </p>
-          )}
-        </div>
-      )}
-
-      {step === "analyzing" && (
-        <div className="text-center py-12">
-          <Sparkles className="w-12 h-12 text-eco-leaf animate-pulse mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-eco-text mb-2">
-            Analyse en cours...
-          </h2>
-          <p className="text-eco-text/60">Veuillez patienter pendant que nous extrayons les informations.</p>
-        </div>
-      )}
-
-      {step === "done" && analysis && (
-        <div className="text-center py-12">
-          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-eco-text mb-2">
-            Produit créé avec succès !
-          </h2>
-          <p className="text-eco-text/60 mb-4">
-            Redirection en cours...
-          </p>
-          <div className="bg-eco-leaf/10 rounded-xl p-4 text-left max-w-md mx-auto">
-            <p className="text-sm"><strong>Nom :</strong> {analysis.productName}</p>
-            <p className="text-sm"><strong>Marque :</strong> {analysis.brand}</p>
-            <p className="text-sm"><strong>Catégorie :</strong> {analysis.category}</p>
+    <div className="min-h-screen bg-eco-bg">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 rounded-lg hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-eco-text">
+                Produit non trouvé
+              </h1>
+              <p className="text-sm text-gray-600">
+                Code-barres: {barcode}
+              </p>
+            </div>
           </div>
         </div>
-      )}
-    </main>
+      </div>
+
+      {/* Contenu principal */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Upload className="h-8 w-8 text-orange-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-eco-text mb-2">
+              Aidez-nous à enrichir notre base !
+            </h2>
+            <p className="text-gray-600">
+              Prenez 3 photos du produit et notre IA l'analysera automatiquement
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-700 text-center">{error}</p>
+            </div>
+          )}
+
+          {/* Grid photos */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <PhotoCapture
+              label="Face avant du produit"
+              onCapture={handlePhotoCapture('front')}
+              defaultImage={photos.front || undefined}
+            />
+            
+            <PhotoCapture
+              label="Liste des ingrédients"
+              onCapture={handlePhotoCapture('ingredients')}
+              defaultImage={photos.ingredients || undefined}
+            />
+            
+            <PhotoCapture
+              label="Informations nutritionnelles"
+              onCapture={handlePhotoCapture('nutrition')}
+              defaultImage={photos.nutrition || undefined}
+            />
+          </div>
+
+          {/* Progression */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-600">Progression</span>
+              <span className="text-sm text-eco-secondary">
+                {Object.values(photos).filter(Boolean).length}/3 photos
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-eco-secondary h-2 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${(Object.values(photos).filter(Boolean).length / 3) * 100}%` 
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Bouton analyse */}
+          <button
+            onClick={handleAnalyze}
+            disabled={!allPhotosReady || isAnalyzing}
+            className={`w-full py-4 rounded-lg font-semibold flex items-center justify-center space-x-2 ${
+              allPhotosReady && !isAnalyzing
+                ? 'bg-eco-leaf text-white hover:bg-eco-leaf/90'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Analyse en cours...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="h-5 w-5" />
+                <span>
+                  {allPhotosReady 
+                    ? 'Analyser avec l\'IA' 
+                    : `Capturer ${3 - Object.values(photos).filter(Boolean).length} photo(s) restante(s)`
+                  }
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Info IA */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="font-semibold text-blue-900 mb-2">
+            Comment fonctionne notre IA ?
+          </h3>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• Extraction automatique du nom et de la marque</li>
+            <li>• Reconnaissance OCR des ingrédients</li>
+            <li>• Calcul du score écologique (0-100%)</li>
+            <li>• Création automatique de la fiche produit</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   );
 };
 
