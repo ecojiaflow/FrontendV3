@@ -23,10 +23,36 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({
     
     const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      console.log('✅ Conversion base64 terminée');
-      setPreview(base64);
-      onCapture(base64);
+      const img = new Image();
+      img.onload = () => {
+        // Compression de l'image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        
+        // Réduire la taille si trop grande
+        const maxWidth = 800;
+        const maxHeight = 600;
+        let { width, height } = img;
+        
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const base64 = canvas.toDataURL('image/jpeg', 0.5); // Compression forte
+        console.log('✅ Image compressée:', Math.round(base64.length / 1024), 'KB');
+        setPreview(base64);
+        onCapture(base64);
+      };
+      img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
