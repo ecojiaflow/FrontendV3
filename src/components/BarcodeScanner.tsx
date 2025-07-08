@@ -91,22 +91,17 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         throw new Error('Impossible de charger la bibliothèque');
       }
 
-      // 2. Demander permissions
-      const hasPermission = await requestCameraPermission();
-      if (!hasPermission) {
-        setIsLoading(false);
-        return;
-      }
+      // 2. Attendre un peu pour que la page soit prête
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 3. Configuration scanner
+      // 3. Configuration simplifiée
       const config = {
         fps: 10,
-        qrbox: { width: 280, height: 80 },
-        aspectRatio: 3.5,
+        qrbox: { width: 300, height: 100 },
+        aspectRatio: 3.0,
         showTorchButtonIfSupported: true,
-        showZoomSliderIfSupported: true,
-        defaultZoomValueIfSupported: 2,
-        rememberLastUsedCamera: true
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [window.Html5QrcodeScanType?.SCAN_TYPE_CAMERA]
       };
 
       // 4. Callbacks
@@ -124,27 +119,33 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       };
 
       const onScanErrorCallback = (errorMessage: string) => {
-        // Ignorer les erreurs normales
+        // Ignorer les erreurs normales de scan
       };
 
-      // 5. Créer et démarrer le scanner
-      const qrCodeRegionId = 'qr-reader';
+      // 5. Nettoyer l'élément avant de créer le scanner
+      const element = document.getElementById('qr-reader');
+      if (element) {
+        element.innerHTML = '';
+      }
+
+      // 6. Créer le scanner
       scannerRef.current = new window.Html5QrcodeScanner(
-        qrCodeRegionId,
+        'qr-reader',
         config,
-        false
+        false // verbose = false
       );
 
-      scannerRef.current.render(onScanSuccessCallback, onScanErrorCallback);
+      // 7. Rendre le scanner
+      await scannerRef.current.render(onScanSuccessCallback, onScanErrorCallback);
       
       setCameraReady(true);
       setIsLoading(false);
       
-      console.log('🚀 Scanner initialisé');
+      console.log('🚀 Scanner rendu avec succès');
 
     } catch (error) {
       console.error('❌ Erreur initialisation:', error);
-      setError('Erreur lors de l\'initialisation du scanner');
+      setError(`Erreur scanner: ${error.message || 'Inconnue'}`);
       setIsLoading(false);
     }
   };
@@ -239,13 +240,30 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           className="w-full h-full"
         />
 
-        {/* Loading */}
+        {/* Loading avec plus de détails */}
         {isLoading && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center">
             <div className="text-white text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eco-leaf mx-auto mb-4" />
-              <p className="font-semibold mb-2">Initialisation du scanner...</p>
-              <p className="text-sm text-white/70">Demande d'accès à la caméra</p>
+              <p className="font-semibold mb-2">Chargement du scanner...</p>
+              <p className="text-sm text-white/70">Veuillez patienter</p>
+            </div>
+          </div>
+        )}
+
+        {/* Message si le scanner ne s'affiche pas */}
+        {!isLoading && !cameraReady && !permissionDenied && !error && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-6">
+            <div className="text-white text-center">
+              <Camera className="h-16 w-16 text-white/50 mx-auto mb-4" />
+              <p className="text-lg font-semibold mb-2">Scanner en cours de chargement...</p>
+              <p className="text-white/70 mb-4">Si rien ne s'affiche, essayez de redémarrer</p>
+              <button
+                onClick={restartScanner}
+                className="px-6 py-3 bg-eco-leaf text-white rounded-lg font-medium"
+              >
+                Redémarrer le scanner
+              </button>
             </div>
           </div>
         )}
@@ -313,29 +331,41 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </div>
       )}
 
-      {/* CSS pour html5-qrcode */}
+      {/* CSS améliorés pour html5-qrcode */}
       <style jsx global>{`
         #qr-reader {
           background: black !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+        
+        #qr-reader > div {
+          border: none !important;
         }
         
         #qr-reader video {
-          border-radius: 12px !important;
+          border-radius: 0 !important;
           object-fit: cover !important;
+          width: 100% !important;
+          height: auto !important;
         }
         
         #qr-reader__dashboard {
-          background: rgba(0, 0, 0, 0.9) !important;
+          background: rgba(0, 0, 0, 0.85) !important;
           backdrop-filter: blur(10px) !important;
-          border-radius: 12px !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border-radius: 16px !important;
           margin: 16px !important;
+          padding: 20px !important;
         }
         
         #qr-reader__header_message {
           color: white !important;
           font-family: inherit !important;
           font-size: 16px !important;
+          font-weight: 600 !important;
           margin-bottom: 16px !important;
+          text-align: center !important;
         }
         
         #qr-reader__camera_selection {
@@ -343,21 +373,72 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           color: white !important;
           border: 1px solid rgba(255, 255, 255, 0.2) !important;
           border-radius: 8px !important;
-          padding: 8px 12px !important;
+          padding: 12px !important;
+          font-size: 14px !important;
+          width: 100% !important;
+          margin-bottom: 16px !important;
         }
         
-        #qr-reader__start_button, #qr-reader__stop_button {
+        #qr-reader__camera_selection option {
+          background: #1f2937 !important;
+          color: white !important;
+        }
+        
+        #qr-reader__start_button {
           background: #22c55e !important;
           color: white !important;
           border: none !important;
           border-radius: 8px !important;
           font-weight: 600 !important;
-          padding: 12px 24px !important;
-          margin: 8px !important;
+          font-size: 16px !important;
+          padding: 14px 28px !important;
+          margin: 8px 4px !important;
+          cursor: pointer !important;
+          transition: all 0.2s !important;
+        }
+        
+        #qr-reader__start_button:hover {
+          background: #16a34a !important;
+          transform: translateY(-1px) !important;
         }
         
         #qr-reader__stop_button {
           background: #ef4444 !important;
+          color: white !important;
+          border: none !important;
+          border-radius: 8px !important;
+          font-weight: 600 !important;
+          font-size: 16px !important;
+          padding: 14px 28px !important;
+          margin: 8px 4px !important;
+          cursor: pointer !important;
+          transition: all 0.2s !important;
+        }
+        
+        #qr-reader__stop_button:hover {
+          background: #dc2626 !important;
+          transform: translateY(-1px) !important;
+        }
+        
+        #qr-reader__dashboard_section {
+          background: transparent !important;
+          text-align: center !important;
+        }
+        
+        #qr-reader__dashboard_section_csr {
+          text-align: center !important;
+        }
+        
+        #qr-reader__dashboard_section_swaplink {
+          color: rgba(255, 255, 255, 0.7) !important;
+          text-decoration: underline !important;
+          cursor: pointer !important;
+          font-size: 14px !important;
+          margin-top: 12px !important;
+        }
+        
+        #qr-reader__dashboard_section_swaplink:hover {
+          color: white !important;
         }
       `}</style>
     </div>
