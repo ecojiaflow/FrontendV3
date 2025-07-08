@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, Loader2 } from 'lucide-react';
 import PhotoCapture from '../components/PhotoCapture';
-import { realApi } from '../api/realApi';
+import * as realApi from '../api/realApi';
 
 const ProductNotFoundPage: React.FC = () => {
   const navigate = useNavigate();
@@ -71,7 +71,6 @@ const ProductNotFoundPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-eco-bg">
-      {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center space-x-4">
@@ -93,7 +92,6 @@ const ProductNotFoundPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Contenu principal */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="text-center mb-8">
@@ -114,7 +112,6 @@ const ProductNotFoundPage: React.FC = () => {
             </div>
           )}
 
-          {/* Grid photos */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <PhotoCapture
               label="Face avant du produit"
@@ -135,7 +132,6 @@ const ProductNotFoundPage: React.FC = () => {
             />
           </div>
 
-          {/* Progression */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-600">Progression</span>
@@ -153,7 +149,6 @@ const ProductNotFoundPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Bouton analyse */}
           <button
             onClick={handleAnalyze}
             disabled={!allPhotosReady || isAnalyzing}
@@ -182,7 +177,6 @@ const ProductNotFoundPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Info IA */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="font-semibold text-blue-900 mb-2">
             Comment fonctionne notre IA ?
