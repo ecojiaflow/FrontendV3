@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Upload, Loader2 } from 'lucide-react';
 import PhotoCapture from '../components/PhotoCapture';
 import * as realApi from '../api/realApi';
 
 const ProductNotFoundPage: React.FC = () => {
   const navigate = useNavigate();
-  const { barcode } = useParams<{ barcode: string }>();
+  const { barcode: paramBarcode } = useParams<{ barcode: string }>();
+  const [searchParams] = useSearchParams();
+  
+  // Récupérer le code-barres depuis l'URL parameter OU query parameter
+  const barcode = paramBarcode || searchParams.get('barcode') || '';
   
   const [photos, setPhotos] = useState<{
     front: string | null;
@@ -22,7 +26,11 @@ const ProductNotFoundPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Debug pour vérifier le code-barres au chargement
-  console.log('🔍 ProductNotFoundPage - barcode reçu:', barcode);
+  console.log('🔍 ProductNotFoundPage Debug:');
+  console.log('  - paramBarcode:', paramBarcode);
+  console.log('  - searchParams barcode:', searchParams.get('barcode'));
+  console.log('  - barcode final:', barcode);
+  console.log('  - URL complète:', window.location.href);
 
   const handlePhotoCapture = (photoType: 'front' | 'ingredients' | 'nutrition') => {
     return (base64: string) => {
@@ -40,7 +48,7 @@ const ProductNotFoundPage: React.FC = () => {
     }
 
     // Validation stricte du code-barres
-    const barcodeToSend = barcode?.trim() || '';
+    const barcodeToSend = barcode.trim();
     console.log('📦 Code-barres à envoyer:', `"${barcodeToSend}"`);
     console.log('📏 Longueur code-barres:', barcodeToSend.length);
 
@@ -111,6 +119,11 @@ const ProductNotFoundPage: React.FC = () => {
               <p className="text-sm text-gray-600">
                 Code-barres: {barcode || 'Non défini'}
               </p>
+              {barcodeValid && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✅ Code-barres détecté ({barcode.length} caractères)
+                </p>
+              )}
               {!barcodeValid && (
                 <p className="text-xs text-red-600 mt-1">
                   ⚠️ Code-barres manquant - Retournez scanner le produit
