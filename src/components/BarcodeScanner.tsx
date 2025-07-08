@@ -7,19 +7,13 @@ interface BarcodeScannerProps {
   isOpen: boolean;
 }
 
-/**
- * Scanner avec vraie détection via BarcodeDetector API + ZXing fallback
- * -------------------------------------------------------------------
- * • BarcodeDetector natif du navigateur (Chrome, Edge)
- * • Fallback ZXing pour autres navigateurs
- * • Détection réelle sans simulation
- */
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose, isOpen }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastScanTimeRef = useRef<number>(0);
+  const consecutiveScansRef = useRef<{ [code: string]: number }>({});
 
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -27,13 +21,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   const [cameraReady, setCameraReady] = useState(false);
   const [scanMethod, setScanMethod] = useState<'native' | 'zxing' | 'none'>('none');
   const [scanCount, setScanCount] = useState(0);
+  const [detectedCode, setDetectedCode] = useState<string>('');
 
-  /* Vérifier support BarcodeDetector natif */
   const checkBarcodeDetectorSupport = (): boolean => {
     return 'BarcodeDetector' in window;
   };
 
-  /* Charger ZXing comme fallback */
   const loadZXing = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if ((window as any).ZXing) {
@@ -55,11 +48,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     });
   };
 
-  /* Démarrer la caméra */
   const startCamera = async () => {
     setError(null);
     setIsScanning(true);
     setScanCount(0);
+    setDetectedCode('');
+    consecutiveScansRef.current = {};
 
     try {
       console.log('🎥 Démarrage caméra...');
@@ -92,9 +86,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   };
 
-  /* Initialiser la méthode de détection */
   const initializeDetection = async () => {
-    // Méthode 1 : BarcodeDetector natif
     if (checkBarcodeDetectorSupport()) {
       console.log('🎯 Utilisation BarcodeDetector natif');
       setScanMethod('native');
@@ -102,7 +94,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       return;
     }
 
-    // Méthode 2 : ZXing fallback
     const zxingLoaded = await loadZXing();
     if (zxingLoaded) {
       console.log('🎯 Utilisation ZXing fallback');
@@ -111,25 +102,41 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       return;
     }
 
-    // Aucune méthode disponible
     setError('Détection de codes-barres non supportée sur cet appareil');
     setScanMethod('none');
   };
 
-  /* Détection avec BarcodeDetector natif */
+  const isValidBarcode = (code: string): boolean => {
+    // Validation stricte : code-barres valides
+    if (!code || code.length < 8) return false;
+    
+    // EAN-13: 13 chiffres
+    if (/^\d{13}$/.test(code)) return true;
+    
+    // EAN-8: 8 chiffres
+    if (/^\d{8}$/.test(code)) return true;
+    
+    // UPC-A: 12 chiffres
+    if (/^\d{12}$/.test(code)) return true;
+    
+    // CODE-128: au moins 8 caractères alphanumériques
+    if (/^[A-Za-z0-9]{8,}$/.test(code)) return true;
+    
+    return false;
+  };
+
   const startNativeDetection = () => {
     const barcodeDetector = new (window as any).BarcodeDetector({
-      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code']
+      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
     });
 
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
 
     scanIntervalRef.current = setInterval(async () => {
       await performNativeScan(barcodeDetector);
-    }, 200);
+    }, 300); // Augmenté à 300ms pour éviter la détection trop rapide
   };
 
-  /* Effectuer scan natif */
   const performNativeScan = async (detector: any) => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -142,34 +149,37 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     try {
       setScanCount(prev => prev + 1);
 
-      // Capturer l'image
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Détecter les codes-barres
       const barcodes = await detector.detect(canvas);
       
       if (barcodes.length > 0) {
-        const barcode = barcodes[0];
-        console.log('🎯 Code détecté (natif):', barcode.rawValue);
-        handleSuccess(barcode.rawValue);
+        const code = barcodes[0].rawValue;
+        
+        // Validation stricte du code détecté
+        if (isValidBarcode(code)) {
+          console.log('🎯 Code valide détecté (natif):', code);
+          setDetectedCode(code);
+          handlePotentialSuccess(code);
+        } else {
+          console.log('⚠️ Code invalide ignoré:', code);
+        }
       }
     } catch (error) {
       // Ignorer les erreurs normales de scan
     }
   };
 
-  /* Détection avec ZXing */
   const startZXingDetection = () => {
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
 
     scanIntervalRef.current = setInterval(async () => {
       await performZXingScan();
-    }, 300);
+    }, 400); // Plus lent pour ZXing
   };
 
-  /* Effectuer scan ZXing */
   const performZXingScan = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -185,50 +195,75 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       const ZXing = (window as any).ZXing;
       if (!ZXing) return;
 
-      // Capturer l'image
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Créer le reader
       const hints = new Map();
       hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
         ZXing.BarcodeFormat.EAN_13,
         ZXing.BarcodeFormat.EAN_8,
         ZXing.BarcodeFormat.UPC_A,
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.QR_CODE
+        ZXing.BarcodeFormat.CODE_128
       ]);
       hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
       const reader = new ZXing.BrowserMultiFormatReader(hints);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // Tenter la détection
       const result = await reader.decodeFromImageData(imageData);
       
       if (result && result.text) {
-        console.log('🎯 Code détecté (ZXing):', result.text);
-        handleSuccess(result.text);
+        const code = result.text;
+        
+        // Validation stricte du code détecté
+        if (isValidBarcode(code)) {
+          console.log('🎯 Code valide détecté (ZXing):', code);
+          setDetectedCode(code);
+          handlePotentialSuccess(code);
+        } else {
+          console.log('⚠️ Code invalide ignoré:', code);
+        }
       }
     } catch (error) {
       // Ignorer les erreurs normales de scan
     }
   };
 
-  /* Succès avec debounce */
+  const handlePotentialSuccess = (code: string) => {
+    // Système de confirmation : il faut détecter le même code 3 fois consécutives
+    if (!consecutiveScansRef.current[code]) {
+      consecutiveScansRef.current[code] = 1;
+    } else {
+      consecutiveScansRef.current[code]++;
+    }
+
+    // Nettoyer les anciens codes
+    Object.keys(consecutiveScansRef.current).forEach(oldCode => {
+      if (oldCode !== code) {
+        delete consecutiveScansRef.current[oldCode];
+      }
+    });
+
+    console.log(`🔄 Code "${code}" détecté ${consecutiveScansRef.current[code]}/3 fois`);
+
+    // Confirmer seulement après 3 détections consécutives
+    if (consecutiveScansRef.current[code] >= 3) {
+      handleSuccess(code);
+    }
+  };
+
   const handleSuccess = (code: string) => {
     const now = Date.now();
-    if (now - lastScanTimeRef.current < 2000) return; // Debounce 2s
+    if (now - lastScanTimeRef.current < 3000) return; // Anti-rebond de 3 secondes
 
     lastScanTimeRef.current = now;
-    console.log('✅ CODE FINAL:', code);
+    console.log('✅ CODE FINAL CONFIRMÉ:', code);
     
     stopDetection();
     onScanSuccess(code);
   };
 
-  /* Toggle torche */
   const toggleTorch = async () => {
     if (!streamRef.current) return;
 
@@ -248,7 +283,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }
   };
 
-  /* Arrêter la détection */
   const stopDetection = () => {
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
@@ -260,13 +294,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       streamRef.current = null;
     }
 
+    consecutiveScansRef.current = {};
     setIsScanning(false);
     setCameraReady(false);
     setScanCount(0);
     setScanMethod('none');
+    setDetectedCode('');
   };
 
-  /* Redémarrer */
   const restart = () => {
     stopDetection();
     setError(null);
@@ -275,7 +310,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
     }, 500);
   };
 
-  /* Effects */
   useEffect(() => {
     if (isOpen) {
       startCamera();
@@ -290,14 +324,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col z-50">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/90">
         <div className="flex items-center space-x-3">
           <Camera className="h-6 w-6 text-white" />
           <div>
             <h2 className="text-white font-semibold">Scanner ECOLOJIA</h2>
             <p className="text-white/60 text-xs">
-              {cameraReady ? `${scanMethod === 'native' ? 'Natif' : scanMethod === 'zxing' ? 'ZXing' : 'Aucun'} • Scans: ${scanCount}` :
+              {detectedCode ? `Code: ${detectedCode}` :
+               cameraReady ? `${scanMethod === 'native' ? 'Natif' : scanMethod === 'zxing' ? 'ZXing' : 'Aucun'} • Scans: ${scanCount}` :
                isScanning ? 'Démarrage...' : 'Arrêté'}
             </p>
           </div>
@@ -313,7 +347,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </button>
       </div>
 
-      {/* Zone vidéo */}
       <div className="flex-1 relative bg-black">
         <video
           ref={videoRef}
@@ -323,12 +356,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           autoPlay
         />
 
-        {/* Canvas caché pour la détection */}
         <canvas ref={canvasRef} className="hidden" />
 
-        {/* Overlay de scan */}
         <div className="absolute inset-0 flex items-center justify-center">
-          {/* Zones sombres */}
           <div className="absolute inset-0">
             <div className="absolute top-0 left-0 right-0 h-1/3 bg-black/30" />
             <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-black/30" />
@@ -336,17 +366,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
             <div className="absolute top-1/3 bottom-1/3 right-0 w-12 bg-black/30" />
           </div>
 
-          {/* Cadre de scan */}
           <div className="relative">
             <div className="w-80 h-20 border-2 border-white/80 rounded-xl" />
             
-            {/* Coins */}
             <div className="absolute -top-3 -left-3 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-xl" />
             <div className="absolute -top-3 -right-3 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-xl" />
             <div className="absolute -bottom-3 -left-3 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-xl" />
             <div className="absolute -bottom-3 -right-3 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-xl" />
 
-            {/* Ligne de scan */}
             <div className="absolute inset-0 overflow-hidden rounded-xl">
               <div 
                 className="absolute left-0 right-0 h-1 bg-red-500"
@@ -359,23 +386,19 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
           </div>
         </div>
 
-        {/* Instructions */}
         <div className="absolute bottom-32 left-4 right-4">
           <div className="bg-black/70 backdrop-blur-sm rounded-xl p-4 text-center">
             <p className="text-white font-medium mb-1">
               Placez un code-barres dans le cadre
             </p>
             <p className="text-white/60 text-sm">
-              {scanMethod === 'native' ? 'Détection native du navigateur' :
-               scanMethod === 'zxing' ? 'Détection ZXing active' :
-               cameraReady ? 'Initialisation détection...' :
-               'En attente de la caméra'}
+              {detectedCode ? `Code détecté: ${detectedCode}` :
+               'Attendez 3 détections consécutives pour confirmer'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Controls */}
       <div className="p-6 bg-black/90">
         <div className="flex justify-center space-x-4">
           <button
@@ -397,12 +420,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         
         <div className="mt-4 text-center">
           <p className="text-white/40 text-xs">
-            Vraie détection • EAN-13, UPC-A, CODE-128, QR
+            Détection sécurisée • EAN-13, UPC-A, CODE-128
           </p>
         </div>
       </div>
 
-      {/* Erreur */}
       {error && (
         <div className="absolute top-20 left-4 right-4 bg-red-500/90 rounded-xl p-4">
           <p className="text-white font-medium text-center mb-3">{error}</p>
@@ -415,7 +437,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </div>
       )}
 
-      {/* CSS */}
       <style jsx>{`
         @keyframes scan {
           0% { top: 20%; opacity: 0; }
