@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, Loader2 } from 'lucide-react';
 import PhotoCapture from '../components/PhotoCapture';
-import { realApi } from '../services/realApi';
+import { realApi } from '../api/realApi';
 
 const ProductNotFoundPage: React.FC = () => {
   const navigate = useNavigate();
