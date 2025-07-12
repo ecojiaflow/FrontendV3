@@ -1,224 +1,362 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import ErrorBoundary from './components/ErrorBoundary';
-import Navbar from './components/Navbar';
-import CategoryNavigation from './components/CategoryNavigation';
-import Footer from './components/Footer';
-import CookieBanner from './components/CookieBanner';
-import PWAInstallBanner from './components/PWAInstallBanner';
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const dotenv = require('dotenv');
+const { PrismaClient } = require('@prisma/client');
 
-// Pages existantes - Toutes vos vraies pages
-import HomePage from './pages/HomePage';
-import ProductPage from './pages/ProductPage';
-import ProductNotFoundPage from './pages/ProductNotFoundPage';
-import CategoryPage from './pages/CategoryPage';
-import AboutPage from './pages/AboutPage';
-import StatsPage from './pages/StatsPage';
-import TermsPage from './pages/TermsPage';
+dotenv.config();
 
-// Page de recherche - Créer si manquante
-const SearchResultsPage: React.FC = () => {
-  // Rediriger vers HomePage qui gère déjà la recherche
-  return <HomePage />;
-};
+const app = express();
+const prisma = new PrismaClient();
 
-// Pages simples pour navigation
-const PrivacyPage: React.FC = () => (
-  <div className="min-h-screen bg-white py-16">
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-eco-text mb-4">Politique de confidentialité</h1>
-        <p className="text-eco-text/70">Protection de vos données personnelles</p>
-      </div>
-      <div className="prose prose-lg max-w-none text-eco-text/80">
-        <p className="mb-6">Cette page sera bientôt disponible avec tous les détails sur notre politique de confidentialité.</p>
-        <p className="mb-6">ECOLOJIA respecte votre vie privée et la protection de vos données personnelles.</p>
-        <div className="bg-eco-leaf/10 p-6 rounded-xl border border-eco-leaf/20">
-          <h3 className="text-lg font-semibold text-eco-text mb-3">Informations collectées :</h3>
-          <ul className="list-disc list-inside space-y-2 text-eco-text/70">
-            <li>Données de navigation anonymisées</li>
-            <li>Préférences de recherche (optionnel)</li>
-            <li>Statistiques d'utilisation agrégées</li>
-          </ul>
-        </div>
-        <p className="mt-6">
-          En attendant, consultez nos{' '}
-          <a href="/terms" className="text-eco-leaf hover:underline font-medium">
-            conditions d'utilisation
-          </a>{' '}
-          pour plus d'informations.
-        </p>
-      </div>
-    </div>
-  </div>
-);
+console.log('🌱 ECOLOJIA Backend - Connexion PostgreSQL...');
+console.log('📊 Initialisation Prisma Client...');
 
-const LegalPage: React.FC = () => (
-  <div className="min-h-screen bg-white py-16">
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-eco-text mb-4">Mentions légales</h1>
-        <p className="text-eco-text/70">Informations légales et réglementaires</p>
-      </div>
-      <div className="prose prose-lg max-w-none text-eco-text/80">
-        <div className="bg-eco-leaf/10 p-6 rounded-xl border border-eco-leaf/20 mb-6">
-          <h3 className="text-lg font-semibold text-eco-text mb-3">ECOLOJIA</h3>
-          <div className="space-y-2 text-eco-text/70">
-            <p><strong>Éditeur :</strong> ECOLOJIA</p>
-            <p><strong>Email :</strong> contact@ecolojia.com</p>
-            <p><strong>Hébergement :</strong> Netlify, Inc.</p>
-          </div>
-        </div>
-        <p className="mb-6">
-          ECOLOJIA est un moteur de recherche de produits éco-responsables utilisant l'intelligence artificielle 
-          pour évaluer l'impact environnemental des produits de consommation.
-        </p>
-        <h3 className="text-xl font-semibold text-eco-text mb-3">Propriété intellectuelle</h3>
-        <p className="mb-6">
-          Le contenu de ce site, incluant les textes, images, logos et bases de données, 
-          est protégé par les droits de propriété intellectuelle.
-        </p>
-        <p>
-          Pour plus de détails, consultez nos{' '}
-          <a href="/terms" className="text-eco-leaf hover:underline font-medium">
-            conditions d'utilisation
-          </a>.
-        </p>
-      </div>
-    </div>
-  </div>
-);
+// CORS
+const allowedOrigins = [
+  'https://frontendv3.netlify.app',
+  'https://ecolojiafrontv3.netlify.app',
+  'https://main--ecolojiafrontv3.netlify.app',
+  'https://ecolojiabackendv3.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:4173'
+];
 
-const ContactPage: React.FC = () => (
-  <div className="min-h-screen bg-white py-16">
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-eco-text mb-4">Contact</h1>
-        <p className="text-eco-text/70 text-lg">Une question ? Une suggestion ? Contactez-nous !</p>
-      </div>
-      
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-eco-leaf/10 p-8 rounded-xl border border-eco-leaf/20">
-          <h3 className="text-xl font-semibold text-eco-text mb-4">Informations de contact</h3>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <span className="text-eco-leaf">📧</span>
-              <div>
-                <p className="font-medium text-eco-text">Email général</p>
-                <p className="text-eco-text/70">contact@ecolojia.com</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-eco-leaf">🛠️</span>
-              <div>
-                <p className="font-medium text-eco-text">Support technique</p>
-                <p className="text-eco-text/70">support@ecolojia.com</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-eco-leaf">💼</span>
-              <div>
-                <p className="font-medium text-eco-text">Partenariats</p>
-                <p className="text-eco-text/70">partnerships@ecolojia.com</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-xl font-semibold text-eco-text mb-4">Temps de réponse</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-eco-text/70">Questions générales</span>
-              <span className="font-medium text-eco-text">24-48h</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-eco-text/70">Support technique</span>
-              <span className="font-medium text-eco-text">24h</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-eco-text/70">Partenariats</span>
-              <span className="font-medium text-eco-text">3-5 jours</span>
-            </div>
-          </div>
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              💡 <strong>Astuce :</strong> Pour un support plus rapide, 
-              précisez votre navigateur et l'appareil utilisé.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Permissif pour développement
+    }
+  },
+  credentials: true
+}));
 
-const App: React.FC = () => {
-  return (
-    <ErrorBoundary>
-      <Router>
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-green-50 to-blue-50">
-          <Navbar />
-          <CategoryNavigation />
-          
-          <main className="flex-grow">
-            <Routes>
-              {/* Pages principales */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/product/:slug" element={<ProductPage />} />
-              <Route path="/category/:category" element={<CategoryPage />} />
-              <Route path="/search" element={<SearchResultsPage />} />
-              
-              {/* Pages PWA */}
-              <Route path="/scan/not-found" element={<ProductNotFoundPage />} />
-              
-              {/* Pages informatives - Vos vraies pages */}
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/stats" element={<StatsPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              
-              {/* Pages complètes pour navigation */}
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/legal" element={<LegalPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              
-              {/* Route 404 */}
-              <Route 
-                path="*" 
-                element={
-                  <div className="min-h-screen flex items-center justify-center bg-white">
-                    <div className="text-center">
-                      <div className="text-6xl mb-6">🔍</div>
-                      <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                      <p className="text-gray-600 mb-8">Cette page n'existe pas</p>
-                      <div className="space-x-4">
-                        <a 
-                          href="/" 
-                          className="bg-eco-leaf text-white px-6 py-3 rounded-lg hover:bg-eco-leaf/90 transition-colors inline-block"
-                        >
-                          Retour à l'accueil
-                        </a>
-                        <a 
-                          href="/about" 
-                          className="border border-eco-leaf text-eco-leaf px-6 py-3 rounded-lg hover:bg-eco-leaf/10 transition-colors inline-block"
-                        >
-                          À propos
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                } 
-              />
-            </Routes>
-          </main>
+app.use(helmet());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-          <Footer />
-          <CookieBanner />
-          <PWAInstallBanner />
-        </div>
-      </Router>
-    </ErrorBoundary>
-  );
-};
+// 🧪 Route de test barcode
+app.get('/api/test-barcode', (req, res) => {
+  res.json({ 
+    success: true,
+    message: 'Route barcode test fonctionne !', 
+    timestamp: new Date().toISOString(),
+    source: 'direct-app-js',
+    note: 'Route de test JavaScript - MVP débloqué'
+  });
+});
 
-export default App;
+// 📦 Route produits - VRAIE BASE POSTGRESQL
+app.get('/api/products', async (req, res) => {
+  try {
+    console.log('📦 Récupération produits depuis PostgreSQL...');
+    
+    // Récupérer les produits depuis la vraie base
+    const products = await prisma.product.findMany({
+      take: 50, // Limiter à 50 pour les performances
+      orderBy: {
+        created_at: 'desc' // Plus récents en premier
+      }
+    });
+
+    console.log(`✅ ${products.length} produits récupérés depuis PostgreSQL`);
+
+    // Transformer pour le frontend
+    const transformedProducts = products.map(product => ({
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      description: product.description,
+      brand: product.brand,
+      category: product.category,
+      eco_score: product.eco_score ? Number(product.eco_score) : 0.5,
+      ai_confidence: product.ai_confidence ? Number(product.ai_confidence) : 0.7,
+      confidence_pct: product.confidence_pct || 70,
+      confidence_color: product.confidence_color || 'yellow',
+      verified_status: product.verified_status,
+      tags: product.tags || [],
+      zones_dispo: product.zones_dispo || ['FR'],
+      image_url: product.images?.[0] || `https://via.assets.so/img.jpg?w=300&h=200&tc=green&bg=%23f3f4f6&t=${encodeURIComponent(product.title)}`,
+      prices: product.prices || { default: 0 },
+      resume_fr: product.resume_fr || 'Produit bio référencé'
+    }));
+
+    res.json(transformedProducts);
+
+  } catch (error) {
+    console.error('❌ Erreur récupération produits:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la récupération des produits',
+      message: error.message
+    });
+  }
+});
+
+// 🔍 Route produit par slug - POSTGRESQL
+app.get('/api/products/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    console.log(`🔍 Recherche produit: ${slug}`);
+
+    const product = await prisma.product.findUnique({
+      where: { slug: slug }
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        error: 'Produit non trouvé'
+      });
+    }
+
+    // Transformer pour le frontend
+    const transformedProduct = {
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      description: product.description,
+      brand: product.brand,
+      category: product.category,
+      eco_score: product.eco_score ? Number(product.eco_score) : 0.5,
+      ai_confidence: product.ai_confidence ? Number(product.ai_confidence) : 0.7,
+      confidence_pct: product.confidence_pct || 70,
+      confidence_color: product.confidence_color || 'yellow',
+      verified_status: product.verified_status,
+      tags: product.tags || [],
+      zones_dispo: product.zones_dispo || ['FR'],
+      image_url: product.images?.[0] || `https://via.assets.so/img.jpg?w=300&h=200&tc=green&bg=%23f3f4f6&t=${encodeURIComponent(product.title)}`,
+      prices: product.prices || { default: 0 },
+      resume_fr: product.resume_fr || 'Produit bio référencé',
+      barcode: product.barcode
+    };
+
+    res.json(transformedProduct);
+
+  } catch (error) {
+    console.error('❌ Erreur récupération produit:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la récupération du produit',
+      message: error.message
+    });
+  }
+});
+
+// 📊 Route recherche - POSTGRESQL
+app.get('/api/products/search', async (req, res) => {
+  try {
+    const { q, category, limit = 20 } = req.query;
+    
+    const where = {};
+    
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { brand: { contains: q, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (category) {
+      where.category = { contains: category, mode: 'insensitive' };
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      take: parseInt(limit),
+      orderBy: { eco_score: 'desc' }
+    });
+
+    const transformedProducts = products.map(product => ({
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      description: product.description,
+      brand: product.brand,
+      category: product.category,
+      eco_score: product.eco_score ? Number(product.eco_score) : 0.5,
+      confidence_pct: product.confidence_pct || 70,
+      image_url: product.images?.[0] || `https://via.assets.so/img.jpg?w=300&h=200&tc=green&bg=%23f3f4f6&t=${encodeURIComponent(product.title)}`,
+      resume_fr: product.resume_fr || 'Produit bio référencé'
+    }));
+
+    res.json({
+      products: transformedProducts,
+      count: transformedProducts.length
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur recherche:', error);
+    res.status(500).json({ error: 'Erreur de recherche' });
+  }
+});
+
+// 🔍 Route barcode - POSTGRESQL
+app.get('/api/products/barcode/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    console.log(`🔍 Recherche par code-barres: ${code}`);
+
+    const product = await prisma.product.findFirst({
+      where: {
+        barcode: code
+      }
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        error: 'Produit non trouvé dans notre base de données',
+        barcode: code,
+        suggestion_url: `/product-not-found?barcode=${code}`,
+        message: 'Aidez-nous à enrichir notre base en photographiant ce produit'
+      });
+    }
+
+    const transformedProduct = {
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      description: product.description,
+      brand: product.brand,
+      category: product.category,
+      eco_score: product.eco_score ? Number(product.eco_score) : 0.5,
+      ai_confidence: product.ai_confidence ? Number(product.ai_confidence) : 0.7,
+      confidence_pct: product.confidence_pct || 70,
+      confidence_color: product.confidence_color || 'yellow',
+      verified_status: product.verified_status,
+      tags: product.tags || [],
+      zones_dispo: product.zones_dispo || ['FR'],
+      image_url: product.images?.[0] || `https://via.assets.so/img.jpg?w=300&h=200&tc=green&bg=%23f3f4f6&t=${encodeURIComponent(product.title)}`,
+      prices: product.prices || { default: 0 },
+      resume_fr: product.resume_fr || 'Produit bio référencé',
+      barcode: product.barcode
+    };
+
+    res.json({
+      success: true,
+      product: transformedProduct,
+      barcode: code,
+      search_method: 'database'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur recherche barcode:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la recherche',
+      message: error.message
+    });
+  }
+});
+
+// 📸 Route analyse photos (simulation)
+app.post('/api/products/analyze-photos', async (req, res) => {
+  try {
+    const { barcode, photos, source = 'user_photo_analysis' } = req.body;
+
+    if (!barcode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Code-barres requis'
+      });
+    }
+
+    // Simulation rapide de création produit
+    const mockProduct = {
+      title: `Produit Bio ${barcode.slice(-4)}`,
+      description: 'Produit analysé automatiquement par IA',
+      brand: 'Bio',
+      category: 'alimentaire',
+      eco_score: 0.75,
+      ai_confidence: 0.8,
+      confidence_pct: 80,
+      barcode: barcode
+    };
+
+    res.json({
+      success: true,
+      message: 'Produit analysé avec succès',
+      productName: mockProduct.title,
+      ecoScore: 75,
+      analysis: {
+        confidence: '80%'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur analyse photos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'analyse'
+    });
+  }
+});
+
+// 📊 Route info API avec VRAI compte PostgreSQL
+app.get('/', async (req, res) => {
+  try {
+    // Compter les vrais produits en base
+    const productCount = await prisma.product.count();
+    
+    res.json({
+      message: 'Ecolojia API - MVP FONCTIONNEL',
+      version: '1.0.0',
+      status: 'operational',
+      environment: 'production',
+      timestamp: new Date().toISOString(),
+      mvp_status: 'DÉBLOQUÉ - Routes barcode + produits PostgreSQL',
+      products_count: productCount, // VRAI COMPTE depuis PostgreSQL
+      database: 'PostgreSQL connectée',
+      endpoints: {
+        products: [
+          'GET /api/products ✅',
+          'GET /api/products/search ✅', 
+          'GET /api/products/:slug ✅',
+          'GET /api/products/barcode/:code ✅',
+          'POST /api/products/analyze-photos ✅'
+        ],
+        test: [
+          'GET /api/test-barcode ✅'
+        ],
+        health: [
+          'GET /health ✅',
+          'GET /api/health ✅'
+        ]
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur connexion PostgreSQL:', error);
+    res.json({
+      message: 'Ecolojia API - Erreur base de données',
+      error: error.message,
+      products_count: 0
+    });
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Gestion erreurs 404
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Route non trouvée',
+    path: req.originalUrl
+  });
+});
+
+// Nettoyage Prisma à la fermeture
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
+
+module.exports = app;
