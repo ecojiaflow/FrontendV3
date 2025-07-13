@@ -2,7 +2,10 @@ import axios, { AxiosResponse } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ecolojia-backend-working.onrender.com';
 
-// Types pour Analyse IA
+// ==============================
+// Types
+// ==============================
+
 export interface AnalyzeRequest {
   product_name: string;
   ingredients?: string;
@@ -80,7 +83,7 @@ export interface QuotaResponse {
 }
 
 // ==============================
-// Axios Configuration
+// Axios configuration
 // ==============================
 
 const apiClient = axios.create({
@@ -159,5 +162,95 @@ export const trackAffiliateClick = async (payload: {
     await apiClient.post('/api/track/click', payload);
   } catch (err) {
     console.warn('Erreur tracking affilié:', err);
+  }
+};
+
+// ==============================
+// Produits – Fonctions additionnelles
+// ==============================
+
+interface BackendProduct {
+  id: string;
+  title: string;
+  slug: string;
+  brand: string;
+  category: string;
+  description?: string;
+  eco_score: string;
+  ai_confidence: string;
+  confidence_pct?: number;
+  confidence_color?: string;
+  verified_status?: string;
+  tags?: string[];
+  zones_dispo?: string[];
+  image_url?: string;
+  prices?: any;
+  resume_fr?: string;
+}
+
+export interface Product {
+  id: string;
+  nameKey: string;
+  brandKey?: string;
+  descriptionKey: string;
+  ethicalScore: number;
+  category: string;
+  price: number;
+  currency: string;
+  image: string;
+  tagsKeys: string[];
+  verified: boolean;
+  affiliateLink: string;
+  certificationsKeys: string[];
+  aiConfidence: number;
+  zonesDisponibles: string[];
+  slug: string;
+  resumeFr?: string;
+  confidencePct?: number;
+  confidenceColor?: string;
+  verifiedStatus?: string;
+}
+
+function adaptBackendToFrontend(p: BackendProduct): Product {
+  return {
+    id: p.id,
+    nameKey: p.title || 'Produit inconnu',
+    brandKey: p.brand || '',
+    descriptionKey: p.description || p.resume_fr || '',
+    ethicalScore: parseFloat(p.eco_score) || 0,
+    category: p.category || 'inconnu',
+    price: p.prices?.default || 0,
+    currency: 'EUR',
+    image: p.image_url || 'https://via.assets.so/img.jpg?w=300&h=200&tc=gray&bg=%23f3f4f6',
+    tagsKeys: p.tags || [],
+    verified: p.verified_status === 'verified' || p.verified_status === 'ai_verified',
+    affiliateLink: '',
+    certificationsKeys: [],
+    aiConfidence: parseFloat(p.ai_confidence) || 0,
+    zonesDisponibles: p.zones_dispo || ['FR'],
+    slug: p.slug,
+    resumeFr: p.resume_fr,
+    confidencePct: p.confidence_pct,
+    confidenceColor: p.confidence_color,
+    verifiedStatus: p.verified_status,
+  };
+}
+
+export const fetchRealProducts = async (searchQuery: string = ''): Promise<Product[]> => {
+  const url = searchQuery
+    ? `/api/products/search?q=${encodeURIComponent(searchQuery)}`
+    : '/api/products';
+  const res = await apiClient.get(url);
+  const data = Array.isArray(res.data) ? res.data : res.data.products || [];
+  return data.map(adaptBackendToFrontend);
+};
+
+export const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
+  try {
+    const res = await apiClient.get(`/api/products/${slug}`);
+    return adaptBackendToFrontend(res.data);
+  } catch (err) {
+    console.warn('Produit non trouvé:', slug);
+    return null;
   }
 };
