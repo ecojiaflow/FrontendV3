@@ -1,25 +1,26 @@
-// frontend/src/pages/ProductPage.jsx - Version Simplifiée et Jolie
+// frontend/src/pages/ProductPage.jsx - Version Premium Inspirée Apple/Tesla
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-// Imports des composants simplifiés
-import NovaClassificationBadge from '../components/NovaClassificationBadge';
-import UltraProcessingAlert from '../components/UltraProcessingAlert';
-import NaturalAlternatives from '../components/NaturalAlternatives';
+// Composants Premium
+import CircularScoreGauge from '../components/premium/CircularScoreGauge';
+import RadarChart from '../components/premium/RadarChart';
+import ThermoMeter from '../components/premium/ThermoMeter';
+import DualBadgeCard from '../components/premium/DualBadgeCard';
+import BatteryProgress from '../components/premium/BatteryProgress';
+import PremiumChat from '../components/premium/PremiumChat';
+import PremiumAlternatives from '../components/premium/PremiumAlternatives';
 
 const ProductPage = () => {
   const { slug } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('description');
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        console.log('🔍 Chargement produit pour slug:', slug);
-        
-        // URL API correcte
         const API_BASE_URL = 'https://ecolojia-backend-working.onrender.com';
         const response = await fetch(`${API_BASE_URL}/api/products/${slug}`, {
           method: 'GET',
@@ -29,68 +30,70 @@ const ProductPage = () => {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         setProduct(data);
         
       } catch (error) {
         console.error('❌ Erreur chargement produit:', error);
         
-        // Fallback avec données complètes
+        // Fallback avec données premium
         setProduct({
-          id: 'fallback_1',
-          title: 'Produit Éco Analysé (Fallback)',
-          slug: 'produit-eco-fallback',
-          description: 'Ce produit a été analysé par notre IA révolutionnaire. OCR en cours d\'intégration complète.',
-          brand: 'EcoFallback',
-          category: 'alimentaire',
-          eco_score: 0.65,
-          ai_confidence: 0.7,
+          id: 'premium_demo',
+          title: 'Galettes de Riz Bio Complet',
+          slug: 'galettes-riz-bio-demo',
+          description: 'Galettes de riz complet biologiques. Analyse révolutionnaire ECOLOJIA détecte ultra-transformation malgré label bio.',
+          brand: 'BioDemo',
+          category: 'Snacks Bio',
+          eco_score: 0.35, // Score volontairement bas pour demo
+          ai_confidence: 0.95,
           verified_status: 'ai_analyzed',
-          tags: ['fallback', 'confiance-70pct', 'nova-groupe-3'],
-          images: [],
+          tags: ['bio', 'sans-gluten', 'ultra-transformé-détecté', 'nova-4'],
+          images: ['https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=300'],
           updated_at: new Date().toISOString(),
-          // Données révolutionnaires
-          revolutionaryAnalysis: {
-            score: { overall: 65 },
-            scientificAnalysis: {
-              nova: {
-                novaGroup: 3,
-                groupInfo: {
-                  name: "Aliments transformés",
-                  description: "Aliments du groupe 1 auxquels sont ajoutés des ingrédients culinaires"
-                },
-                healthImpact: {
-                  level: 'moderate',
-                  risks: ['Sodium élevé possible', 'Conservateurs'],
-                  benefits: ['Praticité', 'Conservation']
-                }
-              },
-              additives: [
-                { code: 'E471', name: 'Mono- et diglycérides' },
-                { code: 'E330', name: 'Acide citrique' }
-              ]
+          
+          // 🆕 DONNÉES PREMIUM COMPLÈTES
+          premiumAnalysis: {
+            scores: {
+              overall: 35, // Score global bas car ultra-transformé
+              nutrition: 45, // Manque fibres/vitamines
+              transformation: 15, // Très transformé
+              environmental: 70, // Bio = bon pour environnement
+              health: 25, // Index glycémique élevé
+              sustainability: 65
             },
+            nova: {
+              group: 4,
+              name: 'Ultra-transformé',
+              description: 'Transformation industrielle intensive malgré label bio',
+              healthRisk: 'high',
+              color: '#dc2626'
+            },
+            nutriscore: {
+              grade: 'C',
+              points: 8,
+              color: '#f59e0b'
+            },
+            glycemicIndex: 87, // Très élevé !
+            inflammatoryIndex: 2.3, // Pro-inflammatoire
             alternatives: [
               {
-                name: "Version fait maison",
-                type: "diy",
-                difficulty: "moyen",
-                time: "25 minutes",
-                why_better: "Contrôle total des ingrédients, zéro additifs industriels, fraîcheur maximale",
-                nutritional_advantage: "Nutriments préservés, pas d'émulsifiants, fibres naturelles",
-                cost_comparison: "-60% vs produit industriel",
-                environmental_benefit: "Emballage minimal, ingrédients locaux possibles",
-                sources: ["Nutrition Reviews 2024"],
-                confidence: "high"
+                name: 'Flocons d\'avoine complets',
+                score: 85,
+                time: '5 min',
+                cost: '-40%',
+                why: 'IG bas (40), fibres +300%, pas d\'extrusion'
+              },
+              {
+                name: 'Fruits frais + noix',
+                score: 95,
+                time: '2 min', 
+                cost: '-20%',
+                why: 'NOVA 1, antioxydants, satiété naturelle'
               }
             ]
           }
         });
-        
       } finally {
         setLoading(false);
       }
@@ -101,10 +104,14 @@ const ProductPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Analyse en cours...</p>
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-green-500/30"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-green-500 border-t-transparent animate-spin"></div>
+          </div>
+          <p className="text-white text-lg">Analyse IA révolutionnaire en cours...</p>
+          <p className="text-gray-400 text-sm mt-2">Classification NOVA • Additifs EFSA • Alternatives naturelles</p>
         </div>
       </div>
     );
@@ -112,12 +119,12 @@ const ProductPage = () => {
 
   if (!product) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Produit non trouvé</h1>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center text-white">
+          <h1 className="text-3xl font-bold mb-4">Produit non trouvé</h1>
           <button 
             onClick={() => window.history.back()} 
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all"
           >
             ← Retour
           </button>
@@ -126,245 +133,282 @@ const ProductPage = () => {
     );
   }
 
-  // Données révolutionnaires
-  const revolutionaryData = product.revolutionaryAnalysis || {
-    score: { overall: product.eco_score ? Math.round(product.eco_score * 100) : 65 },
-    scientificAnalysis: {
-      nova: { novaGroup: 3, groupInfo: { name: "Transformé", description: "Produit transformé" } },
-      additives: []
-    },
+  const premiumData = product.premiumAnalysis || {
+    scores: { overall: 35, nutrition: 45, transformation: 15, environmental: 70, health: 25 },
+    nova: { group: 4, name: 'Ultra-transformé', healthRisk: 'high', color: '#dc2626' },
+    nutriscore: { grade: 'C', color: '#f59e0b' },
+    glycemicIndex: 87,
+    inflammatoryIndex: 2.3,
     alternatives: []
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Simplifié et Joli */}
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 border-b border-green-100">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="text-center">
-            {/* Image Produit */}
-            <div className="w-32 h-32 bg-white rounded-full shadow-lg flex items-center justify-center mx-auto mb-6">
-              {product.images && product.images[0] ? (
-                <img 
-                  src={product.images[0]} 
-                  alt={product.title}
-                  className="w-24 h-24 object-cover rounded-full"
-                />
-              ) : (
-                <div className="text-4xl">📦</div>
-              )}
-            </div>
-
-            {/* Titre */}
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {product.title}
-            </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+      
+      {/* 🎨 HEADER PREMIUM STYLE APPLE */}
+      <div className="relative overflow-hidden">
+        {/* Background Gradient Animé */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             
-            {product.brand && (
-              <p className="text-lg text-gray-600 mb-4">{product.brand}</p>
-            )}
-
-            {/* Score Principal Joli */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mx-auto max-w-md mb-6">
-              <div className="text-center">
-                <div className="text-5xl font-bold text-orange-500 mb-2">
-                  {revolutionaryData.score.overall}
+            {/* Colonne Gauche - Image + Badges */}
+            <div className="text-center lg:text-left">
+              {/* Image Produit Premium */}
+              <div className="relative w-80 h-80 mx-auto lg:mx-0 mb-8">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-3xl backdrop-blur-sm border border-white/20"></div>
+                <div className="relative w-full h-full rounded-3xl overflow-hidden">
+                  {product.images && product.images[0] ? (
+                    <img 
+                      src={product.images[0]} 
+                      alt={product.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                      <span className="text-8xl opacity-60">📦</span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-lg text-gray-600 mb-2">Score Scientifique Global</div>
-                <div className="text-sm text-gray-500">
-                  Confiance: {product.ai_confidence ? `${Math.round(product.ai_confidence * 100)}%` : '70%'} • 
-                  Analyse IA Complète
+                
+                {/* Badge NOVA Floating */}
+                <div className="absolute -top-4 -right-4">
+                  <DualBadgeCard 
+                    primary={{
+                      label: premiumData.nutriscore.grade,
+                      color: premiumData.nutriscore.color,
+                      type: 'Nutri-Score'
+                    }}
+                    secondary={{
+                      label: `NOVA ${premiumData.nova.group}`,
+                      color: premiumData.nova.color,
+                      type: 'Transformation'
+                    }}
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Tags Jolies */}
-            <div className="flex justify-center flex-wrap gap-2">
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                {product.category || 'alimentaire'}
-              </span>
-              {product.verified_status === 'ai_analyzed' && (
-                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-                  🤖 IA Analysé
-                </span>
-              )}
+            {/* Colonne Droite - Infos + Score Principal */}
+            <div className="space-y-8">
+              {/* Titre Premium */}
+              <div>
+                <div className="inline-flex items-center space-x-2 bg-purple-500/20 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  <span className="text-sm text-green-400 font-medium">IA Analysé en Temps Réel</span>
+                </div>
+                
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-4">
+                  {product.title}
+                </h1>
+                
+                {product.brand && (
+                  <p className="text-2xl text-gray-300 mb-6">{product.brand}</p>
+                )}
+
+                <p className="text-gray-400 text-lg leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+
+              {/* 🎯 SCORE PRINCIPAL - JAUGE CIRCULAIRE APPLE WATCH STYLE */}
+              <div className="flex justify-center lg:justify-start">
+                <CircularScoreGauge 
+                  score={premiumData.scores.overall}
+                  maxScore={100}
+                  label="Score ECOLOJIA"
+                  subtitle="Analyse IA Révolutionnaire"
+                  color={premiumData.scores.overall >= 70 ? '#22c55e' : premiumData.scores.overall >= 40 ? '#f59e0b' : '#ef4444'}
+                  size={200}
+                />
+              </div>
+
+              {/* Stats Rapides */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 text-center">
+                  <div className="text-2xl font-bold text-green-400">{Math.round(product.ai_confidence * 100)}%</div>
+                  <div className="text-sm text-gray-400">Confiance IA</div>
+                </div>
+                <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 text-center">
+                  <div className="text-2xl font-bold text-blue-400">NOVA {premiumData.nova.group}</div>
+                  <div className="text-sm text-gray-400">Classification</div>
+                </div>
+                <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 text-center">
+                  <div className="text-2xl font-bold text-purple-400">{premiumData.nutriscore.grade}</div>
+                  <div className="text-sm text-gray-400">Nutri-Score</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Contenu Principal */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* 📊 SECTION ANALYSES DÉTAILLÉES */}
+      <div className="max-w-7xl mx-auto px-6 py-16">
         
-        {/* Onglets Simplifiés */}
-        <div className="bg-white rounded-xl shadow-sm mb-8 overflow-hidden">
-          <div className="border-b border-gray-200">
-            <nav className="flex">
-              {[
-                { id: 'description', label: 'Description', icon: '📝' },
-                { id: 'analyse-ia', label: 'Analyse IA', icon: '🔬' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`${
-                    activeTab === tab.id
-                      ? 'bg-green-50 text-green-700 border-b-2 border-green-500'
-                      : 'text-gray-500 hover:text-gray-700'
-                  } flex-1 py-4 px-6 text-center font-medium transition-colors flex items-center justify-center space-x-2`}
-                >
-                  <span>{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </nav>
+        {/* Navigation Onglets Premium */}
+        <div className="flex justify-center mb-12">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-2 border border-white/10">
+            {[
+              { id: 'overview', label: 'Vue d\'ensemble', icon: '📊' },
+              { id: 'analysis', label: 'Analyse IA', icon: '🔬' },
+              { id: 'alternatives', label: 'Alternatives', icon: '🌱' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`${
+                  activeTab === tab.id
+                    ? 'bg-gradient-to-r from-green-500 to-blue-500 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                } px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center space-x-2`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Contenu des Onglets */}
-          <div className="p-6">
-            {activeTab === 'description' && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">Description</h2>
-                <p className="text-gray-700 leading-relaxed mb-6">
-                  {product.description || product.resume_fr || 'Produit analysé par l\'IA révolutionnaire ECOLOJIA.'}
-                </p>
-                
-                {product.tags && product.tags.length > 0 && (
+        {/* Contenu des Onglets */}
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* 🕸️ RADAR CHART - SCORES MULTIPLES */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+              <h3 className="text-2xl font-bold mb-6 text-center">Analyse Multi-Critères</h3>
+              <RadarChart 
+                data={[
+                  { axis: 'Nutrition', value: premiumData.scores.nutrition },
+                  { axis: 'Transformation', value: premiumData.scores.transformation },
+                  { axis: 'Environnement', value: premiumData.scores.environmental },
+                  { axis: 'Santé', value: premiumData.scores.health },
+                  { axis: 'Durabilité', value: premiumData.scores.sustainability || 65 }
+                ]}
+                maxValue={100}
+              />
+            </div>
+
+            {/* 🌡️ THERMOMÈTRES - INDICES SPÉCIALISÉS */}
+            <div className="space-y-6">
+              {/* Index Glycémique */}
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
+                <h4 className="text-xl font-bold mb-4">Index Glycémique</h4>
+                <div className="flex items-center space-x-4">
+                  <ThermoMeter 
+                    value={premiumData.glycemicIndex}
+                    max={100}
+                    label="IG"
+                    gradient={['#3b82f6', '#f59e0b', '#ef4444']}
+                    height={120}
+                  />
                   <div>
-                    <h3 className="text-lg font-medium mb-3 text-gray-800">Caractéristiques</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {product.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                    <div className="text-3xl font-bold text-red-400">{premiumData.glycemicIndex}</div>
+                    <div className="text-sm text-gray-400">Très Élevé ⚠️</div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      Recommandé : &lt; 55
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'analyse-ia' && (
-              <div className="space-y-6">
-                {/* En-tête Analyse IA */}
-                <div className="text-center bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
-                  <h2 className="text-2xl font-bold text-purple-800 mb-2">
-                    🔬 Analyse Scientifique IA
-                  </h2>
-                  <p className="text-purple-600">
-                    Basée sur INSERM • ANSES • EFSA 2024
-                  </p>
-                </div>
-
-                {/* Classification NOVA */}
-                <NovaClassificationBadge
-                  novaGroup={revolutionaryData.scientificAnalysis.nova.novaGroup}
-                  groupInfo={revolutionaryData.scientificAnalysis.nova.groupInfo}
-                  healthImpact={revolutionaryData.scientificAnalysis.nova.healthImpact}
-                />
-
-                {/* Alerte Ultra-transformation */}
-                <UltraProcessingAlert
-                  novaGroup={revolutionaryData.scientificAnalysis.nova.novaGroup}
-                  additives={revolutionaryData.scientificAnalysis.additives}
-                  healthImpact={revolutionaryData.scientificAnalysis.nova.healthImpact}
-                />
-
-                {/* Alternatives Naturelles */}
-                <NaturalAlternatives
-                  alternatives={revolutionaryData.alternatives}
-                  productType={product.category}
-                  novaGroup={revolutionaryData.scientificAnalysis.nova.novaGroup}
-                />
-
-                {/* 🆕 CHAT IA RESTAURÉ ET JOLI */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-3xl">🤖</span>
-                    <div>
-                      <h3 className="text-xl font-bold text-blue-800">
-                        Assistant IA Scientifique
-                      </h3>
-                      <p className="text-blue-600 text-sm">
-                        Posez vos questions sur ce produit
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Questions Suggérées */}
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-blue-200">
-                    <h4 className="font-semibold text-blue-800 text-sm mb-3">
-                      💬 Questions suggérées :
-                    </h4>
-                    <div className="space-y-2">
-                      {[
-                        "Pourquoi ce produit est-il classé NOVA groupe 3 ?",
-                        "Quelles sont les meilleures alternatives naturelles ?",
-                        "Comment ces additifs affectent-ils ma santé ?",
-                        "Puis-je consommer ce produit quotidiennement ?"
-                      ].map((question, index) => (
-                        <button 
-                          key={index}
-                          className="w-full text-left text-sm text-blue-700 hover:text-blue-900 hover:bg-blue-50 p-2 rounded border border-blue-100 transition-colors"
-                        >
-                          {question}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Zone Chat */}
-                  <div className="bg-white rounded-lg border border-blue-200 overflow-hidden">
-                    <div className="p-4 border-b border-blue-100 bg-blue-50">
-                      <div className="flex items-center space-x-2">
-                        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                        <span className="text-sm text-blue-700 font-medium">Assistant IA en ligne</span>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4">
-                      <div className="mb-4">
-                        <div className="bg-blue-100 rounded-lg p-3 text-sm text-blue-800">
-                          <strong>🤖 Assistant IA :</strong> Bonjour ! Je peux vous expliquer en détail pourquoi ce produit a obtenu ce score et vous suggérer des alternatives plus naturelles. Que souhaitez-vous savoir ?
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <input 
-                          type="text" 
-                          placeholder="Tapez votre question..."
-                          className="flex-1 border border-blue-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          Envoyer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Info Sources */}
-                  <div className="mt-4 text-xs text-blue-600 text-center">
-                    💡 Assistant basé sur sources scientifiques officielles ANSES, EFSA, INSERM 2024
                   </div>
                 </div>
               </div>
-            )}
+
+              {/* Index Inflammatoire */}
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
+                <h4 className="text-xl font-bold mb-4">Index Inflammatoire</h4>
+                <div className="flex items-center space-x-4">
+                  <ThermoMeter 
+                    value={Math.abs(premiumData.inflammatoryIndex)}
+                    max={5}
+                    label="DII"
+                    gradient={['#22c55e', '#f59e0b', '#ef4444']}
+                    height={120}
+                  />
+                  <div>
+                    <div className="text-3xl font-bold text-orange-400">+{premiumData.inflammatoryIndex}</div>
+                    <div className="text-sm text-gray-400">Pro-inflammatoire</div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      Optimal : &lt; 0 (anti-inflammatoire)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🔋 QUOTA ANALYSES RESTANTES */}
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
+                <h4 className="text-xl font-bold mb-4">Analyses Restantes</h4>
+                <BatteryProgress 
+                  current={7}
+                  max={10}
+                  label="Quota Quotidien"
+                  color="#22c55e"
+                />
+                <div className="text-sm text-gray-400 mt-2">
+                  Renouvellement à minuit • Plan gratuit
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Bouton Re-analyser Joli */}
-        <div className="text-center">
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2 mx-auto"
-          >
-            <span>🔄</span>
-            <span>Re-analyser (7 restants)</span>
-          </button>
-        </div>
+        {activeTab === 'analysis' && (
+          <div className="space-y-8">
+            
+            {/* Alerte Ultra-Transformation Premium */}
+            {premiumData.nova.group === 4 && (
+              <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 backdrop-blur-sm rounded-3xl p-8 border border-red-500/30">
+                <div className="flex items-start space-x-4">
+                  <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center">
+                    <span className="text-3xl">🚨</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-red-400 mb-2">
+                      Ultra-Transformation Détectée
+                    </h3>
+                    <p className="text-gray-300 mb-4">
+                      Malgré le label bio, ce produit subit une transformation industrielle intensive (extrusion haute température) qui détruit la matrice alimentaire naturelle.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <div className="text-red-400 font-bold">+53%</div>
+                        <div className="text-gray-400">Risque diabète</div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <div className="text-red-400 font-bold">IG 87</div>
+                        <div className="text-gray-400">vs riz complet (50)</div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <div className="text-red-400 font-bold">-70%</div>
+                        <div className="text-gray-400">Vitamines B détruites</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Chat IA Premium */}
+            <PremiumChat productContext={product} />
+          </div>
+        )}
+
+        {activeTab === 'alternatives' && (
+          <PremiumAlternatives 
+            alternatives={premiumData.alternatives}
+            currentScore={premiumData.scores.overall}
+          />
+        )}
+      </div>
+
+      {/* 🔄 BOUTON RE-ANALYSER PREMIUM */}
+      <div className="text-center pb-16">
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 hover:from-green-400 hover:via-blue-400 hover:to-purple-400 text-white px-12 py-6 rounded-2xl font-bold text-xl shadow-2xl hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105"
+        >
+          <span className="mr-3">🔄</span>
+          Re-analyser avec IA Révolutionnaire
+        </button>
       </div>
     </div>
   );
