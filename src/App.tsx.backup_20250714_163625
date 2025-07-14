@@ -1,10 +1,7 @@
-// src/App.tsx - VERSION COMPATIBLE AVEC STRUCTURE EXISTANTE + MULTI-CATÉGORIES + ERRORBOUNDARY
+// src/App.tsx - VERSION COMPATIBLE AVEC STRUCTURE EXISTANTE + MULTI-CATÉGORIES
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
-
-// 🔧 FIX: Import de l'ErrorBoundary
-import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy loading pour éviter les dépendances circulaires
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -126,39 +123,32 @@ const NotFound: React.FC = () => (
 
 function App() {
   return (
-    // 🔧 FIX: ErrorBoundary englobe tout l'App
-    <ErrorBoundary>
-      <Router>
-        <div className="App min-h-screen bg-white">
-          <Navigation />
-          
-          {/* 🔧 FIX: ErrorBoundary spécifique pour le Suspense */}
-          <ErrorBoundary>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                {/* Route principale - HomePage existante */}
-                <Route path="/" element={<HomePage />} />
-                
-                {/* Routes produits existantes */}
-                <Route path="/product/:slug" element={<ProductPage />} />
-                
-                {/* Nouvelle route multi-catégories */}
-                <Route path="/multi-categories" element={<MultiCategoriesPage />} />
-                
-                {/* Redirects de compatibilité */}
-                <Route path="/produit/:slug" element={<Navigate to="/product/:slug" replace />} />
-                <Route path="/product" element={<Navigate to="/" replace />} />
-                <Route path="/scan" element={<Navigate to="/" replace />} />
-                <Route path="/analyze" element={<Navigate to="/" replace />} />
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
-        </div>
-      </Router>
-    </ErrorBoundary>
+    <Router>
+      <div className="App min-h-screen bg-white">
+        <Navigation />
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            {/* Route principale - HomePage existante */}
+            <Route path="/" element={<HomePage />} />
+            
+            {/* Routes produits existantes */}
+            <Route path="/product/:slug" element={<ProductPage />} />
+            
+            {/* Nouvelle route multi-catégories */}
+            <Route path="/multi-categories" element={<MultiCategoriesPage />} />
+            
+            {/* Redirects de compatibilité */}
+            <Route path="/produit/:slug" element={<Navigate to="/product/:slug" replace />} />
+            <Route path="/product" element={<Navigate to="/" replace />} />
+            <Route path="/scan" element={<Navigate to="/" replace />} />
+            <Route path="/analyze" element={<Navigate to="/" replace />} />
+            
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </div>
+    </Router>
   );
 }
 

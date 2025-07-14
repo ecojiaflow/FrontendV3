@@ -1,5 +1,7 @@
+// frontend/src/components/ErrorBoundary.tsx
+// Composant pour capturer et afficher les erreurs React de manière élégante
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -7,53 +9,101 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
+    error: null,
+    errorInfo: null
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    // Met à jour le state pour afficher l'UI d'erreur
+    return {
+      hasError: true,
+      error,
+      errorInfo: null
+    };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('❌ ErrorBoundary a capturé une erreur:', error, errorInfo);
+    
+    this.setState({
+      error,
+      errorInfo
+    });
   }
 
-  private handleRetry = () => {
-    this.setState({ hasError: false, error: undefined });
+  private handleReload = () => {
+    window.location.reload();
+  };
+
+  private handleReset = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null
+    });
   };
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-            <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Oups ! Une erreur s'est produite
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Ne vous inquiétez pas, notre équipe a été notifiée. 
-              Vous pouvez essayer de recharger la page.
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={this.handleRetry}
-                className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <RefreshCw className="h-5 w-5" />
-                <span>Réessayer</span>
-              </button>
-              <button
-                onClick={() => window.location.href = '/'}
-                className="w-full bg-gray-100 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Retour à l'accueil
-              </button>
+        <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full">
+            <div className="bg-white rounded-3xl shadow-lg border-2 border-red-200 p-8 text-center">
+              {/* Icon et titre */}
+              <div className="text-6xl mb-6">💥</div>
+              <h1 className="text-3xl font-bold text-red-800 mb-4">
+                Oops ! Une erreur est survenue
+              </h1>
+              <p className="text-red-600 mb-6 text-lg">
+                L'application ECOLOJIA a rencontré un problème inattendu.
+              </p>
+
+              {/* Détails de l'erreur (mode développement) */}
+              {process.env.NODE_ENV === 'development' && this.state.error && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-left">
+                  <h3 className="font-bold text-red-800 mb-2">Détails de l'erreur :</h3>
+                  <pre className="text-sm text-red-600 overflow-auto max-h-40">
+                    {this.state.error.message}
+                    {this.state.errorInfo?.componentStack}
+                  </pre>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={this.handleReset}
+                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-2xl transition-colors"
+                >
+                  🔄 Réessayer
+                </button>
+                <button
+                  onClick={this.handleReload}
+                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-2xl transition-colors"
+                >
+                  🔃 Recharger la page
+                </button>
+              </div>
+
+              {/* Message d'aide */}
+              <div className="mt-8 pt-6 border-t border-red-200">
+                <div className="flex items-center justify-center space-x-3 mb-3">
+                  <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm">🌱</span>
+                  </div>
+                  <span className="font-bold text-gray-800">ECOLOJIA</span>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Si le problème persiste, notre équipe technique a été automatiquement notifiée.
+                </p>
+              </div>
             </div>
           </div>
         </div>
