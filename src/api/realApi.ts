@@ -1,3 +1,5 @@
+// PATH: frontend/src/api/realApi.ts
+
 import axios, { AxiosResponse } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ecolojia-backend-working.onrender.com';
@@ -82,7 +84,6 @@ export interface QuotaResponse {
   reset_date: string;
 }
 
-// ➕ NOUVEAUX TYPES QUOTA DÉTAILLÉ
 export interface DetailedQuotaData {
   used_analyses: number;
   remaining_analyses: number;
@@ -166,49 +167,39 @@ const getUserQuota = async (): Promise<QuotaResponse> => {
   }
 };
 
-// ➕ NOUVELLE FONCTION QUOTA DÉTAILLÉ
 const fetchUserQuota = async (): Promise<DetailedQuotaResponse> => {
   try {
     console.log('📊 Récupération quota utilisateur détaillé...');
-    
     const res: AxiosResponse<DetailedQuotaResponse> = await apiClient.get('/api/user/quota');
     console.log('✅ Quota détaillé récupéré:', res.data);
-    
     return res.data;
   } catch (error: any) {
     console.error('❌ Erreur récupération quota détaillé:', error);
-    
-    // Quota de fallback en cas d'erreur
-    const fallbackQuota: DetailedQuotaResponse = {
+    return {
       success: false,
       error: error?.message || 'Erreur quota',
       quota: {
         used_analyses: 0,
         remaining_analyses: 10,
         daily_limit: 10,
-        reset_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        current_date: new Date().toISOString().split('T')[0]
+        reset_time: new Date(Date.now() + 86400000).toISOString(),
+        current_date: new Date().toISOString().split('T')[0],
       }
     };
-    
-    return fallbackQuota;
   }
 };
 
-// ➕ FONCTION RAFRAÎCHISSEMENT QUOTA
 const refreshQuotaAfterAnalysis = async (): Promise<DetailedQuotaResponse> => {
-  // Petite pause pour laisser le backend mettre à jour
   await new Promise(resolve => setTimeout(resolve, 500));
   return fetchUserQuota();
 };
 
-// ➕ FONCTION VÉRIFICATION QUOTA
 const canUserAnalyze = async (): Promise<boolean> => {
   try {
     const quotaResponse = await fetchUserQuota();
     return quotaResponse.success && quotaResponse.quota.remaining_analyses > 0;
   } catch {
-    return true; // En cas d'erreur, on autorise (mode dégradé)
+    return true;
   }
 };
 
@@ -299,20 +290,15 @@ function adaptBackendToFrontend(p: BackendProduct): Product {
 
 const fetchRealProducts = async (searchQuery: string = ''): Promise<Product[]> => {
   try {
-    console.log('🔍 Recherche produits:', searchQuery ? `"${searchQuery}"` : 'tous les produits');
-    
+    console.log('🔍 Recherche produits:', searchQuery || 'tous les produits');
+
     const url = searchQuery
       ? `/api/products/search?q=${encodeURIComponent(searchQuery)}`
-      : '/api/products';
-    
+      : `/api/products`;
+
     const res = await apiClient.get(url);
-    console.log('📦 Réponse API produits:', res.data);
-    
     const data = Array.isArray(res.data) ? res.data : res.data.products || [];
-    const products = data.map(adaptBackendToFrontend);
-    
-    console.log(`✅ ${products.length} produits traités`);
-    return products;
+    return data.map(adaptBackendToFrontend);
   } catch (error) {
     console.error('❌ Erreur fetchRealProducts:', error);
     return [];
@@ -322,12 +308,8 @@ const fetchRealProducts = async (searchQuery: string = ''): Promise<Product[]> =
 const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
   try {
     console.log('🔍 Recherche produit par slug:', slug);
-    
     const res = await apiClient.get(`/api/products/${slug}`);
-    const product = adaptBackendToFrontend(res.data);
-    
-    console.log('✅ Produit trouvé:', product);
-    return product;
+    return adaptBackendToFrontend(res.data);
   } catch (err) {
     console.warn('⚠️ Produit non trouvé:', slug);
     return null;
@@ -335,31 +317,21 @@ const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
 };
 
 // ==============================
-// EXPORTS EXPLICITES - SOLUTION AU PROBLÈME
+// EXPORTS
 // ==============================
 
 export {
-  // Fonctions d'analyse
   analyzeAuto,
-  
-  // Fonctions de chat
   chatWithAI,
-  
-  // Fonctions de quota
   getUserQuota,
   fetchUserQuota,
   refreshQuotaAfterAnalysis,
   canUserAnalyze,
-  
-  // Fonctions de tracking
   trackAffiliateClick,
-  
-  // Fonctions de produits - LES IMPORTANTES POUR HOMEPAGE
   fetchRealProducts,
   fetchProductBySlug
 };
 
-// Export par défaut pour compatibilité
 export default {
   analyzeAuto,
   chatWithAI,
@@ -371,3 +343,4 @@ export default {
   fetchRealProducts,
   fetchProductBySlug
 };
+// EOF
