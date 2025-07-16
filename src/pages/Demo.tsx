@@ -1,7 +1,6 @@
 // PATH: frontend/src/pages/Demo.tsx
 import React, { useState } from 'react';
 import { useQuickNovaTest } from '../hooks/useNovaApi';
-import * as realApi from '../api/realApi';
 import NovaResults from '../components/NovaResults';
 
 interface DemoProduct {
@@ -66,7 +65,6 @@ const demoProducts: DemoProduct[] = [
 
 const Demo: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<DemoProduct | null>(null);
-  const [quotaInfo, setQuotaInfo] = useState<any>(null);
   const { data, loading, error, analyzeProduct, reset } = useQuickNovaTest();
 
   const handleProductTest = async (product: DemoProduct) => {
@@ -74,23 +72,10 @@ const Demo: React.FC = () => {
     await analyzeProduct(product.name, product.ingredients);
   };
 
-  const handleCheckQuota = async () => {
-    try {
-      const quota = await realApi.fetchUserQuota();
-      setQuotaInfo(quota);
-    } catch (err) {
-      console.error('Erreur quota:', err);
-    }
-  };
-
   const handleReset = () => {
     setSelectedProduct(null);
     reset();
   };
-
-  React.useEffect(() => {
-    handleCheckQuota();
-  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -104,21 +89,13 @@ const Demo: React.FC = () => {
             Intelligence Artificielle de Classification NOVA
           </p>
           
-          {/* Info quota */}
-          {quotaInfo && (
-            <div className="inline-flex items-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
-              <span className="text-blue-600 mr-2">📊</span>
-              <span className="text-blue-800">
-                Analyses restantes: <strong>{quotaInfo.quota?.remaining_analyses || 'N/A'}</strong>
-              </span>
-              <button 
-                onClick={handleCheckQuota}
-                className="ml-3 text-blue-600 hover:text-blue-800 underline"
-              >
-                Actualiser
-              </button>
-            </div>
-          )}
+          {/* Info quota simulée */}
+          <div className="inline-flex items-center bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+            <span className="text-blue-600 mr-2">📊</span>
+            <span className="text-blue-800">
+              Mode démonstration - <strong>Analyses illimitées</strong>
+            </span>
+          </div>
         </div>
 
         {/* Produits de démonstration */}
@@ -262,9 +239,7 @@ const Demo: React.FC = () => {
           
           <p className="text-gray-600">
             ECOLOJIA • Intelligence Artificielle de Classification Nutritionnelle • 
-            <a href="https://ecolojia-backend-working.onrender.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
-              API Backend
-            </a>
+            <span className="text-green-600 ml-1">Mode Démonstration</span>
           </p>
         </div>
       </div>
