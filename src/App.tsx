@@ -1,7 +1,7 @@
 // PATH: frontend/src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Home from './pages/Home';
+import HomePage from './pages/HomePage';
 import Scan from './pages/Scan';
 import Results from './pages/Results';
 import Demo from './pages/Demo';
@@ -64,7 +64,7 @@ function App() {
           {/* Contenu principal */}
           <main>
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/scan" element={<Scan />} />
               <Route path="/results" element={<Results />} />
               <Route path="/demo" element={<Demo />} />
