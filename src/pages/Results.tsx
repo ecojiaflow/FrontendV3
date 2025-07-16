@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useQuickNovaTest } from '../hooks/useNovaApi';
 import NovaResults from '../components/NovaResults';
 import { useNavigate } from 'react-router-dom';
+import HomePage from './HomePage';
 
 const Results: React.FC = () => {
   const [inputText, setInputText] = useState('');
@@ -51,19 +52,21 @@ const Results: React.FC = () => {
               🔬 Analyse NOVA - Intelligence Artificielle
             </h1>
             {data && (
-              <button
-                onClick={handleReset}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Nouvelle analyse
-              </button>
-              
-              <button
-                onClick={() => navigate('/demo')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Voir la démo
-              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleReset}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Nouvelle analyse
+                </button>
+                
+                <button
+                  onClick={() => navigate('/demo')}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Voir la démo
+                </button>
+              </div>
             )}
           </div>
           

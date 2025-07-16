@@ -14,6 +14,25 @@ const Scan: React.FC = () => {
           <p className="text-xl text-gray-600 mb-8">
             Fonctionnalité en cours de développement
           </p>
+          <p className="text-gray-700 mb-8 max-w-2xl mx-auto">
+            Le scanner de codes-barres et la reconnaissance OCR d'étiquettes 
+            seront bientôt disponibles pour analyser vos produits en temps réel.
+          </p>
+          
+          <div className="space-y-4 mb-8">
+            <div className="flex items-center justify-center text-gray-600">
+              <span className="mr-3">📸</span>
+              <span>Reconnaissance de codes-barres</span>
+            </div>
+            <div className="flex items-center justify-center text-gray-600">
+              <span className="mr-3">🔍</span>
+              <span>OCR d'étiquettes produits</span>
+            </div>
+            <div className="flex items-center justify-center text-gray-600">
+              <span className="mr-3">📱</span>
+              <span>Application PWA installable</span>
+            </div>
+          </div>
           
           <div className="flex flex-wrap justify-center gap-4">
             <Link 
@@ -36,82 +55,3 @@ const Scan: React.FC = () => {
 };
 
 export default Scan;
-
-// PATH: frontend/src/components/LoadingSpinner.tsx
-import React from 'react';
-
-interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
-}
-
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
-  size = 'md', 
-  className = '' 
-}) => {
-  const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12'
-  };
-
-  return (
-    <div className={`animate-spin rounded-full border-b-2 border-green-500 ${sizeClasses[size]} ${className}`}></div>
-  );
-};
-
-export default LoadingSpinner;
-
-// PATH: frontend/src/components/ErrorBoundary.tsx
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-
-interface Props {
-  children: ReactNode;
-}
-
-interface State {
-  hasError: boolean;
-  error?: Error;
-}
-
-class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false
-  };
-
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-  }
-
-  public render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8 text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Oups ! Une erreur est survenue
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Une erreur inattendue s'est produite. Veuillez recharger la page.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              Recharger la page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-export default ErrorBoundary;
