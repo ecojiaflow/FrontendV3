@@ -5,8 +5,8 @@ import { Leaf, Search, X, ChevronDown, Filter, Grid, List } from 'lucide-react';
 
 import ProductHit from '../components/ProductHit';
 import ScanFloatingButton from '../components/ScanFloatingButton';
-// Correction de l'import - utiliser la fonction disponible dans realApi
-import { fetchRealProducts as fetchProducts } from '../api/realApi';
+// Correction de l'import
+import { fetchRealProducts } from '../api/realApi';
 
 // Interface Product simplifiée
 interface Product {
@@ -153,8 +153,7 @@ const HomePage: React.FC = () => {
       setIsSearching(true);
       const startTime = Date.now();
       
-      // Utiliser la fonction disponible dans realApi
-      const backendResults = await fetchProducts('');
+      const backendResults = await fetchRealProducts('');
       const results = backendResults.map(adaptBackendProduct);
       
       const processingTime = Date.now() - startTime;
@@ -190,7 +189,7 @@ const HomePage: React.FC = () => {
       setIsSearching(true);
       const startTime = Date.now();
       
-      const backendResults = await fetchProducts(searchQuery);
+      const backendResults = await fetchRealProducts(searchQuery);
       const results = backendResults.map(adaptBackendProduct);
       
       const processingTime = Date.now() - startTime;
@@ -297,7 +296,6 @@ const HomePage: React.FC = () => {
   // Fonction pour enrichir la base de données
   const handleEnrichRequest = async (searchQuery: string) => {
     try {
-      // Note: Ajuster l'URL API selon votre configuration
       const apiUrl = import.meta.env.VITE_API_URL || 'https://ecolojia-backend-working.onrender.com';
       const response = await fetch(`${apiUrl}/api/suggest`, {
         method: 'POST',
@@ -433,13 +431,7 @@ const HomePage: React.FC = () => {
             </div>
           )}
         </div>
-      {/* Bouton scanner flottant PWA */}
-      <ScanFloatingButton />
-    </div>
-  );
-};
-
-export default HomePage;
+      </section>
 
       {/* RÉSULTATS */}
       <section id="results-section" className="py-16 bg-white">
@@ -693,3 +685,11 @@ export default HomePage;
           )}
         </div>
       </section>
+
+      {/* Bouton scanner flottant PWA */}
+      <ScanFloatingButton />
+    </div>
+  );
+};
+
+export default HomePage;
