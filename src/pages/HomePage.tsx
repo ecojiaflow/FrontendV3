@@ -1,30 +1,51 @@
+// PATH: frontend/src/pages/HomePage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Leaf, Search, X, ChevronDown, Filter, Grid, List } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 import ProductHit from '../components/ProductHit';
 import ScanFloatingButton from '../components/ScanFloatingButton';
-import { fetchRealProducts } from '../api/realApi';
-import { Product } from '../types';
-import { SEOHead } from '../components/SEOHead';
-import { useSEO } from '../hooks/useSEO';
-import { usePerformanceMonitoring } from '../utils/performance';
+// Correction de l'import - utiliser la fonction disponible dans realApi
+import { fetchRealProducts as fetchProducts } from '../api/realApi';
+
+// Interface Product simplifiée
+interface Product {
+  id: string;
+  nameKey: string;
+  brandKey?: string;
+  descriptionKey: string;
+  ethicalScore: number;
+  category: string;
+  price: number;
+  currency: string;
+  image: string;
+  tagsKeys: string[];
+  verified: boolean;
+  affiliateLink: string;
+  certificationsKeys: string[];
+  aiConfidence: number;
+  zonesDisponibles: string[];
+  slug: string;
+  resumeFr?: string;
+  confidencePct?: number;
+  confidenceColor?: string;
+  verifiedStatus?: string;
+}
 
 // Composant NoResultsFound
 const NoResultsFound: React.FC<{ query: string; onEnrichRequest: (query: string) => void }> = ({ query, onEnrichRequest }) => {
   return (
     <div className="text-center py-12">
       <div className="text-6xl mb-4">🔍</div>
-      <h3 className="text-xl font-semibold text-eco-text mb-2">
+      <h3 className="text-xl font-semibold text-gray-800 mb-2">
         Aucun produit trouvé pour "{query}"
       </h3>
-      <p className="text-eco-text/70 mb-4">
+      <p className="text-gray-600 mb-4">
         Essayez d'autres termes de recherche ou explorez nos catégories
       </p>
       <button
         onClick={() => onEnrichRequest(query)}
-        className="px-6 py-2 bg-eco-leaf text-white rounded-lg hover:bg-eco-leaf/90 transition-colors"
+        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
       >
         Suggérer ce produit à notre équipe
       </button>
@@ -33,10 +54,8 @@ const NoResultsFound: React.FC<{ query: string; onEnrichRequest: (query: string)
 };
 
 const HomePage: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { recordSearch } = usePerformanceMonitoring();
   
   // États de recherche
   const [allResults, setAllResults] = useState<Product[]>([]);
@@ -95,18 +114,31 @@ const HomePage: React.FC = () => {
     return `product-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }, []);
 
-  // SEO dynamique
-  useSEO({
-    title: currentQuery 
-      ? `"${currentQuery}" - Produits éco-responsables | Ecolojia`
-      : 'Ecolojia - Trouvez des produits éco-responsables et durables',
-    description: currentQuery
-      ? `Découvrez ${searchStats.nbHits} produits éco-responsables pour "${currentQuery}". Scores écologiques vérifiés par IA.`
-      : 'Découvrez des milliers de produits éthiques avec des scores écologiques vérifiés par IA. Shampoing bio, vêtements éthiques, alimentation durable.',
-    keywords: currentQuery
-      ? `${currentQuery}, produits écologiques, bio, éthique, développement durable`
-      : 'produits écologiques, bio, éthique, développement durable, score écologique, IA'
-  });
+  // Fonction pour adapter les données du backend
+  const adaptBackendProduct = (p: any): Product => {
+    return {
+      id: p.id || `product-${Date.now()}`,
+      nameKey: p.title || p.nameKey || 'Produit inconnu',
+      brandKey: p.brand || p.brandKey || '',
+      descriptionKey: p.description || p.descriptionKey || p.resume_fr || '',
+      ethicalScore: parseFloat(p.eco_score) || p.ethicalScore || 0,
+      category: p.category || 'inconnu',
+      price: p.prices?.default || p.price || 0,
+      currency: 'EUR',
+      image: p.image_url || p.image || 'https://via.assets.so/img.jpg?w=300&h=200&tc=gray&bg=%23f3f4f6',
+      tagsKeys: p.tags || p.tagsKeys || [],
+      verified: p.verified_status === 'verified' || p.verified_status === 'ai_verified' || p.verified || false,
+      affiliateLink: p.affiliateLink || '',
+      certificationsKeys: p.certificationsKeys || [],
+      aiConfidence: parseFloat(p.ai_confidence) || p.aiConfidence || 0,
+      zonesDisponibles: p.zones_dispo || p.zonesDisponibles || ['FR'],
+      slug: p.slug || generateSecureSlug(p),
+      resumeFr: p.resume_fr,
+      confidencePct: p.confidence_pct,
+      confidenceColor: p.confidence_color,
+      verifiedStatus: p.verified_status,
+    };
+  };
 
   // Fonction pour paginer les résultats côté client
   const paginateResults = (results: Product[], page: number) => {
@@ -120,7 +152,11 @@ const HomePage: React.FC = () => {
     try {
       setIsSearching(true);
       const startTime = Date.now();
-      const results = await fetchRealProducts('');
+      
+      // Utiliser la fonction disponible dans realApi
+      const backendResults = await fetchProducts('');
+      const results = backendResults.map(adaptBackendProduct);
+      
       const processingTime = Date.now() - startTime;
       
       setAllResults(results);
@@ -133,12 +169,48 @@ const HomePage: React.FC = () => {
         processingTimeMS: processingTime 
       });
 
-      recordSearch('', results.length, processingTime);
     } catch (error) {
       console.error('Erreur chargement initial:', error);
       setAllResults([]);
       setSearchResults([]);
       setOriginalResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Fonction de recherche
+  const performSearch = async (searchQuery: string, page: number = 0) => {
+    if (searchQuery.length === 0) {
+      loadInitialProducts();
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const startTime = Date.now();
+      
+      const backendResults = await fetchProducts(searchQuery);
+      const results = backendResults.map(adaptBackendProduct);
+      
+      const processingTime = Date.now() - startTime;
+      
+      setAllResults(results);
+      setSearchResults(paginateResults(results, page));
+      setOriginalResults(results);
+      setTotalPages(Math.ceil(results.length / hitsPerPage));
+      setCurrentPage(page);
+      setSearchStats({ 
+        nbHits: results.length, 
+        processingTimeMS: processingTime 
+      });
+      
+    } catch (error) {
+      console.error('Erreur recherche:', error);
+      setAllResults([]);
+      setSearchResults([]);
+      setOriginalResults([]);
+      setSearchStats({ nbHits: 0, processingTimeMS: 0 });
     } finally {
       setIsSearching(false);
     }
@@ -165,42 +237,6 @@ const HomePage: React.FC = () => {
       loadInitialProducts();
     }
   }, [searchParams]);
-
-  // Fonction de recherche
-  const performSearch = async (searchQuery: string, page: number = 0) => {
-    if (searchQuery.length === 0) {
-      loadInitialProducts();
-      return;
-    }
-
-    try {
-      setIsSearching(true);
-      const startTime = Date.now();
-      const results = await fetchRealProducts(searchQuery);
-      const processingTime = Date.now() - startTime;
-      
-      setAllResults(results);
-      setSearchResults(paginateResults(results, page));
-      setOriginalResults(results);
-      setTotalPages(Math.ceil(results.length / hitsPerPage));
-      setCurrentPage(page);
-      setSearchStats({ 
-        nbHits: results.length, 
-        processingTimeMS: processingTime 
-      });
-
-      recordSearch(searchQuery, results.length, processingTime);
-      
-    } catch (error) {
-      console.error('Erreur recherche:', error);
-      setAllResults([]);
-      setSearchResults([]);
-      setOriginalResults([]);
-      setSearchStats({ nbHits: 0, processingTimeMS: 0 });
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   // Navigation fluide vers les résultats
   const scrollToResults = () => {
@@ -261,7 +297,9 @@ const HomePage: React.FC = () => {
   // Fonction pour enrichir la base de données
   const handleEnrichRequest = async (searchQuery: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/suggest`, {
+      // Note: Ajuster l'URL API selon votre configuration
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://ecolojia-backend-working.onrender.com';
+      const response = await fetch(`${apiUrl}/api/suggest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,35 +354,19 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SEOHead
-        title={currentQuery 
-          ? `"${currentQuery}" - Produits éco-responsables | Ecolojia`
-          : undefined}
-        description={currentQuery
-          ? `Découvrez ${searchStats.nbHits} produits éco-responsables pour "${currentQuery}". Scores écologiques vérifiés par IA.`
-          : undefined}
-        keywords={currentQuery
-          ? `${currentQuery}, produits écologiques, bio, éthique`
-          : undefined}
-      />
-
       {/* Section Hero */}
-      <section className="bg-eco-gradient py-16 md:py-24">
+      <section className="bg-gradient-to-br from-green-50 to-blue-50 py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex justify-center mb-8">
-            <Leaf className="h-16 w-16 text-eco-leaf animate-pulse" />
+            <Leaf className="h-16 w-16 text-green-500 animate-pulse" />
           </div>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-eco-text mb-6">
-            {t('homepage.hero.title') === 'Find <highlight>eco-friendly</highlight> products' ? (
-              <>Find <span className="text-eco-leaf">eco-friendly</span> products</>
-            ) : (
-              <><span className="text-eco-leaf">Trouvez</span> des produits <span className="text-eco-leaf">éco-responsables</span></>
-            )}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-6">
+            Trouvez des produits <span className="text-green-500">éco-responsables</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-eco-text/80 max-w-3xl mx-auto mb-12">
-            {t('homepage.hero.subtitle')}
+          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-12">
+            Découvrez des milliers de produits éthiques avec des scores écologiques vérifiés par IA
           </p>
 
           {/* Barre de recherche */}
@@ -354,16 +376,16 @@ const HomePage: React.FC = () => {
                 type="text"
                 value={currentQuery}
                 onChange={handleInputChange}
-                placeholder={t('common.searchPlaceholder') || 'Rechercher shampoing bio, jean éthique, miel local...'}
-                className="w-full py-4 px-12 pr-16 border-2 border-eco-text/10 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30 focus:border-eco-leaf/50 transition-all text-eco-text placeholder-eco-text/50 bg-white/95 backdrop-blur"
+                placeholder="Rechercher shampoing bio, jean éthique, miel local..."
+                className="w-full py-4 px-12 pr-16 border-2 border-gray-200 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-gray-800 placeholder-gray-500 bg-white"
                 autoComplete="off"
               />
               
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-eco-text/50" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               
               {isSearching && (
                 <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
-                  <div className="w-4 h-4 border-2 border-eco-leaf/30 border-t-eco-leaf rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-green-300 border-t-green-500 rounded-full animate-spin"></div>
                 </div>
               )}
               
@@ -371,9 +393,9 @@ const HomePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 hover:bg-eco-text/10 rounded-full transition-colors"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
-                  <X className="h-4 w-4 text-eco-text/50 hover:text-eco-text" />
+                  <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                 </button>
               )}
             </div>
@@ -381,9 +403,9 @@ const HomePage: React.FC = () => {
             {/* Indicateurs de recherche */}
             {currentQuery && currentQuery.length >= 2 && (
               <div className="mt-4 flex justify-center">
-                <div className="inline-flex items-center gap-2 text-sm text-eco-leaf bg-eco-leaf/10 px-3 py-1 rounded-full">
-                  <div className="w-2 h-2 bg-eco-leaf rounded-full animate-pulse"></div>
-                  {t('common.searchingAlgolia') || 'Recherche en cours...'}
+                <div className="inline-flex items-center gap-2 text-sm text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  Recherche en cours...
                 </div>
               </div>
             )}
@@ -393,9 +415,9 @@ const HomePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={scrollToResults}
-                  className="inline-flex items-center gap-2 text-eco-text/70 hover:text-eco-text transition-all group hover:scale-105"
+                  className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-all group hover:scale-105"
                 >
-                  <span>{t('common.discoverProducts') || 'Découvrir nos produits'}</span>
+                  <span>Découvrir nos produits</span>
                   <ChevronDown className="h-4 w-4 group-hover:translate-y-1 transition-transform" />
                 </button>
               </div>
@@ -403,7 +425,7 @@ const HomePage: React.FC = () => {
           </form>
 
           {hasSearched && !isSearching && searchStats.nbHits > 0 && (
-            <div className="text-eco-text/60 text-sm">
+            <div className="text-gray-500 text-sm">
               {searchStats.nbHits === 1 
                 ? `1 résultat trouvé en ${searchStats.processingTimeMS}ms`
                 : `${searchStats.nbHits} résultats trouvés en ${searchStats.processingTimeMS}ms`
@@ -411,7 +433,13 @@ const HomePage: React.FC = () => {
             </div>
           )}
         </div>
-      </section>
+      {/* Bouton scanner flottant PWA */}
+      <ScanFloatingButton />
+    </div>
+  );
+};
+
+export default HomePage;
 
       {/* RÉSULTATS */}
       <section id="results-section" className="py-16 bg-white">
@@ -419,20 +447,20 @@ const HomePage: React.FC = () => {
           {/* Header résultats */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-eco-text mb-2">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
                 {currentQuery ? `Résultats pour "${currentQuery}"` : 'Produits éco-responsables'}
               </h2>
-              <p className="text-eco-text/70">
+              <p className="text-gray-600">
                 {searchStats.nbHits === 1 ? 
                   `1 produit trouvé` :
                   `${searchStats.nbHits} produits trouvés`
                 }
                 {hasSearched ? ` correspondant à votre recherche` : ` disponibles`}
                 {hasActiveFilters && (
-                  <span className="text-eco-leaf"> ({searchStats.nbHits > 1 ? 'filtrés' : 'filtré'})</span>
+                  <span className="text-green-500"> ({searchStats.nbHits > 1 ? 'filtrés' : 'filtré'})</span>
                 )}
                 {totalPages > 1 && (
-                  <span className="text-eco-text/50"> • Page {currentPage + 1} sur {totalPages}</span>
+                  <span className="text-gray-400"> • Page {currentPage + 1} sur {totalPages}</span>
                 )}
               </p>
             </div>
@@ -443,25 +471,25 @@ const HomePage: React.FC = () => {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
                   hasActiveFilters 
-                    ? 'border-eco-leaf bg-eco-leaf/10 text-eco-leaf' 
-                    : 'border-eco-leaf/20 hover:bg-eco-leaf/10'
+                    ? 'border-green-500 bg-green-50 text-green-600' 
+                    : 'border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 <Filter className="h-4 w-4" />
-                {t('common.filters') || 'Filtres'}
+                Filtres
                 {hasActiveFilters && (
-                  <span className="bg-eco-leaf text-white text-xs px-1.5 py-0.5 rounded-full">
+                  <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
                     {[filters.ecoScore, filters.zone, filters.confidence].filter(Boolean).length}
                   </span>
                 )}
               </button>
-              <div className="flex border border-eco-leaf/20 rounded-lg overflow-hidden">
+              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
                 <button onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-eco-leaf text-white' : 'hover:bg-eco-leaf/10'}`}>
+                  className={`p-2 ${viewMode === 'grid' ? 'bg-green-500 text-white' : 'hover:bg-gray-50'}`}>
                   <Grid className="h-4 w-4" />
                 </button>
                 <button onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-eco-leaf text-white' : 'hover:bg-eco-leaf/10'}`}>
+                  className={`p-2 ${viewMode === 'list' ? 'bg-green-500 text-white' : 'hover:bg-gray-50'}`}>
                   <List className="h-4 w-4" />
                 </button>
               </div>
@@ -470,58 +498,58 @@ const HomePage: React.FC = () => {
 
           {/* Panneau de filtres */}
           {showFilters && (
-            <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-eco-leaf/10 animate-fade-in">
-              <h3 className="text-lg font-semibold text-eco-text mb-4">{t('common.filterResults') || 'Filtrer les résultats'}</h3>
+            <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Filtrer les résultats</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
                 {/* Filtre par score écologique */}
                 <div>
-                  <label className="block text-sm font-medium text-eco-text mb-2">
-                    {t('common.ecoScoreMin') || 'Score écologique minimum'}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Score écologique minimum
                   </label>
                   <select 
                     value={filters.ecoScore}
                     onChange={(e) => setFilters({...filters, ecoScore: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="">{t('common.allScores') || 'Tous les scores'}</option>
-                    <option value="0.8">{t('common.excellent') || 'Excellent (80%+)'}</option>
-                    <option value="0.6">{t('common.veryGood') || 'Très bon (60%+)'}</option>
-                    <option value="0.4">{t('common.good') || 'Bon (40%+)'}</option>
+                    <option value="">Tous les scores</option>
+                    <option value="0.8">Excellent (80%+)</option>
+                    <option value="0.6">Très bon (60%+)</option>
+                    <option value="0.4">Bon (40%+)</option>
                   </select>
                 </div>
 
                 {/* Filtre par zone */}
                 <div>
-                  <label className="block text-sm font-medium text-eco-text mb-2">
-                    {t('common.availabilityZone') || 'Zone de disponibilité'}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Zone de disponibilité
                   </label>
                   <select 
                     value={filters.zone}
                     onChange={(e) => setFilters({...filters, zone: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="">{t('common.allZones') || 'Toutes les zones'}</option>
-                    <option value="FR">{t('common.france') || 'France'}</option>
-                    <option value="EU">{t('common.europe') || 'Europe'}</option>
-                    <option value="US">{t('common.usa') || 'États-Unis'}</option>
+                    <option value="">Toutes les zones</option>
+                    <option value="FR">France</option>
+                    <option value="EU">Europe</option>
+                    <option value="US">États-Unis</option>
                   </select>
                 </div>
 
                 {/* Filtre par confiance IA */}
                 <div>
-                  <label className="block text-sm font-medium text-eco-text mb-2">
-                    {t('common.aiConfidence') || 'Confiance IA'}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confiance IA
                   </label>
                   <select 
                     value={filters.confidence}
                     onChange={(e) => setFilters({...filters, confidence: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eco-leaf/30"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="">{t('common.allLevels') || 'Tous les niveaux'}</option>
-                    <option value="0.8">{t('common.certified') || 'Certifié (80%+)'}</option>
-                    <option value="0.6">{t('common.validated') || 'Validé (60%+)'}</option>
-                    <option value="0.4">{t('common.analyzing') || 'En analyse (40%+)'}</option>
+                    <option value="">Tous les niveaux</option>
+                    <option value="0.8">Certifié (80%+)</option>
+                    <option value="0.6">Validé (60%+)</option>
+                    <option value="0.4">En analyse (40%+)</option>
                   </select>
                 </div>
               </div>
@@ -532,20 +560,20 @@ const HomePage: React.FC = () => {
                   onClick={() => setShowFilters(false)}
                   className="text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  {t('common.hideFilters') || 'Masquer les filtres'}
+                  Masquer les filtres
                 </button>
                 <div className="space-x-3">
                   <button 
                     onClick={resetFilters}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    {t('common.reset') || 'Réinitialiser'}
+                    Réinitialiser
                   </button>
                   <button 
                     onClick={applyFilters}
-                    className="px-4 py-2 bg-eco-leaf text-white rounded-lg hover:bg-eco-leaf/90 transition-colors"
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                   >
-                    {t('common.apply') || 'Appliquer'}
+                    Appliquer
                   </button>
                 </div>
               </div>
@@ -555,8 +583,8 @@ const HomePage: React.FC = () => {
           {/* Contenu principal */}
           {isSearching && searchResults.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-8 h-8 border-2 border-eco-leaf/30 border-t-eco-leaf rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-eco-text/60">{t('common.searchInProgress') || 'Recherche en cours...'}</p>
+              <div className="w-8 h-8 border-2 border-green-300 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Recherche en cours...</p>
             </div>
           ) : searchResults.length > 0 ? (
             <>
@@ -616,7 +644,7 @@ const HomePage: React.FC = () => {
                   <button
                     onClick={() => handlePageChange(Math.max(0, currentPage - 1))}
                     disabled={currentPage === 0}
-                    className="px-4 py-2 border border-eco-leaf/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-eco-leaf/10 transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
                   >
                     Précédent
                   </button>
@@ -630,8 +658,8 @@ const HomePage: React.FC = () => {
                           onClick={() => handlePageChange(pageNum)}
                           className={`px-3 py-2 rounded-lg transition-colors ${
                             pageNum === currentPage
-                              ? 'bg-eco-leaf text-white'
-                              : 'border border-eco-leaf/20 hover:bg-eco-leaf/10'
+                              ? 'bg-green-500 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           {pageNum + 1}
@@ -643,7 +671,7 @@ const HomePage: React.FC = () => {
                   <button
                     onClick={() => handlePageChange(Math.min(totalPages - 1, currentPage + 1))}
                     disabled={currentPage >= totalPages - 1}
-                    className="px-4 py-2 border border-eco-leaf/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-eco-leaf/10 transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
                   >
                     Suivant
                   </button>
@@ -654,22 +682,14 @@ const HomePage: React.FC = () => {
             <NoResultsFound query={currentQuery} onEnrichRequest={handleEnrichRequest} />
           ) : (
             <div className="text-center py-12">
-              <Leaf className="h-16 w-16 text-eco-leaf/30 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-eco-text mb-2">
+              <Leaf className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
                 Aucun produit disponible
               </h3>
-              <p className="text-eco-text/70">
+              <p className="text-gray-600">
                 Revenez plus tard pour découvrir nos produits éco-responsables
               </p>
             </div>
           )}
         </div>
       </section>
-
-      {/* Bouton scanner flottant PWA */}
-      <ScanFloatingButton />
-    </div>
-  );
-};
-
-export default HomePage;
