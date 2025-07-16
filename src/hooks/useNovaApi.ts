@@ -1,13 +1,5 @@
 // PATH: frontend/src/hooks/useNovaApi.ts
-// Hook universel pour appeler l’API NOVA (alimentaire) ET les futures
-// catégories (cosmetics, detergents).  ➜ Export NOMMÉ **et** export par défaut
-// -----------------------------------------------------------------------------
-
 import { useState, useCallback } from 'react';
-
-/* -------------------------------------------------------------------------- */
-/*                                   TYPES                                    */
-/* -------------------------------------------------------------------------- */
 
 export interface AnalysisRequest {
   title: string;
@@ -21,32 +13,24 @@ interface NovaApiState<T = any> {
   loading: boolean;
   error: string | null;
   result: T | null;
-  /** Lance l’analyse IA */
   analyze: (payload: AnalysisRequest) => Promise<void>;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              HOOK PRINCIPAL                               */
-/* -------------------------------------------------------------------------- */
-
 export function useNovaApi(): NovaApiState {
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [result, setResult]     = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [result, setResult]   = useState<any | null>(null);
 
-  /** Envoi la requête d’analyse à l’API ou mock fallback */
   const analyze = useCallback(async (payload: AnalysisRequest) => {
     try {
       setLoading(true);
       setError(null);
       setResult(null);
 
-      /* ------------------------------ Endpoint ------------------------------ */
       const API_URL =
         import.meta.env.VITE_API_URL ??
         'https://ecolojia-backend-working.onrender.com/api/analyze/auto';
 
-      /* ----------------------------- Requête ------------------------------ */
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,8 +56,31 @@ export function useNovaApi(): NovaApiState {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                    EXPORT PAR DÉFAUT (compatibilité V1)                    */
+/* ✅ FONCTION MOCK pour compatibilité avec Results.tsx                        */
 /* -------------------------------------------------------------------------- */
+
+export function useQuickNovaTest() {
+  return async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return {
+      success: true,
+      detected_type: 'food',
+      category: 'Alimentaire',
+      analysis: {
+        overall_score: 73,
+        transformation: 42,
+        additives: ['E250', 'E202'],
+      },
+      metadata: {
+        mock: true,
+        confidence: 0.91,
+        source: 'mock-local',
+        timestamp: new Date().toISOString(),
+      },
+    };
+  };
+}
 
 export default useNovaApi;
 // EOF
