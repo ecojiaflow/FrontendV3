@@ -12,7 +12,7 @@ const detectBestEndpoint = async (): Promise<string> => {
   // 1. Essayer production
   try {
     // 🔧 FIX: Utiliser /health au lieu de /api/health
-    const response = await fetch(`${API_ENDPOINTS.production}/health`, { 
+    const response = await fetch(`${API_ENDPOINTS.production}/api/health`, { 
       method: 'GET',
       signal: AbortSignal.timeout(3000) // 3s max
     });
