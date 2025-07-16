@@ -7,10 +7,12 @@ interface UseNovaApiState {
   data: NovaAdaptedResult | null;
   loading: boolean;
   error: string | null;
+  retryCount: number;
 }
 
 interface UseNovaApiReturn extends UseNovaApiState {
   analyzeProduct: (productName: string, ingredients?: string) => Promise<NovaAdaptedResult | null>;
+  retry: () => Promise<NovaAdaptedResult | null>;
   reset: () => void;
 }
 
@@ -19,17 +21,31 @@ export function useNovaApi(): UseNovaApiReturn {
     data: null,
     loading: false,
     error: null,
+    retryCount: 0,
   });
 
-  const analyzeProduct = useCallback(async (
+  const [lastRequest, setLastRequest] = useState<{
+    productName: string;
+    ingredients?: string;
+  } | null>(null);
+
+  const executeAnalysis = useCallback(async (
     productName: string, 
-    ingredients?: string
+    ingredients?: string,
+    isRetry: boolean = false
   ): Promise<NovaAdaptedResult | null> => {
     const startTime = Date.now();
-    setState({ data: null, loading: true, error: null });
+    
+    setState(prev => ({ 
+      ...prev, 
+      loading: true, 
+      error: null,
+      retryCount: isRetry ? prev.retryCount + 1 : 0
+    }));
     
     try {
       console.log('🔬 Démarrage analyse NOVA pour:', productName);
+      console.log('📡 API URL:', 'https://ecolojia-backend-working.onrender.com');
       
       const request: AnalyzeRequest = {
         product_name: productName,
@@ -38,6 +54,9 @@ export function useNovaApi(): UseNovaApiReturn {
       };
 
       console.log('📡 Envoi requête à l\'API:', request);
+      
+      // Sauvegarder la requête pour retry
+      setLastRequest({ productName, ingredients });
       
       const apiResponse = await analyzeAuto(request);
       const processingTime = Date.now() - startTime;
@@ -52,11 +71,13 @@ export function useNovaApi(): UseNovaApiReturn {
       
       console.log('🎯 Résultat NOVA adapté:', novaResult);
       
-      setState({ 
+      setState(prev => ({ 
+        ...prev,
         data: novaResult, 
         loading: false, 
-        error: null 
-      });
+        error: null,
+        retryCount: 0
+      }));
       
       return novaResult;
     } catch (error: any) {
@@ -64,42 +85,66 @@ export function useNovaApi(): UseNovaApiReturn {
       
       let errorMessage = 'Erreur lors de l\'analyse du produit';
       
+      // Gestion spécifique des erreurs
       if (error.message === 'QUOTA_EXCEEDED') {
         errorMessage = 'Quota d\'analyses dépassé. Réessayez demain.';
       } else if (error.message === 'LOW_CONFIDENCE') {
         errorMessage = 'Produit non reconnu. Vérifiez les ingrédients saisis.';
       } else if (error.message === 'UNAUTHORIZED') {
         errorMessage = 'Session expirée. Rechargez la page.';
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Problème de connexion réseau. Vérifiez votre connexion internet.';
+      } else if (error.message?.includes('Failed to fetch')) {
+        errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
       } else if (error.response?.status === 503) {
         errorMessage = 'Service temporairement indisponible. Réessayez dans quelques minutes.';
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Trop de requêtes. Attendez quelques minutes.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Erreur serveur. Réessayez dans quelques minutes.';
       } else if (error.message) {
         errorMessage = error.message;
       }
       
-      setState({ 
+      setState(prev => ({ 
+        ...prev,
         data: null, 
         loading: false, 
-        error: errorMessage 
-      });
+        error: errorMessage,
+        retryCount: prev.retryCount + (isRetry ? 1 : 0)
+      }));
       
       return null;
     }
-  }, []);
+  }, [state.retryCount]);
+
+  const analyzeProduct = useCallback((productName: string, ingredients?: string) => {
+    return executeAnalysis(productName, ingredients, false);
+  }, [executeAnalysis]);
+
+  const retry = useCallback(() => {
+    if (lastRequest) {
+      return executeAnalysis(lastRequest.productName, lastRequest.ingredients, true);
+    }
+    return Promise.resolve(null);
+  }, [executeAnalysis, lastRequest]);
 
   const reset = useCallback(() => {
-    setState({ data: null, loading: false, error: null });
+    setState({ data: null, loading: false, error: null, retryCount: 0 });
+    setLastRequest(null);
   }, []);
 
   return {
     ...state,
     analyzeProduct,
+    retry,
     reset,
   };
 }
 
-// Hook spécialisé pour les tests rapides
+// Hook spécialisé pour les tests rapides avec gestion d'erreurs
 export function useQuickNovaTest() {
-  const { analyzeProduct, ...rest } = useNovaApi();
+  const { analyzeProduct, retry, ...rest } = useNovaApi();
 
   const testCocaCola = useCallback(() => {
     return analyzeProduct(
@@ -125,6 +170,7 @@ export function useQuickNovaTest() {
   return {
     ...rest,
     analyzeProduct,
+    retry,
     testCocaCola,
     testNutella,
     testPizzaSurgelee
