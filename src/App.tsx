@@ -1,166 +1,124 @@
-// src/App.tsx - VERSION COMPATIBLE AVEC STRUCTURE EXISTANTE + MULTI-CATÉGORIES + ERRORBOUNDARY
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { Leaf } from 'lucide-react';
-
-// 🔧 FIX: Import de l'ErrorBoundary
+// PATH: frontend/src/App.tsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Home from './pages/Home';
+import Scan from './pages/Scan';
+import Results from './pages/Results';
+import Demo from './pages/Demo';
+import ProductPage from './pages/ProductPage';
 import ErrorBoundary from './components/ErrorBoundary';
-
-// Lazy loading pour éviter les dépendances circulaires
-const HomePage = lazy(() => import('./pages/HomePage'));
-const ProductPage = lazy(() => import('./pages/ProductPage'));
-const MultiCategoriesPage = lazy(() => import('./pages/MultiCategoriesPage'));
-
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
-    <div className="text-center">
-      <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-gray-600 font-medium">Chargement ECOLOJIA...</p>
-    </div>
-  </div>
-);
-
-// Composant de navigation minimaliste qui s'adapte aux pages existantes
-const Navigation: React.FC = () => {
-  const location = useLocation();
-
-  // Ne pas afficher la navigation sur la page d'accueil (HomePage a sa propre navigation)
-  if (location.pathname === '/') return null;
-
-  const navItems = [
-    { path: '/', label: '🏠 Accueil', description: 'Recherche et découverte de produits' },
-    { path: '/multi-categories', label: '🌱 Multi-Catégories', description: 'Tests d\'analyse par catégorie' }
-  ];
-
-  return (
-    <nav className="bg-white shadow-md border-b border-gray-100 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo ECOLOJIA */}
-          <Link 
-            to="/" 
-            className="flex items-center space-x-3 text-xl font-bold text-eco-leaf hover:text-eco-leaf/80 transition-colors"
-          >
-            <Leaf className="h-8 w-8" />
-            <span>ECOLOJIA</span>
-          </Link>
-
-          {/* Navigation items - Desktop */}
-          <div className="hidden md:flex items-center space-x-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                  location.pathname === item.path
-                    ? 'bg-eco-leaf/10 text-eco-leaf shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                }`}
-                title={item.description}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-
-          {/* Mobile menu */}
-          <div className="md:hidden">
-            <Link 
-              to={location.pathname === '/multi-categories' ? '/' : '/multi-categories'}
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-eco-leaf/10 text-eco-leaf hover:bg-eco-leaf/20 transition-colors"
-              title="Basculer entre les pages"
-            >
-              {location.pathname === '/multi-categories' ? '🏠' : '🌱'}
-            </Link>
-          </div>
-        </div>
-
-        {/* Mobile navigation - Collapsible */}
-        <div className="md:hidden border-t border-gray-100 py-3">
-          <div className="flex justify-center space-x-4">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  location.pathname === item.path
-                    ? 'bg-eco-leaf text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-};
-
-const NotFound: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center text-center p-6 bg-gradient-to-br from-red-50 to-orange-50">
-    <div className="max-w-md mx-auto">
-      <div className="text-6xl mb-6">🔍</div>
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">Page Introuvable</h1>
-      <p className="text-gray-600 mb-6">
-        La page que vous recherchez n'existe pas ou a été déplacée.
-      </p>
-      <div className="space-y-3">
-        <Link 
-          to="/" 
-          className="block bg-eco-leaf hover:bg-eco-leaf/90 text-white font-medium py-3 px-6 rounded-xl transition-colors"
-        >
-          🏠 Retour à l'accueil
-        </Link>
-        <Link 
-          to="/multi-categories" 
-          className="block text-eco-leaf hover:text-eco-leaf/80 font-medium py-2 transition-colors"
-        >
-          🌱 Découvrir les analyses multi-catégories
-        </Link>
-      </div>
-    </div>
-  </div>
-);
 
 function App() {
   return (
-    // 🔧 FIX: ErrorBoundary englobe tout l'App
     <ErrorBoundary>
       <Router>
-        <div className="App min-h-screen bg-white">
-          <Navigation />
-          
-          {/* 🔧 FIX: ErrorBoundary spécifique pour le Suspense */}
-          <ErrorBoundary>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                {/* Route principale - HomePage existante */}
-                <Route path="/" element={<HomePage />} />
+        <div className="min-h-screen bg-gray-50">
+          {/* Navigation */}
+          <nav className="bg-white shadow-sm border-b border-gray-200">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center space-x-8">
+                  <Link to="/" className="flex items-center space-x-2">
+                    <span className="text-2xl">🌱</span>
+                    <span className="text-xl font-bold text-green-600">ECOLOJIA</span>
+                  </Link>
+                  
+                  <div className="hidden md:flex items-center space-x-6">
+                    <Link 
+                      to="/" 
+                      className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                    >
+                      Accueil
+                    </Link>
+                    <Link 
+                      to="/scan" 
+                      className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                    >
+                      Scanner
+                    </Link>
+                    <Link 
+                      to="/results" 
+                      className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                    >
+                      Analyse NOVA
+                    </Link>
+                    <Link 
+                      to="/demo" 
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      🔬 Démo IA
+                    </Link>
+                  </div>
+                </div>
                 
-                {/* Routes produits existantes */}
-                <Route path="/product/:slug" element={<ProductPage />} />
+                <div className="flex items-center space-x-4">
+                  <div className="hidden md:flex items-center text-sm text-gray-600">
+                    <span className="mr-2">🤖</span>
+                    <span>IA NOVA active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          {/* Contenu principal */}
+          <main>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/scan" element={<Scan />} />
+              <Route path="/results" element={<Results />} />
+              <Route path="/demo" element={<Demo />} />
+              <Route path="/product/:slug" element={<ProductPage />} />
+            </Routes>
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-white border-t border-gray-200 mt-12">
+            <div className="max-w-6xl mx-auto px-4 py-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <span className="text-2xl">🌱</span>
+                    <span className="text-xl font-bold text-green-600">ECOLOJIA</span>
+                  </div>
+                  <p className="text-gray-600 text-sm">
+                    Intelligence Artificielle pour une consommation responsable et éclairée.
+                  </p>
+                </div>
                 
-                {/* Nouvelle route multi-catégories */}
-                <Route path="/multi-categories" element={<MultiCategoriesPage />} />
+                <div>
+                  <h3 className="font-bold text-gray-800 mb-4">Fonctionnalités</h3>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li>🔬 Classification NOVA automatique</li>
+                    <li>⚗️ Détection d'additifs alimentaires</li>
+                    <li>🎯 Recommandations personnalisées</li>
+                    <li>📚 Sources scientifiques transparentes</li>
+                  </ul>
+                </div>
                 
-                {/* Redirects de compatibilité */}
-                <Route path="/produit/:slug" element={<Navigate to="/product/:slug" replace />} />
-                <Route path="/product" element={<Navigate to="/" replace />} />
-                <Route path="/scan" element={<Navigate to="/" replace />} />
-                <Route path="/analyze" element={<Navigate to="/" replace />} />
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
+                <div>
+                  <h3 className="font-bold text-gray-800 mb-4">Sources</h3>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li>🏥 INSERM 2024</li>
+                    <li>🇪🇺 EFSA (Autorité européenne)</li>
+                    <li>🧪 ANSES</li>
+                    <li>📊 Classification NOVA officielle</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="border-t border-gray-200 mt-8 pt-6 text-center">
+                <p className="text-gray-600 text-sm">
+                  © 2025 ECOLOJIA • Révolution de la consommation responsable
+                </p>
+              </div>
+            </div>
+          </footer>
         </div>
       </Router>
     </ErrorBoundary>
   );
 }
 
-// Export explicite pour éviter tout problème
 export default App;
+// EOF

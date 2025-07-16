@@ -2,10 +2,12 @@
 import React, { useState } from 'react';
 import { useQuickNovaTest } from '../hooks/useNovaApi';
 import NovaResults from '../components/NovaResults';
+import { useNavigate } from 'react-router-dom';
 
 const Results: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [productName, setProductName] = useState('');
+  const navigate = useNavigate();
   const { 
     data, 
     loading, 
@@ -54,6 +56,13 @@ const Results: React.FC = () => {
                 className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 Nouvelle analyse
+              </button>
+              
+              <button
+                onClick={() => navigate('/demo')}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Voir la démo
               </button>
             )}
           </div>
