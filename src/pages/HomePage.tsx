@@ -5,8 +5,8 @@ import { Leaf, Search, X, ChevronDown, Filter, Grid, List } from 'lucide-react';
 
 import ProductHit from '../components/ProductHit';
 import ScanFloatingButton from '../components/ScanFloatingButton';
-// Utiliser l'import nommé disponible
-import { fetchRealProducts } from '../api/realApi';
+// Utiliser l'import destructuré correct
+import { fetchRealProducts, fetchProductBySlug } from '../api/realApi';
 
 // Interface Product simplifiée
 interface Product {
