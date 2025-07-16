@@ -1,7 +1,7 @@
 // PATH: frontend/src/pages/Demo.tsx
 import React, { useState } from 'react';
 import { useQuickNovaTest } from '../hooks/useNovaApi';
-import { fetchUserQuota } from '../api/realApi';
+import * as realApi from '../api/realApi';
 import NovaResults from '../components/NovaResults';
 
 interface DemoProduct {
@@ -76,7 +76,7 @@ const Demo: React.FC = () => {
 
   const handleCheckQuota = async () => {
     try {
-      const quota = await fetchUserQuota();
+      const quota = await realApi.fetchUserQuota();
       setQuotaInfo(quota);
     } catch (err) {
       console.error('Erreur quota:', err);
