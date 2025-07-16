@@ -5,8 +5,8 @@ import { Leaf, Search, X, ChevronDown, Filter, Grid, List } from 'lucide-react';
 
 import ProductHit from '../components/ProductHit';
 import ScanFloatingButton from '../components/ScanFloatingButton';
-// Correction de l'import - utiliser l'export par défaut
-import api from '../api/realApi';
+// Utiliser l'import nommé disponible
+import { fetchRealProducts } from '../api/realApi';
 
 // Interface Product simplifiée
 interface Product {
@@ -153,7 +153,7 @@ const HomePage: React.FC = () => {
       setIsSearching(true);
       const startTime = Date.now();
       
-      const backendResults = await api.fetchRealProducts('');
+      const backendResults = await fetchRealProducts('');
       const results = backendResults.map(adaptBackendProduct);
       
       const processingTime = Date.now() - startTime;
@@ -189,7 +189,7 @@ const HomePage: React.FC = () => {
       setIsSearching(true);
       const startTime = Date.now();
       
-      const backendResults = await api.fetchRealProducts(searchQuery);
+      const backendResults = await fetchRealProducts(searchQuery);
       const results = backendResults.map(adaptBackendProduct);
       
       const processingTime = Date.now() - startTime;
