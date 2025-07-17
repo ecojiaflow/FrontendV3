@@ -89,3 +89,4 @@ export const CategoryAutoDetector: React.FC<CategoryAutoDetectorProps> = ({
 };
 
 export default CategoryAutoDetector;
+// EOF

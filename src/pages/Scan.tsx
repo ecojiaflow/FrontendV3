@@ -1,4 +1,4 @@
-// PATH: frontend/ecolojiaFrontV3/src/pages/Scan.tsx
+//PATH: frontend/ecolojiaFrontV3/src/pages/Scan.tsx
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
@@ -234,4 +234,3 @@ const Scan: React.FC = () => {
 };
 
 export default Scan;
-// EOF

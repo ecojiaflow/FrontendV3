@@ -26,7 +26,6 @@ const HomePage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Rediriger vers la page de démonstration pour le moment
       navigate('/demo');
     }
   };
@@ -40,7 +39,6 @@ const HomePage: React.FC = () => {
     console.log('📱 Code-barres scanné:', barcode);
     setShowScanner(false);
     
-    // Rediriger vers les résultats
     const params = new URLSearchParams({
       barcode,
       method: 'scan'

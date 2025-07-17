@@ -1,3 +1,4 @@
+// PATH: frontend/ecolojiaFrontV3/src/components/scanner/BarcodeScanner.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Camera, RotateCw, Zap } from 'lucide-react';
 
@@ -134,7 +135,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
     scanIntervalRef.current = setInterval(async () => {
       await performNativeScan(barcodeDetector);
-    }, 300); // Augmenté à 300ms pour éviter la détection trop rapide
+    }, 300);
   };
 
   const performNativeScan = async (detector: any) => {
@@ -158,7 +159,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       if (barcodes.length > 0) {
         const code = barcodes[0].rawValue;
         
-        // Validation stricte du code détecté
         if (isValidBarcode(code)) {
           console.log('🎯 Code valide détecté (natif):', code);
           setDetectedCode(code);
@@ -177,7 +177,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
     scanIntervalRef.current = setInterval(async () => {
       await performZXingScan();
-    }, 400); // Plus lent pour ZXing
+    }, 400);
   };
 
   const performZXingScan = async () => {
@@ -216,7 +216,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
       if (result && result.text) {
         const code = result.text;
         
-        // Validation stricte du code détecté
         if (isValidBarcode(code)) {
           console.log('🎯 Code valide détecté (ZXing):', code);
           setDetectedCode(code);
@@ -231,14 +230,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
   };
 
   const handlePotentialSuccess = (code: string) => {
-    // Système de confirmation : il faut détecter le même code 3 fois consécutives
     if (!consecutiveScansRef.current[code]) {
       consecutiveScansRef.current[code] = 1;
     } else {
       consecutiveScansRef.current[code]++;
     }
 
-    // Nettoyer les anciens codes
     Object.keys(consecutiveScansRef.current).forEach(oldCode => {
       if (oldCode !== code) {
         delete consecutiveScansRef.current[oldCode];
@@ -247,7 +244,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
     console.log(`🔄 Code "${code}" détecté ${consecutiveScansRef.current[code]}/3 fois`);
 
-    // Confirmer seulement après 3 détections consécutives
     if (consecutiveScansRef.current[code] >= 3) {
       handleSuccess(code);
     }
@@ -255,7 +251,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 
   const handleSuccess = (code: string) => {
     const now = Date.now();
-    if (now - lastScanTimeRef.current < 3000) return; // Anti-rebond de 3 secondes
+    if (now - lastScanTimeRef.current < 3000) return;
 
     lastScanTimeRef.current = now;
     console.log('✅ CODE FINAL CONFIRMÉ:', code);
@@ -449,3 +445,4 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
 };
 
 export default BarcodeScanner;
+// EOF
