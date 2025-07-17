@@ -1,11 +1,10 @@
-// PATH: src/pages/AdminDashboard.tsx
+// PATH: frontend/ecolojiaFrontV3/src/pages/AdminDashboard.tsx
 import React from 'react';
-import { useAdmin } from '../hooks/useAdmin';
-import { AdminStats } from '../types/admin';
-import StatsCard from '../components/admin/StatsCard';
-import ImportProgress from '../components/admin/ImportProgress';
-import ProductTable from '../components/admin/ProductTable';
-import LogViewer from '../components/admin/LogViewer';
+import useAdmin from '../hooks/useAdmin';
+import StatsCard from '../components/Admin/StatsCard';
+import ImportProgress from '../components/Admin/ImportProgress';
+import ProductTable from '../components/Admin/ProductTable';
+import LogViewer from '../components/Admin/LogViewer';
 import { BarChart3, Database, RefreshCw, Plus, AlertCircle } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
@@ -47,14 +46,12 @@ const AdminDashboard: React.FC = () => {
                 <Database className="h-8 w-8 text-blue-600" />
                 <h1 className="text-2xl font-bold text-gray-900">Admin ECOLOJIA</h1>
               </div>
-              
               {lastUpdate && (
                 <div className="text-sm text-gray-500">
                   Dernière MàJ: {lastUpdate.toLocaleTimeString()}
                 </div>
               )}
             </div>
-
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleRefresh}
@@ -64,7 +61,6 @@ const AdminDashboard: React.FC = () => {
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 <span>Actualiser</span>
               </button>
-
               <button
                 onClick={handleImport}
                 disabled={loading}
@@ -100,7 +96,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Loading state */}
+        {/* Loading */}
         {loading && !stats && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -110,10 +106,10 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Dashboard content */}
+        {/* Dashboard */}
         {stats && (
           <>
-            {/* Cartes statistiques */}
+            {/* Statistiques */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatsCard
                 title="Total Produits"
@@ -122,7 +118,6 @@ const AdminDashboard: React.FC = () => {
                 color="blue"
                 trend={stats.recentActivity.length > 0 ? `+${stats.recentActivity[0]?.count || 0}` : undefined}
               />
-              
               <StatsCard
                 title="Imports Réussis"
                 value={stats.totalImports}
@@ -130,7 +125,6 @@ const AdminDashboard: React.FC = () => {
                 color="green"
                 percentage={stats.successRate}
               />
-              
               <StatsCard
                 title="Confiance IA"
                 value={`${Math.round(stats.averageConfidence)}%`}
@@ -138,7 +132,6 @@ const AdminDashboard: React.FC = () => {
                 color="purple"
                 subtitle="Moyenne"
               />
-              
               <StatsCard
                 title="Catégories"
                 value={Object.values(stats.productsByCategory).reduce((a, b) => a + b, 0)}
@@ -150,9 +143,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Répartition par catégories */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                Répartition par catégories
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Répartition par catégories</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {Object.entries(stats.productsByCategory).map(([category, count]) => (
                   <div key={category} className="text-center p-4 bg-gray-50 rounded-lg">
