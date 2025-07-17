@@ -437,7 +437,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScanSuccess, onClose,
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes scan {
           0% { top: 20%; opacity: 0; }
           50% { opacity: 1; }
