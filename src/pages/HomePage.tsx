@@ -1,12 +1,27 @@
-// PATH: frontend/src/pages/HomePage.tsx
-import React, { useState } from 'react';
+// PATH: frontend/ecolojiaFrontV3/src/pages/HomePage.tsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Leaf, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import BarcodeScanner from '../components/scanner/BarcodeScanner';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+
+  // Détection mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,6 +33,27 @@ const HomePage: React.FC = () => {
 
   const handleClear = () => {
     setSearchQuery('');
+  };
+
+  // Gestion du scanner mobile
+  const handleScanSuccess = (barcode: string) => {
+    console.log('📱 Code-barres scanné:', barcode);
+    setShowScanner(false);
+    
+    // Rediriger vers les résultats
+    const params = new URLSearchParams({
+      barcode,
+      method: 'scan'
+    });
+    navigate(`/results?${params.toString()}`);
+  };
+
+  const handleCloseScanner = () => {
+    setShowScanner(false);
+  };
+
+  const openScanner = () => {
+    setShowScanner(true);
   };
 
   return (
@@ -36,6 +72,22 @@ const HomePage: React.FC = () => {
           <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-12">
             Découvrez des milliers de produits éthiques avec des scores écologiques vérifiés par IA
           </p>
+
+          {/* Bouton Scanner Mobile - Ajouté uniquement sur mobile */}
+          {isMobile && (
+            <div className="mb-8">
+              <button
+                onClick={openScanner}
+                className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg transition-all transform hover:scale-105 w-full max-w-sm mx-auto flex items-center justify-center space-x-2"
+              >
+                <span className="text-xl">📷</span>
+                <span>Scanner un produit</span>
+              </button>
+              <p className="text-sm text-gray-500 mt-2">
+                📱 Scannez directement avec votre caméra
+              </p>
+            </div>
+          )}
 
           {/* Barre de recherche */}
           <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto mb-8">
@@ -199,6 +251,14 @@ const HomePage: React.FC = () => {
               >
                 📊 Analyser un produit
               </Link>
+              {!isMobile && (
+                <Link 
+                  to="/scan" 
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  📱 Scanner mobile
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -241,6 +301,15 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Scanner Modal */}
+      {showScanner && (
+        <BarcodeScanner
+          onScanSuccess={handleScanSuccess}
+          onClose={handleCloseScanner}
+          isOpen={true}
+        />
+      )}
     </div>
   );
 };
