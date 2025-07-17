@@ -1,22 +1,21 @@
 // PATH: frontend/src/pages/ProductPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useNovaApi } from '../hooks/useNovaApi';
+import { analyzeProduct, reset } from '../services/ai/novaClassifier';
 import NovaResults from '../components/NovaResults';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorBoundary from '../components/ErrorBoundary';
 
-interface ProductPageProps {}
-
-const ProductPage: React.FC<ProductPageProps> = () => {
+const ProductPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [productName, setProductName] = useState<string>('');
   const [ingredients, setIngredients] = useState<string>('');
-  const { data, loading, error, analyzeProduct, retry, reset } = useNovaApi();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Mapping des slugs vers des produits de test
     const productMap: Record<string, { name: string; ingredients: string }> = {
       'pizza-surgelee-e621-glucose': {
         name: 'Pizza 4 Fromages Surgelée',
@@ -53,24 +52,37 @@ const ProductPage: React.FC<ProductPageProps> = () => {
       if (product) {
         setProductName(product.name);
         setIngredients(product.ingredients);
-        
-        // Lancer automatiquement l'analyse après un court délai
-        const timer = setTimeout(() => {
-          analyzeProduct(product.name, product.ingredients);
+        const timer = setTimeout(async () => {
+          try {
+            setLoading(true);
+            setError(null);
+            const result = await analyzeProduct(product.name, product.ingredients);
+            setData(result);
+          } catch (err: any) {
+            setError(err.message || 'Erreur inconnue');
+          } finally {
+            setLoading(false);
+          }
         }, 500);
-
         return () => clearTimeout(timer);
       } else {
-        console.error('❌ Produit non trouvé pour le slug:', slug);
-        // Rediriger vers la page de démonstration si produit non trouvé
         navigate('/demo');
       }
     }
-  }, [slug, analyzeProduct, navigate]);
+  }, [slug, navigate]);
 
   const handleRetry = async () => {
     if (productName && ingredients) {
-      await retry();
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await analyzeProduct(productName, ingredients);
+        setData(result);
+      } catch (err: any) {
+        setError(err.message || 'Erreur inconnue');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -84,7 +96,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
     navigate('/results');
   };
 
-  // Si pas de slug, rediriger
   if (!slug) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -109,7 +120,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
-          {/* Header avec navigation */}
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={handleBackToDemo}
@@ -118,11 +128,9 @@ const ProductPage: React.FC<ProductPageProps> = () => {
               <span className="mr-2 text-lg">←</span>
               Retour à la démo
             </button>
-            
             <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">
               Analyse NOVA
             </h1>
-            
             <button
               onClick={handleNewAnalysis}
               className="text-green-600 hover:text-green-800 font-medium transition-colors"
@@ -131,7 +139,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
             </button>
           </div>
 
-          {/* Informations produit */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -151,8 +158,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                   </div>
                 </div>
               </div>
-              
-              {/* Status de l'analyse */}
               <div className="ml-6 text-right">
                 {loading && (
                   <div className="flex items-center text-blue-600">
@@ -160,14 +165,12 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                     <span className="text-sm font-medium">Analyse...</span>
                   </div>
                 )}
-                
                 {data && (
                   <div className="flex items-center text-green-600">
                     <span className="mr-2">✅</span>
                     <span className="text-sm font-medium">Analysé</span>
                   </div>
                 )}
-                
                 {error && (
                   <div className="flex items-center text-red-600">
                     <span className="mr-2">❌</span>
@@ -176,16 +179,13 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                 )}
               </div>
             </div>
-            
-            {/* Gestion des erreurs */}
+
             {error && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="text-red-800 font-medium mb-1">Erreur d'analyse</h3>
                     <p className="text-red-700 text-sm mb-3">{error}</p>
-                    
-                    {/* Suggestions d'amélioration */}
                     <div className="text-sm">
                       <p className="text-red-800 font-medium mb-2">💡 Suggestions:</p>
                       <ul className="text-red-700 list-disc list-inside space-y-1">
@@ -197,7 +197,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                       </ul>
                     </div>
                   </div>
-                  
                   <button
                     onClick={handleRetry}
                     className="ml-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
@@ -209,18 +208,12 @@ const ProductPage: React.FC<ProductPageProps> = () => {
             )}
           </div>
 
-          {/* État de chargement */}
           {loading && (
             <div className="bg-white rounded-lg shadow-md p-8">
               <div className="flex flex-col items-center justify-center">
                 <LoadingSpinner />
-                <h3 className="text-lg font-medium text-gray-800 mb-2 mt-4">
-                  Analyse IA en cours...
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Classification NOVA automatique, détection d'additifs et génération de recommandations
-                </p>
-                
+                <h3 className="text-lg font-medium text-gray-800 mb-2 mt-4">Analyse IA en cours...</h3>
+                <p className="text-gray-600 text-center">Classification NOVA automatique, détection d'additifs et génération de recommandations</p>
                 <div className="mt-6 w-full max-w-md">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Analyse des ingrédients</span>
@@ -235,24 +228,17 @@ const ProductPage: React.FC<ProductPageProps> = () => {
             </div>
           )}
 
-          {/* Résultats de l'analyse */}
           {data && (
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
             </div>
           )}
 
-          {/* État initial sans données */}
           {!loading && !data && !error && (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <div className="text-4xl mb-4">🔬</div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">
-                Prêt pour l'analyse NOVA
-              </h3>
-              <p className="text-gray-600 mb-6">
-                L'analyse va démarrer automatiquement pour ce produit.
-              </p>
-              
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Prêt pour l'analyse NOVA</h3>
+              <p className="text-gray-600 mb-6">L'analyse va démarrer automatiquement pour ce produit.</p>
               <div className="flex justify-center space-x-4">
                 <button
                   onClick={() => analyzeProduct(productName, ingredients)}
@@ -261,7 +247,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                 >
                   Lancer l'analyse
                 </button>
-                
                 <button
                   onClick={handleBackToDemo}
                   className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
@@ -272,12 +257,8 @@ const ProductPage: React.FC<ProductPageProps> = () => {
             </div>
           )}
 
-          {/* Informations techniques en bas */}
           <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">
-              🛠️ Informations techniques
-            </h3>
-            
+            <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Informations techniques</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">API Backend</h4>
@@ -288,7 +269,6 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                   <li>• Format: JSON</li>
                 </ul>
               </div>
-              
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
@@ -299,11 +279,9 @@ const ProductPage: React.FC<ProductPageProps> = () => {
                 </ul>
               </div>
             </div>
-            
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-blue-700 text-sm">
-                <strong>🎯 Objectif:</strong> Cette page démontre l'intégration complète entre votre interface React 
-                et l'API ECOLOJIA pour l'analyse nutritionnelle en temps réel.
+                <strong>🎯 Objectif :</strong> Cette page démontre l'intégration complète entre votre interface React et l'API ECOLOJIA pour l'analyse nutritionnelle en temps réel.
               </p>
             </div>
           </div>
@@ -314,3 +292,4 @@ const ProductPage: React.FC<ProductPageProps> = () => {
 };
 
 export default ProductPage;
+// EOF
