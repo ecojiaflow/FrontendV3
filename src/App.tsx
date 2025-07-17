@@ -9,6 +9,7 @@ import Demo from './pages/Demo';
 import ProductPage from './pages/ProductPage';
 import CosmeticDemo from './pages/CosmeticDemo';
 import DetergentDemo from './pages/DetergentDemo';
+import AdminDashboard from './pages/AdminDashboard'; // ✅ AJOUT
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -28,43 +29,27 @@ function App() {
                     </span>
                   </Link>
 
-                  {/* Desktop links */}
                   <div className="hidden md:flex items-center space-x-6">
-                    <Link
-                      to="/"
-                      className="text-gray-700 hover:text-green-600 font-medium transition-colors"
-                    >
+                    <Link to="/" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
                       Accueil
                     </Link>
-                    <Link
-                      to="/scan"
-                      className="text-gray-700 hover:text-green-600 font-medium transition-colors"
-                    >
+                    <Link to="/scan" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
                       Scanner
                     </Link>
-                    <Link
-                      to="/results"
-                      className="text-gray-700 hover:text-green-600 font-medium transition-colors"
-                    >
+                    <Link to="/results" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
                       Analyse NOVA
                     </Link>
-                    <Link
-                      to="/demo"
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
+                    <Link to="/demo" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                       🔬 Démo Alimentaire
                     </Link>
-                    <Link
-                      to="/cosmetic-demo"
-                      className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
+                    <Link to="/cosmetic-demo" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                       💄 Démo Cosmétiques
                     </Link>
-                    <Link
-                      to="/detergent-demo"
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
+                    <Link to="/detergent-demo" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                       🧽 Démo Détergents
+                    </Link>
+                    <Link to="/admin" className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      🧠 Admin
                     </Link>
                   </div>
                 </div>
@@ -87,6 +72,7 @@ function App() {
               <Route path="/cosmetic-demo" element={<CosmeticDemo />} />
               <Route path="/detergent-demo" element={<DetergentDemo />} />
               <Route path="/product/:slug" element={<ProductPage />} />
+              <Route path="/admin" element={<AdminDashboard />} /> {/* ✅ NOUVELLE ROUTE */}
             </Routes>
           </main>
 
@@ -148,3 +134,4 @@ function App() {
 }
 
 export default App;
+// EOF
