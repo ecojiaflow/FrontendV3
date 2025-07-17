@@ -52,18 +52,6 @@ const Scan: React.FC = () => {
     }));
   }, []);
 
-  // Gestion de la capture d'image native mobile
-  const handleImageCapture = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      console.log('📸 Image capturée:', file.name);
-      // Pour l'instant, on ouvre le scanner normal après capture
-      openScanner();
-      // Reset l'input pour permettre une nouvelle capture
-      event.target.value = '';
-    }
-  }, [openScanner]);
-
   // Confirmation de la catégorie et redirection vers l'analyse
   const handleConfirmCategory = useCallback(() => {
     if (!scanState.scannedBarcode || !scanState.detectedCategory) return;
@@ -116,28 +104,16 @@ const Scan: React.FC = () => {
                 Scannez le code-barres de votre produit pour une analyse instantanée
               </p>
               
-              <div className="relative">
-                <button
-                  onClick={openScanner}
-                  className="bg-[#7DDE4A] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[#6BC93A] transition-colors shadow-lg text-lg mb-6 w-full max-w-sm"
-                >
-                  🎯 Ouvrir le scanner
-                </button>
-                
-                {/* Input caméra natif pour mobile - icône caméra automatique */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="absolute inset-0 opacity-0 cursor-pointer rounded-xl"
-                  onChange={handleImageCapture}
-                  title="Capturer avec la caméra"
-                />
-              </div>
+              <button
+                onClick={openScanner}
+                className="bg-[#7DDE4A] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[#6BC93A] transition-colors shadow-lg text-lg mb-6"
+              >
+                📷 Scanner codes-barres
+              </button>
               
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-3">Détection automatique :</p>
-                <div className="grid grid-cols-3 gap-2 text-xs mb-4">
+                <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="px-3 py-2 bg-[#E9F8DF] text-[#7DDE4A] rounded-lg">
                     🍎 Alimentaire
                   </div>
@@ -148,9 +124,6 @@ const Scan: React.FC = () => {
                     🧽 Ménager
                   </div>
                 </div>
-                <p className="text-xs text-gray-400">
-                  📱 Sur mobile : l'icône caméra apparaît automatiquement
-                </p>
               </div>
             </div>
           );
