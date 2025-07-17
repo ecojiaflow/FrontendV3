@@ -1,4 +1,4 @@
-// PATH: src/components/admin/ProductTable.tsx
+// PATH: frontend/ecolojiaFrontV3/src/components/Admin/ProductTable.tsx
 import React, { useState } from 'react';
 import { RecentProduct } from '../../types/admin';
 import { Eye, Trash2, Check, X, ExternalLink, Calendar } from 'lucide-react';
@@ -48,7 +48,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       rejected: 'bg-red-100 text-red-800 border-red-200'
     };
-
     if (!status) return null;
 
     return (
@@ -62,13 +61,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
   const getConfidenceBadge = (confidence?: number, color?: 'green' | 'orange' | 'red') => {
     if (!confidence) return null;
-
     const colorClasses = {
       green: 'bg-green-100 text-green-800',
       orange: 'bg-orange-100 text-orange-800',
       red: 'bg-red-100 text-red-800'
     };
-
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClasses[color || 'green']}`}>
         {Math.round(confidence)}%
@@ -109,24 +106,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Produit
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Catégorie
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Confiance IA
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Statut
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confiance IA</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -154,36 +139,34 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   </div>
                 </td>
-                
+
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <span className="text-lg mr-2">{getCategoryIcon(product.category)}</span>
                     <span className="text-sm text-gray-900 capitalize">{product.category}</span>
                   </div>
                 </td>
-                
+
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center space-x-2">
                     {getConfidenceBadge(product.ai_confidence, product.confidence_color)}
                     {product.eco_score && (
-                      <span className="text-xs text-gray-500">
-                        Eco: {product.eco_score}
-                      </span>
+                      <span className="text-xs text-gray-500">Eco: {product.eco_score}</span>
                     )}
                   </div>
                 </td>
-                
+
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(product.verified_status)}
                 </td>
-                
+
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
                     {new Date(product.created_at).toLocaleDateString('fr-FR')}
                   </div>
                 </td>
-                
+
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center space-x-2">
                     {product.verified_status === 'pending' && (
@@ -206,8 +189,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         </button>
                       </>
                     )}
-                    
-                    
+
+                    {/* ✅ FIX ajouté ici */}
+                    <a
                       href={`/product/${product.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -216,7 +200,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>
-                    
+
                     <button
                       onClick={() => handleDelete(product.id)}
                       disabled={actionLoading === `${product.id}-delete`}
