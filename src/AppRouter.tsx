@@ -1,4 +1,4 @@
-// frontend/src/router/AppRouter.tsx
+// PATH: frontend/src/router/AppRouter.tsx
 // Router principal avec ErrorBoundary pour capturer toutes les erreurs
 
 import React from 'react';
@@ -8,6 +8,8 @@ import ErrorBoundary from '../components/ErrorBoundary';
 // Import des pages
 import MultiCategoriesPage from '../pages/MultiCategoriesPage';
 import ProductPage from '../pages/ProductPage';
+import SearchPage from '../pages/SearchPage'; // ✅ ajout
+import AdminDashboard from '../pages/AdminDashboard'; // si tu veux l'activer aussi
 
 const AppRouter: React.FC = () => {
   return (
@@ -24,8 +26,11 @@ const AppRouter: React.FC = () => {
           <Route path="/product" element={<ProductPage />} />
           <Route path="/product/:slug" element={<ProductPage />} />
           
-          {/* Routes de test/démo */}
-          <Route path="/demo" element={<MultiCategoriesPage />} />
+          {/* Page recherche Algolia */}
+          <Route path="/search" element={<SearchPage />} /> {/* ✅ ajout */}
+          
+          {/* Page admin (optionnelle) */}
+          <Route path="/admin" element={<AdminDashboard />} />
           
           {/* Redirection des routes non trouvées */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -36,3 +41,4 @@ const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
+// EOF
