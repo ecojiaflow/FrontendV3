@@ -65,14 +65,15 @@ export const analyzeProduct = async (
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 secondes de timeout
       
-      const response = await fetch(`${API_BASE}/api/analyze/auto`, {
+      // Essayons d'abord le endpoint /analyze
+      const response = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          product_name: productName.trim(),
+          productName: productName.trim(),
           ingredients: ingredients.trim(),
           category: 'alimentaire'
         }),
@@ -90,10 +91,15 @@ export const analyzeProduct = async (
         currentAnalysis = formattedResult;
         return formattedResult;
       } else {
-        console.warn(`❌ Backend erreur ${response.status}, fallback local`);
+        const errorText = await response.text().catch(() => '');
+        console.warn(`❌ Backend erreur ${response.status}: ${errorText}, fallback local`);
       }
-    } catch (backendError) {
-      console.warn('⚠️ Backend indisponible, mode local activé:', backendError);
+    } catch (backendError: any) {
+      if (backendError.name === 'AbortError') {
+        console.warn('⏱️ Backend timeout après 8s, fallback local');
+      } else {
+        console.warn('⚠️ Backend indisponible, mode local activé:', backendError.message);
+      }
     }
     
     // ✅ FALLBACK: ANALYSE LOCALE SI BACKEND ÉCHOUE
@@ -121,38 +127,46 @@ export const analyzeProduct = async (
  * Formate la réponse du backend au format attendu par le frontend
  */
 function processBackendResponse(backendData: any, productName: string, ingredients: string): NovaResult {
-  // Extraction des données du backend avec valeurs par défaut
-  const novaGroup = backendData.nova_group || backendData.novaGroup || 4;
-  const healthScore = backendData.health_score || backendData.healthScore || 50;
-  const confidence = backendData.confidence || 85;
-  const additives = backendData.additives || { detected: [], total: 0 };
+  // Gestion des différents formats de réponse possibles
+  const data = backendData.data || backendData.result || backendData;
   
-  // Formatage des additifs si nécessaire
+  // Extraction des données avec gestion flexible des noms de champs
+  const novaGroup = data.nova_group || data.novaGroup || data.nova || 4;
+  const healthScore = data.health_score || data.healthScore || data.score || 50;
+  const confidence = data.confidence || 85;
+  
+  // Gestion flexible des additifs
+  let additives = data.additives || data.additivesAnalysis || { detected: [], total: 0 };
   if (Array.isArray(additives)) {
-    additives.detected = additives;
-    additives.total = additives.length;
+    additives = { detected: additives, total: additives.length };
   }
   
+  // S'assurer que detected est un tableau
+  const detectedAdditives = Array.isArray(additives.detected) ? additives.detected : 
+                           Array.isArray(additives) ? additives : [];
+  
   return {
-    productName,
-    novaGroup: Math.min(4, Math.max(1, novaGroup)),
-    confidence,
-    reasoning: backendData.reasoning || generateAdvancedReasoning(ingredients, novaGroup, additives.detected || []),
+    productName: data.productName || productName,
+    novaGroup: Math.min(4, Math.max(1, Number(novaGroup) || 4)),
+    confidence: Number(confidence) || 85,
+    reasoning: data.reasoning || data.analysis || generateAdvancedReasoning(ingredients, novaGroup, detectedAdditives),
     additives: {
-      detected: (additives.detected || []).map((a: any) => ({
-        code: a.code || a.e_number || '',
-        name: a.name || a.additive_name || '',
-        riskLevel: a.riskLevel || a.risk_level || 'medium',
-        description: a.description || a.desc || ''
+      detected: detectedAdditives.map((a: any) => ({
+        code: a.code || a.e_number || a.eNumber || '',
+        name: a.name || a.additive_name || a.additiveName || '',
+        riskLevel: (a.riskLevel || a.risk_level || a.risk || 'medium') as 'low' | 'medium' | 'high',
+        description: a.description || a.desc || a.details || ''
       })),
-      total: additives.total || (additives.detected || []).length
+      total: additives.total || detectedAdditives.length
     },
-    recommendations: backendData.recommendations || generateAdvancedRecommendations(ingredients, novaGroup, additives.detected || []),
-    healthScore: Math.min(100, Math.max(0, healthScore)),
+    recommendations: Array.isArray(data.recommendations) ? data.recommendations : 
+                    generateAdvancedRecommendations(ingredients, novaGroup, detectedAdditives),
+    healthScore: Math.min(100, Math.max(0, Number(healthScore) || 50)),
     isProcessed: novaGroup >= 3,
-    category: backendData.category || 'alimentaire',
-    timestamp: backendData.timestamp || new Date().toISOString(),
-    analysis: backendData.analysis || performDetailedAnalysis(ingredients, novaGroup, additives.detected || [])
+    category: data.category || 'alimentaire',
+    timestamp: data.timestamp || new Date().toISOString(),
+    analysis: data.analysis || data.detailedAnalysis || 
+             performDetailedAnalysis(ingredients, novaGroup, detectedAdditives)
   };
 }
 
