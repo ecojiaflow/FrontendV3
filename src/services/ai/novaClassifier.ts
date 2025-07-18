@@ -142,7 +142,7 @@ function processBackendResponse(backendData: any, productName: string, ingredien
   }));
   
   // Calcul du score de santé basé sur NOVA et autres facteurs
-  const healthScore = calculateHealthScoreFromBackend(novaGroup, novaData, backendAdditives);
+  const healthScore = calculateHealthScoreFromBackend(novaGroup, novaData, backendAdditives, productName, ingredients);
   
   // Extraction des recommandations
   const recommendations = extractRecommendations(novaData, novaGroup);
@@ -179,7 +179,7 @@ function processBackendResponse(backendData: any, productName: string, ingredien
 /**
  * Calcule le score de santé depuis les données backend
  */
-function calculateHealthScoreFromBackend(novaGroup: number, novaData: any, additives: any[]): number {
+function calculateHealthScoreFromBackend(novaGroup: number, novaData: any, additives: any[], productName: string, ingredients: string): number {
   let score = 100;
   
   // Pénalités basées sur NOVA
