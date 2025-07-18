@@ -676,7 +676,7 @@ export default ProductPage;
                   <ul className="text-gray-600 space-y-1">
                     <li>• <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
                     <li>• <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
-                    <li>• <strong><li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
                     <li>• <strong>Mode:</strong> Production locale avancée</li>
                   </ul>
                 </div>
@@ -739,3 +739,5 @@ export default ProductPage;
 
 export default ProductPage;
 // EOF
+
+                      
