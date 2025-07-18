@@ -54,16 +54,56 @@ export const analyzeProduct = async (
   isAnalyzing = true;
   
   try {
-    console.log('🚀 NovaClassifier - Mode production locale:', { productName, ingredients });
+    console.log('🚀 NovaClassifier - Démarrage analyse:', { productName, ingredients });
     
-    // ✅ ANALYSE LOCALE INTELLIGENTE IMMÉDIATE
-    console.log('🧠 Analyse NOVA locale avancée...');
+    // ✅ TENTATIVE API BACKEND EN PREMIER
+    try {
+      const API_BASE = 'https://ecolojia-backend-working.onrender.com';
+      
+      console.log('🌐 Appel API backend...', API_BASE);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 secondes de timeout
+      
+      const response = await fetch(`${API_BASE}/api/analyze/auto`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          product_name: productName.trim(),
+          ingredients: ingredients.trim(),
+          category: 'alimentaire'
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ API backend réussie:', result);
+        
+        // Validation et formatage de la réponse backend
+        const formattedResult = processBackendResponse(result, productName, ingredients);
+        currentAnalysis = formattedResult;
+        return formattedResult;
+      } else {
+        console.warn(`❌ Backend erreur ${response.status}, fallback local`);
+      }
+    } catch (backendError) {
+      console.warn('⚠️ Backend indisponible, mode local activé:', backendError);
+    }
+    
+    // ✅ FALLBACK: ANALYSE LOCALE SI BACKEND ÉCHOUE
+    console.log('🧠 Fallback: Analyse NOVA locale avancée...');
     
     // Simulation délai d'analyse réaliste
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 800));
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
     
     const result = generateAdvancedAnalysis(productName, ingredients);
-    console.log('✅ Analyse NOVA complète générée:', result);
+    console.log('✅ Analyse NOVA locale générée:', result);
     
     currentAnalysis = result;
     return result;
@@ -75,6 +115,46 @@ export const analyzeProduct = async (
     isAnalyzing = false;
   }
 };
+
+/**
+ * ✅ TRAITEMENT RÉPONSE BACKEND
+ * Formate la réponse du backend au format attendu par le frontend
+ */
+function processBackendResponse(backendData: any, productName: string, ingredients: string): NovaResult {
+  // Extraction des données du backend avec valeurs par défaut
+  const novaGroup = backendData.nova_group || backendData.novaGroup || 4;
+  const healthScore = backendData.health_score || backendData.healthScore || 50;
+  const confidence = backendData.confidence || 85;
+  const additives = backendData.additives || { detected: [], total: 0 };
+  
+  // Formatage des additifs si nécessaire
+  if (Array.isArray(additives)) {
+    additives.detected = additives;
+    additives.total = additives.length;
+  }
+  
+  return {
+    productName,
+    novaGroup: Math.min(4, Math.max(1, novaGroup)),
+    confidence,
+    reasoning: backendData.reasoning || generateAdvancedReasoning(ingredients, novaGroup, additives.detected || []),
+    additives: {
+      detected: (additives.detected || []).map((a: any) => ({
+        code: a.code || a.e_number || '',
+        name: a.name || a.additive_name || '',
+        riskLevel: a.riskLevel || a.risk_level || 'medium',
+        description: a.description || a.desc || ''
+      })),
+      total: additives.total || (additives.detected || []).length
+    },
+    recommendations: backendData.recommendations || generateAdvancedRecommendations(ingredients, novaGroup, additives.detected || []),
+    healthScore: Math.min(100, Math.max(0, healthScore)),
+    isProcessed: novaGroup >= 3,
+    category: backendData.category || 'alimentaire',
+    timestamp: backendData.timestamp || new Date().toISOString(),
+    analysis: backendData.analysis || performDetailedAnalysis(ingredients, novaGroup, additives.detected || [])
+  };
+}
 
 /**
  * ✅ ANALYSE NOVA AVANCÉE LOCALE
