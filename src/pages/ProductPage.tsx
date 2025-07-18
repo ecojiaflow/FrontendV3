@@ -63,13 +63,16 @@ const ProductPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false);
 
   // Anti-race: chaque analyse increment runIdRef; seules les réponses du run courant sont prises.
   const runIdRef = useRef(0);
 
   useEffect(() => {
+    // Reset states when navigating
     setError(null);
     setData(null);
+    setHasAttemptedAnalysis(false);
 
     const productNameParam = searchParams.get('productName');
     const ingredientsParam = searchParams.get('ingredients');
@@ -105,6 +108,7 @@ const ProductPage: React.FC = () => {
       } else {
         setError(`Slug "${slug}" non reconnu`);
         setDebugInfo({ source: 'unknown_slug', slug });
+        setHasAttemptedAnalysis(true);
       }
     }
 
@@ -118,12 +122,14 @@ const ProductPage: React.FC = () => {
   const performAnalysis = async (name: string, ingr: string, source: string) => {
     if (!name.trim() || !ingr.trim()) {
       setError('Le nom du produit et les ingrédients sont requis');
+      setHasAttemptedAnalysis(true);
       return;
     }
     const runId = ++runIdRef.current;
     try {
       setLoading(true);
       setError(null);
+      setHasAttemptedAnalysis(true);
 
       const result = await analyzeProduct(name.trim(), ingr.trim());
       if (runId !== runIdRef.current) return; // réponse obsolète ignorée
@@ -211,7 +217,7 @@ const ProductPage: React.FC = () => {
   };
 
   // Mode manuel initial vide
-  if (analysisSource === 'manual' && !productName && !ingredients) {
+  if (analysisSource === 'manual' && !productName && !ingredients && !hasAttemptedAnalysis) {
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-gray-50 py-8">
@@ -380,7 +386,7 @@ const ProductPage: React.FC = () => {
                     <span className="text-sm font-medium">Analysé</span>
                   </div>
                 )}
-                {error && !data && (
+                {error && !data && hasAttemptedAnalysis && (
                   <div className="flex items-center text-red-600">
                     <span className="mr-2">❌</span>
                     <span className="text-sm font-medium">Erreur</span>
@@ -389,7 +395,7 @@ const ProductPage: React.FC = () => {
               </div>
             </div>
 
-            {error && !data && (
+            {error && !data && hasAttemptedAnalysis && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -446,7 +452,7 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-            {data && !error && (
+          {data && (
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
@@ -475,7 +481,7 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-          {!loading && !data && !error && productName && ingredients && (
+          {!loading && !data && !error && productName && ingredients && !hasAttemptedAnalysis && (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <div className="text-4xl mb-4">🔬</div>
               <h3 className="text-lg font-bold text-gray-800 mb-2">Prêt pour l'analyse NOVA</h3>
@@ -503,46 +509,74 @@ const ProductPage: React.FC = () => {
           {debugInfo && process.env.NODE_ENV === 'development' && (
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Debug Information</h3>
-              <ul className="text-gray-600 text-sm space-y-1">
-                <li>• Source: {debugInfo.source}</li>
-                {debugInfo.sourceRun && <li>• Dernière analyse: {debugInfo.sourceRun}</li>}
-                <li>• URL: {location.pathname + location.search}</li>
-                {debugInfo.novaGroup && (
-                  <li>
-                    • Résultat: NOVA {debugInfo.novaGroup}, Score {debugInfo.healthScore}
-                  </li>
-                )}
-                {debugInfo.errorMessage && <li>• Erreur: {debugInfo.errorMessage}</li>}
-              </ul>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-2">Navigation</h4>
+                  <ul className="text-gray-600 text-sm space-y-1">
+                    <li>• <strong>Source:</strong> {debugInfo.source}</li>
+                    <li>• <strong>URL:</strong> {location.pathname + location.search}</li>
+                    <li>• <strong>Slug:</strong> {slug || 'N/A'}</li>
+                    <li>• <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-2">État de l'analyse</h4>
+                  <ul className="text-gray-600 space-y-1">
+                    <li>• <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
+                    <li>• <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
+                    <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li>• <strong>Mode:</strong> Production locale avancée</li>
+                  </ul>
+                </div>
+              </div>
+              
+              {debugInfo.analysisSuccess && data && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-700 text-sm">
+                    <strong>✅ Analyse réussie:</strong> NOVA {data.novaGroup}, Score {data.healthScore}/100, {data.additives?.total || 0} additif(s), Confiance {data.confidence}%
+                  </p>
+                </div>
+              )}
+              
+              {debugInfo.analysisError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">
+                    <strong>❌ Erreur:</strong> {debugInfo.errorMessage}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
+          {/* Informations techniques */}
           <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Informations techniques</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• Mode: Production locale avancée</li>
-                  <li>• Backend: Désactivé</li>
-                  <li>• Fallback: IA locale</li>
-                  <li>• Base additifs: 25+ additifs</li>
-                  <li>• Confiance: 88-92% estimée</li>
+                  <li>• <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
+                  <li>• <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li>• <strong>Fallback:</strong> Intelligence artificielle locale</li>
+                  <li>• <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
+                  <li>• <strong>Confiance:</strong> 88-92% selon complexité</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• Classification NOVA avancée</li>
-                  <li>• Détection type produit</li>
-                  <li>• Analyse additifs + risques</li>
+                  <li>• Classification NOVA avancée (patterns étendus)</li>
+                  <li>• Détection automatique type produit</li>
+                  <li>• Analyse additifs avec évaluation risques</li>
                   <li>• Score santé multi-facteurs</li>
-                  <li>• Recommandations contextuelles</li>
+                  <li>• Recommandations personnalisées contextuelles</li>
                 </ul>
               </div>
             </div>
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
-              <strong>🎯 Objectif :</strong> démonstration d'une analyse NOVA complète sans backend distant.
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-700 text-sm">
+                <strong>🎯 Objectif :</strong> Cette page démontre une analyse NOVA complète et autonome sans dépendance backend, utilisant une intelligence artificielle locale avancée pour une expérience utilisateur optimale.
+              </p>
             </div>
           </div>
         </div>
@@ -552,4 +586,4 @@ const ProductPage: React.FC = () => {
 };
 
 export default ProductPage;
-// EOF Release
+// EOF
