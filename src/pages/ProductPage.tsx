@@ -7,11 +7,48 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 /**
- * ProductPage DEBUG VERSION
- * - Ajout de logs détaillés pour comprendre pourquoi un bloc d'erreur s'affiche alors que l'analyse réussit.
- * - Conditions strictes: le bloc d'erreur ne s'affiche que si `error && !data`.
- * - Anti-race via runIdRef pour ignorer les réponses asynchrones obsolètes.
+ * ProductPage (Release)
+ * - Affiche l'analyse NOVA d'un produit (slug prédéfini, paramètres URL ou saisie manuelle).
+ * - Protection anti-race via runIdRef.
+ * - Le bloc d'erreur n'apparaît que si (error && !data).
  */
+
+const predefinedProducts: Record<string, { name: string; ingredients: string }> = {
+  'pizza-surgelee-e621-glucose': {
+    name: 'Pizza 4 Fromages Surgelée',
+    ingredients:
+      'Pâte (farine de BLÉ, eau, huile de tournesol, levure, sel, sucre), fromages 25% (MOZZARELLA, EMMENTAL, GORGONZOLA, PARMESAN), sauce tomate, conservateur E202, exhausteur de goût E621, stabilisant E412, colorant E150d'
+  },
+  'coca-cola-original': {
+    name: 'Coca-Cola Original',
+    ingredients:
+      'Eau gazéifiée, sucre, sirop de glucose-fructose, arôme naturel de cola, colorant E150d (caramel IV), acidifiant E338 (acide phosphorique), édulcorant E952 (cyclamate de sodium), conservateur E211 (benzoate de sodium)'
+  },
+  'nutella-pate-tartiner': {
+    name: 'Nutella Pâte à tartiner',
+    ingredients:
+      'Sucre, huile de palme, NOISETTES 13%, cacao maigre 7.4%, LAIT écrémé en poudre 6.6%, LACTOSÉRUM en poudre, émulsifiants E322 (lécithines) E471 (mono- et diglycérides d\'acides gras), arôme vanilline'
+  },
+  'galette-riz-bio': {
+    name: 'Galette de riz bio',
+    ingredients: 'Riz complet biologique, sucre de canne, huile de tournesol, sel marin, arôme naturel'
+  },
+  'yaourt-nature-bio': {
+    name: 'Yaourt Nature Bio',
+    ingredients:
+      'LAIT entier pasteurisé issu de l\'agriculture biologique, ferments lactiques (Streptococcus thermophilus, Lactobacillus bulgaricus)'
+  },
+  'pain-mie-complet': {
+    name: 'Pain de Mie Complet',
+    ingredients:
+      'Farine complète de BLÉ, eau, levure, huile de tournesol, sucre, sel, gluten de BLÉ, conservateur E282, émulsifiant E471, agent de traitement de la farine E300'
+  },
+  'biscuits-petit-dejeuner': {
+    name: 'Biscuits Petit-Déjeuner',
+    ingredients:
+      'Céréales 58% (farine de BLÉ, flocons d\'AVOINE 14%), sucre, huile de palme, sirop de glucose-fructose, poudre à lever E500, sel, arômes, vitamines (B1, B6, B9, B12, C, E), colorant E160a, émulsifiant E322'
+  }
+};
 
 const ProductPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -27,103 +64,46 @@ const ProductPage: React.FC = () => {
   const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
   const [debugInfo, setDebugInfo] = useState<any>(null);
 
+  // Anti-race: chaque analyse increment runIdRef; seules les réponses du run courant sont prises.
   const runIdRef = useRef(0);
 
-  // Utilitaire de log centralisé
-  const log = (...args: any[]) => {
-    // Préfixe pour filtrer facilement
-    console.log('[ProductPageDebug]', ...args);
-  };
-
-  const setErrorSafe = (val: string | null, context: string) => {
-    log('setErrorSafe', { val, context, runId: runIdRef.current });
-    setError(val);
-  };
-  const setDataSafe = (val: any, context: string) => {
-    log('setDataSafe', { hasData: !!val, context, runId: runIdRef.current });
-    setData(val);
-  };
-
   useEffect(() => {
-    log('Mount / Update navigation', {
-      slug,
-      searchParams: Object.fromEntries(searchParams.entries()),
-      pathname: location.pathname,
-      search: location.search
-    });
-
-    setErrorSafe(null, 'navigation_change_reset');
-    setDataSafe(null, 'navigation_change_reset');
+    setError(null);
+    setData(null);
 
     const productNameParam = searchParams.get('productName');
     const ingredientsParam = searchParams.get('ingredients');
 
-    // 1. URL Params
+    // 1. Paramètres URL
     if (productNameParam && ingredientsParam) {
       const decodedName = decodeURIComponent(productNameParam);
       const decodedIngredients = decodeURIComponent(ingredientsParam);
       setProductName(decodedName);
       setIngredients(decodedIngredients);
       setAnalysisSource('url');
-      setDebugInfo({ source: 'url_params', productNameParam, ingredientsParam });
-      log('Trigger analysis from URL params');
-      const t = setTimeout(() => performAnalysis(decodedName, decodedIngredients, 'url_params'), 150);
+      setDebugInfo({ source: 'url_params' });
+      const t = setTimeout(
+        () => performAnalysis(decodedName, decodedIngredients, 'url_params'),
+        100
+      );
       return () => clearTimeout(t);
     }
 
     // 2. Slug prédéfini
     if (slug) {
-      const productMap: Record<string, { name: string; ingredients: string }> = {
-        'pizza-surgelee-e621-glucose': {
-          name: 'Pizza 4 Fromages Surgelée',
-          ingredients:
-            'Pâte (farine de BLÉ, eau, huile de tournesol, levure, sel, sucre), fromages 25% (MOZZARELLA, EMMENTAL, GORGONZOLA, PARMESAN), sauce tomate, conservateur E202, exhausteur de goût E621, stabilisant E412, colorant E150d'
-        },
-        'coca-cola-original': {
-          name: 'Coca-Cola Original',
-          ingredients:
-            'Eau gazéifiée, sucre, sirop de glucose-fructose, arôme naturel de cola, colorant E150d (caramel IV), acidifiant E338 (acide phosphorique), édulcorant E952 (cyclamate de sodium), conservateur E211 (benzoate de sodium)'
-        },
-        'nutella-pate-tartiner': {
-          name: 'Nutella Pâte à tartiner',
-          ingredients:
-            'Sucre, huile de palme, NOISETTES 13%, cacao maigre 7.4%, LAIT écrémé en poudre 6.6%, LACTOSÉRUM en poudre, émulsifiants E322 (lécithines) E471 (mono- et diglycérides d\'acides gras), arôme vanilline'
-        },
-        'galette-riz-bio': {
-          name: 'Galette de riz bio',
-          ingredients: 'Riz complet biologique, sucre de canne, huile de tournesol, sel marin, arôme naturel'
-        },
-        'yaourt-nature-bio': {
-          name: 'Yaourt Nature Bio',
-          ingredients:
-            'LAIT entier pasteurisé issu de l\'agriculture biologique, ferments lactiques (Streptococcus thermophilus, Lactobacillus bulgaricus)'
-        },
-        'pain-mie-complet': {
-          name: 'Pain de Mie Complet',
-          ingredients:
-            'Farine complète de BLÉ, eau, levure, huile de tournesol, sucre, sel, gluten de BLÉ, conservateur E282, émulsifiant E471, agent de traitement de la farine E300'
-        },
-        'biscuits-petit-dejeuner': {
-          name: 'Biscuits Petit-Déjeuner',
-          ingredients:
-            'Céréales 58% (farine de BLÉ, flocons d\'AVOINE 14%), sucre, huile de palme, sirop de glucose-fructose, poudre à lever E500, sel, arômes, vitamines (B1, B6, B9, B12, C, E), colorant E160a, émulsifiant E322'
-        }
-      };
-
-      const product = productMap[slug];
+      const product = predefinedProducts[slug];
       if (product) {
         setProductName(product.name);
         setIngredients(product.ingredients);
         setAnalysisSource('slug');
         setDebugInfo({ source: 'predefined_slug', slug });
-        log('Trigger analysis from slug');
         const t = setTimeout(
           () => performAnalysis(product.name, product.ingredients, 'predefined_slug'),
-          150
+          100
         );
         return () => clearTimeout(t);
       } else {
-        setErrorSafe(`Slug "${slug}" non reconnu`, 'unknown_slug');
+        setError(`Slug "${slug}" non reconnu`);
         setDebugInfo({ source: 'unknown_slug', slug });
       }
     }
@@ -132,26 +112,21 @@ const ProductPage: React.FC = () => {
     if (!productNameParam && !ingredientsParam && !slug) {
       setAnalysisSource('manual');
       setDebugInfo({ source: 'manual_input' });
-      log('Manual input mode');
     }
   }, [slug, searchParams, location.pathname, location.search]);
 
   const performAnalysis = async (name: string, ingr: string, source: string) => {
     if (!name.trim() || !ingr.trim()) {
-      setErrorSafe('Le nom du produit et les ingrédients sont requis', 'validation');
+      setError('Le nom du produit et les ingrédients sont requis');
       return;
     }
     const runId = ++runIdRef.current;
-    log('performAnalysis start', { source, runId, name, ingrPreview: ingr.slice(0, 50) + '...' });
     try {
       setLoading(true);
-      setErrorSafe(null, 'start_analysis');
+      setError(null);
 
       const result = await analyzeProduct(name.trim(), ingr.trim());
-      if (runId !== runIdRef.current) {
-        log('performAnalysis aborted (obsolete run)', { runId, current: runIdRef.current });
-        return;
-      }
+      if (runId !== runIdRef.current) return; // réponse obsolète ignorée
 
       if (!result || typeof result !== 'object') throw new Error("Résultat d'analyse invalide");
       if (typeof result.novaGroup !== 'number' || result.novaGroup < 1 || result.novaGroup > 4)
@@ -159,37 +134,28 @@ const ProductPage: React.FC = () => {
       if (typeof result.healthScore !== 'number' || result.healthScore < 0 || result.healthScore > 100)
         result.healthScore = 50;
 
-      setDataSafe(result, 'analysis_success');
-      setErrorSafe(null, 'analysis_success_clear_error');
+      setData(result);
+      setError(null); // efface toute erreur précédente
 
       setDebugInfo((p: any) => ({
         ...p,
-        lastSource: source,
         analysisSuccess: true,
+        sourceRun: source,
         novaGroup: result.novaGroup,
         healthScore: result.healthScore,
         additivesCount: result.additives?.total || 0,
         ts: Date.now()
       }));
-      log('performAnalysis success', {
-        runId,
-        novaGroup: result.novaGroup,
-        healthScore: result.healthScore
-      });
     } catch (e: any) {
-      if (runId !== runIdRef.current) {
-        log('performAnalysis catch aborted (obsolete run)', { runId, current: runIdRef.current });
-        return;
-      }
+      if (runId !== runIdRef.current) return;
       const msg = e?.message || "Impossible d'analyser ce produit";
-      setErrorSafe(msg, 'analysis_error');
-      log('performAnalysis error', { runId, msg });
+      setError(msg);
 
+      // Fallback si message critique
       if (/impossible|critique/i.test(msg)) {
         const fb = generateFallbackAnalysis(name, ingr);
-        setDataSafe(fb, 'fallback_generated');
-        setErrorSafe(null, 'fallback_success_clear_error');
-        log('Fallback generated', { runId, novaGroup: fb.novaGroup });
+        setData(fb);
+        setError(null);
       }
 
       setDebugInfo((p: any) => ({
@@ -199,10 +165,7 @@ const ProductPage: React.FC = () => {
         ts: Date.now()
       }));
     } finally {
-      if (runId === runIdRef.current) {
-        setLoading(false);
-        log('performAnalysis finished', { runId, loadingSetFalse: true });
-      }
+      if (runId === runIdRef.current) setLoading(false);
     }
   };
 
@@ -247,14 +210,7 @@ const ProductPage: React.FC = () => {
     else navigate('/chat');
   };
 
-  // Exposition minimale globale pour débogage via console
-  (window as any).__PRODUCT_PAGE_STATE__ = {
-    get snapshot() {
-      return { productName, hasData: !!data, error, loading, runId: runIdRef.current, analysisSource };
-    }
-  };
-
-  // Mode manuel initial
+  // Mode manuel initial vide
   if (analysisSource === 'manual' && !productName && !ingredients) {
     return (
       <ErrorBoundary>
@@ -359,7 +315,7 @@ const ProductPage: React.FC = () => {
               className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
             >
               <span className="mr-2 text-lg">←</span>
-              {analysisSource === 'url' ? 'Retour à la recherche' : 'Retour à l\'accueil'}
+              {analysisSource === 'url' ? 'Retour à la recherche' : "Retour à l'accueil"}
             </button>
             <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">Analyse NOVA</h1>
             <div className="flex space-x-2">
@@ -439,17 +395,17 @@ const ProductPage: React.FC = () => {
                   <div className="flex-1">
                     <h3 className="text-red-800 font-medium mb-1">Erreur d'analyse</h3>
                     <p className="text-red-700 text-sm mb-3">{error}</p>
-
                     <div className="text-sm">
                       <p className="text-red-800 font-medium mb-2">💡 Solutions suggérées:</p>
                       <ul className="text-red-700 list-disc list-inside space-y-1">
-                        {error.includes('requis') && <li>Vérifiez le nom et les ingrédients</li>}
+                        {error.includes('requis') && (
+                          <li>Vérifiez le nom et les ingrédients</li>
+                        )}
                         <li>Réessayez dans quelques secondes</li>
                         <li>Testez un autre produit (Nutella, Yaourt bio)</li>
                         <li>Utilisez un exemple prédéfini</li>
                       </ul>
                     </div>
-
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         onClick={handleRetry}
@@ -490,10 +446,9 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-          {data && !error && (
+            {data && !error && (
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
-
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">🚀 Que faire maintenant ?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -547,13 +502,15 @@ const ProductPage: React.FC = () => {
 
           {debugInfo && process.env.NODE_ENV === 'development' && (
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Debug</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Debug Information</h3>
               <ul className="text-gray-600 text-sm space-y-1">
                 <li>• Source: {debugInfo.source}</li>
-                {debugInfo.lastSource && <li>• Dernière analyse: {debugInfo.lastSource}</li>}
+                {debugInfo.sourceRun && <li>• Dernière analyse: {debugInfo.sourceRun}</li>}
                 <li>• URL: {location.pathname + location.search}</li>
                 {debugInfo.novaGroup && (
-                  <li>• Résultat: NOVA {debugInfo.novaGroup}, Score {debugInfo.healthScore}</li>
+                  <li>
+                    • Résultat: NOVA {debugInfo.novaGroup}, Score {debugInfo.healthScore}
+                  </li>
                 )}
                 {debugInfo.errorMessage && <li>• Erreur: {debugInfo.errorMessage}</li>}
               </ul>
@@ -595,4 +552,4 @@ const ProductPage: React.FC = () => {
 };
 
 export default ProductPage;
-// EOF DEBUG
+// EOF Release
