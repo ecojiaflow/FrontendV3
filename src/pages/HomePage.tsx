@@ -1,7 +1,7 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Search, X } from 'lucide-react';
+import { Leaf, Search, X, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
 
@@ -215,16 +215,22 @@ const HomePage: React.FC = () => {
             </h2>
             <div className="flex flex-wrap justify-center gap-6">
               <Link
-                to="/demo"
+                to="/search"
                 className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                🔬 Essayer la démo
+                🔍 Rechercher des produits
               </Link>
               <Link
-                to="/results"
+                to="/analyze"
                 className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 📊 Analyser un produit
+              </Link>
+              <Link
+                to="/chat"
+                className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                💬 Assistant Nutritionnel
               </Link>
               {!isMobile && (
                 <Link
@@ -234,6 +240,176 @@ const HomePage: React.FC = () => {
                   📱 Scanner mobile
                 </Link>
               )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== ASSISTANT IA NUTRITIONNEL ===== */}
+      <section className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              💬 Assistant IA Nutritionnel
+            </h2>
+            <p className="text-xl text-gray-600">
+              Posez vos questions à notre expert en nutrition
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                  Votre expert personnel en nutrition
+                </h3>
+                <ul className="space-y-4 text-gray-700">
+                  <li className="flex items-start">
+                    <span className="text-green-500 mr-3 mt-1">✓</span>
+                    <div>
+                      <strong>Conseils personnalisés</strong> basés sur vos analyses NOVA
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-green-500 mr-3 mt-1">✓</span>
+                    <div>
+                      <strong>Explications détaillées</strong> sur les additifs alimentaires
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-green-500 mr-3 mt-1">✓</span>
+                    <div>
+                      <strong>Recommandations</strong> d'alternatives plus saines
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-green-500 mr-3 mt-1">✓</span>
+                    <div>
+                      <strong>Réponses instantanées</strong> 24h/24 basées sur la science
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg p-6 shadow-md mb-6">
+                  <div className="text-6xl mb-4">🤖</div>
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <p className="text-gray-700 italic text-sm">
+                      "Bonjour ! Je suis votre assistant nutritionnel ECOLOJIA. 
+                      Je peux vous aider à comprendre les analyses NOVA, 
+                      décoder les additifs et vous donner des conseils 
+                      pour une alimentation plus saine !"
+                    </p>
+                  </div>
+                </div>
+                
+                <Link
+                  to="/chat"
+                  className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
+                >
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  Démarrer une conversation
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Questions fréquentes */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">
+              💡 Questions fréquentes que vous pouvez poser :
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                "Ce produit est-il bon pour la santé ?",
+                "Quels sont les additifs préoccupants ?",
+                "Comment améliorer mon alimentation ?",
+                "Que signifie le groupe NOVA 4 ?",
+                "Existe-t-il des alternatives plus saines ?",
+                "Comment lire une étiquette nutritionnelle ?"
+              ].map((question, index) => (
+                <Link
+                  key={index}
+                  to="/chat"
+                  state={{ initialMessage: question }}
+                  className="text-sm bg-gray-50 hover:bg-purple-50 border border-gray-200 hover:border-purple-200 px-4 py-3 rounded-lg transition-all duration-200 text-center text-gray-700 hover:text-purple-700"
+                >
+                  {question}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== RECHERCHE ALGOLIA ===== */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              🔍 Recherche Instantanée
+            </h2>
+            <p className="text-xl text-gray-600">
+              Explorez notre base de données de 99 produits analysés
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                  Recherche alimentée par Algolia
+                </h3>
+                <ul className="space-y-4 text-gray-700">
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-3 mt-1">⚡</span>
+                    <div>
+                      <strong>Recherche instantanée</strong> avec tolérance aux fautes de frappe
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-3 mt-1">🏷️</span>
+                    <div>
+                      <strong>Filtres avancés</strong> par groupe NOVA, catégorie, statut
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-3 mt-1">📊</span>
+                    <div>
+                      <strong>Métadonnées complètes</strong> avec scores et badges
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-3 mt-1">🔗</span>
+                    <div>
+                      <strong>Intégration directe</strong> avec l'analyse NOVA et le chat IA
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
+                  <div className="text-4xl mb-3">🔍</div>
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                    <p className="text-gray-600 text-sm mb-2">Exemples de recherches :</p>
+                    <div className="space-y-2">
+                      <div className="bg-white px-3 py-2 rounded text-sm text-gray-700">"bio" → 15 résultats</div>
+                      <div className="bg-white px-3 py-2 rounded text-sm text-gray-700">"nutella" → 3 résultats</div>
+                      <div className="bg-white px-3 py-2 rounded text-sm text-gray-700">"sans additifs" → 8 résultats</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link
+                  to="/search"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
+                >
+                  <Search className="w-5 h-5 mr-2" />
+                  Explorer la base de données
+                </Link>
+              </div>
             </div>
           </div>
         </div>
