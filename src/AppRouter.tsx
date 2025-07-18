@@ -8,8 +8,8 @@ import ErrorBoundary from '../components/ErrorBoundary';
 // Import des pages
 import MultiCategoriesPage from '../pages/MultiCategoriesPage';
 import ProductPage from '../pages/ProductPage';
-import SearchPage from '../pages/SearchPage'; // ✅ ajout
-import AdminDashboard from '../pages/AdminDashboard'; // si tu veux l'activer aussi
+import SearchPage from '../pages/SearchPage';
+import AdminDashboard from '../pages/AdminDashboard';
 
 const AppRouter: React.FC = () => {
   return (
@@ -24,10 +24,10 @@ const AppRouter: React.FC = () => {
           
           {/* Page produit */}
           <Route path="/product" element={<ProductPage />} />
-          <Route path="/product/:slug" element={<ProductPage />} />
+          <Route path="/product/:slug" element={<ProductPage />} /> {/* ✅ Fixé ici */}
           
           {/* Page recherche Algolia */}
-          <Route path="/search" element={<SearchPage />} /> {/* ✅ ajout */}
+          <Route path="/search" element={<SearchPage />} />
           
           {/* Page admin (optionnelle) */}
           <Route path="/admin" element={<AdminDashboard />} />

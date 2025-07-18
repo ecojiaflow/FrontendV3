@@ -1,4 +1,4 @@
-// PATH: frontend/src/pages/ProductPage.tsx
+// PATH: frontend/ecolojiaFrontV3/src/pages/ProductPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { analyzeProduct, reset } from '../services/ai/novaClassifier';
