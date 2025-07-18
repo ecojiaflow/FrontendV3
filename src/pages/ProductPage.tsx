@@ -64,11 +64,17 @@ const ProductPage: React.FC = () => {
   const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false); // Nouveau flag
 
-  // Anti-race: chaque analyse increment runIdRef
-  const runIdRef = useRef(0);
+  // Reset le flag quand on change de page
+  useEffect(() => {
+    setIsInitialized(false);
+  }, [location.pathname, slug]);
 
   useEffect(() => {
+    // Éviter les doubles appels
+    if (isInitialized) return;
+    
     // Reset states when navigating
     setError(null);
     setData(null);
@@ -85,11 +91,9 @@ const ProductPage: React.FC = () => {
       setIngredients(decodedIngredients);
       setAnalysisSource('url');
       setDebugInfo({ source: 'url_params' });
-      const t = setTimeout(
-        () => performAnalysis(decodedName, decodedIngredients, 'url_params'),
-        100
-      );
-      return () => clearTimeout(t);
+      setIsInitialized(true);
+      performAnalysis(decodedName, decodedIngredients, 'url_params');
+      return;
     }
 
     // 2. Slug prédéfini
@@ -100,24 +104,24 @@ const ProductPage: React.FC = () => {
         setIngredients(product.ingredients);
         setAnalysisSource('slug');
         setDebugInfo({ source: 'predefined_slug', slug });
-        const t = setTimeout(
-          () => performAnalysis(product.name, product.ingredients, 'predefined_slug'),
-          100
-        );
-        return () => clearTimeout(t);
+        setIsInitialized(true);
+        performAnalysis(product.name, product.ingredients, 'predefined_slug');
       } else {
         setError(`Slug "${slug}" non reconnu`);
         setDebugInfo({ source: 'unknown_slug', slug });
         setHasAttemptedAnalysis(true);
+        setIsInitialized(true);
       }
+      return;
     }
 
     // 3. Mode manuel
     if (!productNameParam && !ingredientsParam && !slug) {
       setAnalysisSource('manual');
       setDebugInfo({ source: 'manual_input' });
+      setIsInitialized(true);
     }
-  }, [slug, searchParams, location.pathname, location.search]);
+  }, [slug, searchParams, location.pathname]);
 
   const performAnalysis = async (name: string, ingr: string, source: string) => {
     if (!name.trim() || !ingr.trim()) {
@@ -169,7 +173,11 @@ const ProductPage: React.FC = () => {
       
       console.error('❌ ProductPage: Erreur analyse', e);
       const msg = e?.message || "Impossible d'analyser ce produit";
-      setError(msg);
+      
+      // Ne pas afficher l'erreur si on a déjà des données
+      if (!data) {
+        setError(msg);
+      }
 
       setDebugInfo((p: any) => ({
         ...p,
