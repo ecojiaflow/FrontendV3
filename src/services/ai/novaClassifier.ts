@@ -1,5 +1,4 @@
-function processBackendResponse(backendData: any, productName: string, ingredients: string): NovaResult {
-  // La réponse backend cont// PATH: frontend/src/services/ai/novaClassifier.ts
+// PATH: frontend/src/services/ai/novaClassifier.ts
 export interface NovaResult {
   productName: string;
   novaGroup: number;
@@ -34,8 +33,7 @@ let currentAnalysis: NovaResult | null = null;
 let isAnalyzing = false;
 
 /**
- * ✅ MODE PRODUCTION: Analyse NOVA complète avec intelligence locale
- * Backend temporairement désactivé - Fallback intelligent immédiat
+ * ✅ MODE PRODUCTION: Analyse NOVA avec backend + fallback local
  * @param productName Nom du produit
  * @param ingredients Liste des ingrédients
  * @returns Résultat de l'analyse NOVA
@@ -682,10 +680,6 @@ function extractSuspiciousTerms(ingredients: string): string[] {
   if (lower.includes('synthétique')) suspicious.push('composés synthétiques');
   
   return suspicious;
-}
-
-function estimateProcessingLevel(ingredients: string): boolean {
-  return estimateNovaGroupAdvanced(ingredients) >= 3;
 }
 
 /**
