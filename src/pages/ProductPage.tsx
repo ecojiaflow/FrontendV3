@@ -665,3 +665,81 @@ const ProductPage: React.FC = () => {
 };
 
 export default ProductPage;
+/*
+// EOFSource:</strong> {debugInfo.source}</li>
+                    <li><span>{'&bull;'}</span> <strong>URL:</strong> {location.pathname + location.search}</li>
+                    <li><span>{'&bull;'}</span> <strong>Slug:</strong> {slug || 'N/A'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-2">État de l'analyse</h4>
+                  <ul className="text-gray-600 space-y-1">
+                    <li><span>{'&bull;'}</span> <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Mode:</strong> Production locale avancée</li>
+                  </ul>
+                </div>
+              </div>
+              
+              {debugInfo.result && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-700 text-sm">
+                    <strong>✅ Analyse réussie:</strong> NOVA {debugInfo.result.novaGroup}, Score {debugInfo.result.healthScore}/100, {debugInfo.result.additivesCount} additif(s), Confiance {debugInfo.result.confidence}%
+                  </p>
+                </div>
+              )}
+              
+              {debugInfo.analysisError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">
+                    <strong>❌ Erreur:</strong> {debugInfo.errorMessage}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Informations techniques */}
+          <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Informations techniques</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div>
+                <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
+                <ul className="text-gray-600 space-y-1">
+                  <li><span>{'&bull;'}</span> <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
+                  <li><span>{'&bull;'}</span> <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li><span>{'&bull;'}</span> <strong>Fallback:</strong> Intelligence artificielle locale</li>
+                  <li><span>{'&bull;'}</span> <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
+                  <li><span>{'&bull;'}</span> <strong>Confiance:</strong> 88-92% selon complexité</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
+                <ul className="text-gray-600 space-y-1">
+                  <li><span>{'&bull;'}</span> Classification NOVA avancée (patterns étendus)</li>
+                  <li><span>{'&bull;'}</span> Détection automatique type produit</li>
+                  <li><span>{'&bull;'}</span> Analyse additifs avec évaluation risques</li>
+                  <li><span>{'&bull;'}</span> Score santé multi-facteurs</li>
+                  <li><span>{'&bull;'}</span> Recommandations personnalisées contextuelles</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-700 text-sm">
+                <strong>🎯 Objectif :</strong> Cette page démontre une analyse NOVA complète et autonome sans dépendance backend, utilisant une intelligence artificielle locale avancée pour une expérience utilisateur optimale.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ErrorBoundary>
+  );
+};
+
+export default ProductPage;
+// EOF
+
+                      
+*/
