@@ -368,10 +368,10 @@ const ProductPage: React.FC = () => {
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4">💡 Conseils pour une analyse précise</h3>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li>• <strong>Nom complet :</strong> Incluez la marque et le type de produit</li>
-                <li>• <strong>Ingrédients complets :</strong> Copiez exactement la liste depuis l'étiquette</li>
-                <li>• <strong>Codes E :</strong> Incluez tous les additifs (E150d, E322, etc.)</li>
-                <li>• <strong>Pourcentages :</strong> Conservez les % indiqués si présents</li>
+                <li>{'•'} <strong>Nom complet :</strong> Incluez la marque et le type de produit</li>
+                <li>{'•'} <strong>Ingrédients complets :</strong> Copiez exactement la liste depuis l'étiquette</li>
+                <li>{'•'} <strong>Codes E :</strong> Incluez tous les additifs (E150d, E322, etc.)</li>
+                <li>{'•'} <strong>Pourcentages :</strong> Conservez les % indiqués si présents</li>
               </ul>
             </div>
           </div>
@@ -603,8 +603,8 @@ const ProductPage: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-gray-800 mb-2">Configuration</h4>
                   <ul className="text-gray-600 space-y-1">
-                    <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
-                    <li>• <strong>Mode:</strong> Production locale avancée</li>
+                    <li>{'•'} <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li>{'•'} <strong>Mode:</strong> Production locale avancée</li>
                   </ul>
                 </div>
               </div>
@@ -634,21 +634,21 @@ const ProductPage: React.FC = () => {
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
-                  <li>• <strong>Backend:</strong> Désactivé (Render indisponible)</li>
-                  <li>• <strong>Fallback:</strong> Intelligence artificielle locale</li>
-                  <li>• <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
-                  <li>• <strong>Confiance:</strong> 88-92% selon complexité</li>
+                  <li>{'•'} <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
+                  <li>{'•'} <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li>{'•'} <strong>Fallback:</strong> Intelligence artificielle locale</li>
+                  <li>{'•'} <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
+                  <li>{'•'} <strong>Confiance:</strong> 88-92% selon complexité</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• Classification NOVA avancée (patterns étendus)</li>
-                  <li>• Détection automatique type produit</li>
-                  <li>• Analyse additifs avec évaluation risques</li>
-                  <li>• Score santé multi-facteurs</li>
-                  <li>• Recommandations personnalisées contextuelles</li>
+                  <li>{'•'} Classification NOVA avancée (patterns étendus)</li>
+                  <li>{'•'} Détection automatique type produit</li>
+                  <li>{'•'} Analyse additifs avec évaluation risques</li>
+                  <li>{'•'} Score santé multi-facteurs</li>
+                  <li>{'•'} Recommandations personnalisées contextuelles</li>
                 </ul>
               </div>
             </div>
@@ -666,18 +666,18 @@ const ProductPage: React.FC = () => {
 
 export default ProductPage;
 // EOFSource:</strong> {debugInfo.source}</li>
-                    <li>• <strong>URL:</strong> {location.pathname + location.search}</li>
-                    <li>• <strong>Slug:</strong> {slug || 'N/A'}</li>
-                    <li>• <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
+                    <li>{'•'} <strong>URL:</strong> {location.pathname + location.search}</li>
+                    <li>{'•'} <strong>Slug:</strong> {slug || 'N/A'}</li>
+                    <li>{'•'} <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-800 mb-2">État de l'analyse</h4>
                   <ul className="text-gray-600 space-y-1">
-                    <li>• <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
-                    <li>• <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
-                    <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
-                    <li>• <strong>Mode:</strong> Production locale avancée</li>
+                    <li>{'•'} <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
+                    <li>{'•'} <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
+                    <li>{'•'} <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li>{'•'} <strong>Mode:</strong> Production locale avancée</li>
                   </ul>
                 </div>
               </div>
@@ -707,21 +707,21 @@ export default ProductPage;
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
-                  <li>• <strong>Backend:</strong> Désactivé (Render indisponible)</li>
-                  <li>• <strong>Fallback:</strong> Intelligence artificielle locale</li>
-                  <li>• <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
-                  <li>• <strong>Confiance:</strong> 88-92% selon complexité</li>
+                  <li>{'•'} <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
+                  <li>{'•'} <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li>{'•'} <strong>Fallback:</strong> Intelligence artificielle locale</li>
+                  <li>{'•'} <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
+                  <li>{'•'} <strong>Confiance:</strong> 88-92% selon complexité</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• Classification NOVA avancée (patterns étendus)</li>
-                  <li>• Détection automatique type produit</li>
-                  <li>• Analyse additifs avec évaluation risques</li>
-                  <li>• Score santé multi-facteurs</li>
-                  <li>• Recommandations personnalisées contextuelles</li>
+                  <li>{'•'} Classification NOVA avancée (patterns étendus)</li>
+                  <li>{'•'} Détection automatique type produit</li>
+                  <li>{'•'} Analyse additifs avec évaluation risques</li>
+                  <li>{'•'} Score santé multi-facteurs</li>
+                  <li>{'•'} Recommandations personnalisées contextuelles</li>
                 </ul>
               </div>
             </div>
@@ -738,6 +738,4 @@ export default ProductPage;
 };
 
 export default ProductPage;
-// EOF
-
-                      
+// EOF            
