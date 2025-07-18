@@ -7,10 +7,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 /**
- * ProductPage (version corrigée)
- * - Suppression du bloc JSX dupliqué après export (qui cassait le build)
- * - Gestion anti-race pour éviter état 'error' résiduel après succès
- * - Le bloc d'erreur n'apparaît pas si des données valides existent
+ * ProductPage DEBUG VERSION
+ * - Ajout de logs détaillés pour comprendre pourquoi un bloc d'erreur s'affiche alors que l'analyse réussit.
+ * - Conditions strictes: le bloc d'erreur ne s'affiche que si `error && !data`.
+ * - Anti-race via runIdRef pour ignorer les réponses asynchrones obsolètes.
  */
 
 const ProductPage: React.FC = () => {
@@ -19,25 +19,46 @@ const ProductPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
-  const [productName, setProductName] = useState<string>('');
-  const [ingredients, setIngredients] = useState<string>('');
+  const [productName, setProductName] = useState('');
+  const [ingredients, setIngredients] = useState('');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
   const [debugInfo, setDebugInfo] = useState<any>(null);
 
-  // Anti race-condition: identifiant incrémental pour chaque analyse lancée
   const runIdRef = useRef(0);
 
+  // Utilitaire de log centralisé
+  const log = (...args: any[]) => {
+    // Préfixe pour filtrer facilement
+    console.log('[ProductPageDebug]', ...args);
+  };
+
+  const setErrorSafe = (val: string | null, context: string) => {
+    log('setErrorSafe', { val, context, runId: runIdRef.current });
+    setError(val);
+  };
+  const setDataSafe = (val: any, context: string) => {
+    log('setDataSafe', { hasData: !!val, context, runId: runIdRef.current });
+    setData(val);
+  };
+
   useEffect(() => {
-    setError(null);
-    setData(null);
+    log('Mount / Update navigation', {
+      slug,
+      searchParams: Object.fromEntries(searchParams.entries()),
+      pathname: location.pathname,
+      search: location.search
+    });
+
+    setErrorSafe(null, 'navigation_change_reset');
+    setDataSafe(null, 'navigation_change_reset');
 
     const productNameParam = searchParams.get('productName');
     const ingredientsParam = searchParams.get('ingredients');
 
-    // 1. Paramètres URL (recherche Algolia)
+    // 1. URL Params
     if (productNameParam && ingredientsParam) {
       const decodedName = decodeURIComponent(productNameParam);
       const decodedIngredients = decodeURIComponent(ingredientsParam);
@@ -45,7 +66,8 @@ const ProductPage: React.FC = () => {
       setIngredients(decodedIngredients);
       setAnalysisSource('url');
       setDebugInfo({ source: 'url_params', productNameParam, ingredientsParam });
-      const t = setTimeout(() => performAnalysis(decodedName, decodedIngredients, 'url_params'), 300);
+      log('Trigger analysis from URL params');
+      const t = setTimeout(() => performAnalysis(decodedName, decodedIngredients, 'url_params'), 150);
       return () => clearTimeout(t);
     }
 
@@ -94,36 +116,42 @@ const ProductPage: React.FC = () => {
         setIngredients(product.ingredients);
         setAnalysisSource('slug');
         setDebugInfo({ source: 'predefined_slug', slug });
+        log('Trigger analysis from slug');
         const t = setTimeout(
           () => performAnalysis(product.name, product.ingredients, 'predefined_slug'),
-          300
+          150
         );
         return () => clearTimeout(t);
       } else {
-        setError(`Slug "${slug}" non reconnu`);
+        setErrorSafe(`Slug "${slug}" non reconnu`, 'unknown_slug');
         setDebugInfo({ source: 'unknown_slug', slug });
       }
     }
 
-    // 3. Saisie manuelle
+    // 3. Mode manuel
     if (!productNameParam && !ingredientsParam && !slug) {
       setAnalysisSource('manual');
       setDebugInfo({ source: 'manual_input' });
+      log('Manual input mode');
     }
   }, [slug, searchParams, location.pathname, location.search]);
 
   const performAnalysis = async (name: string, ingr: string, source: string) => {
     if (!name.trim() || !ingr.trim()) {
-      setError('Le nom du produit et les ingrédients sont requis');
+      setErrorSafe('Le nom du produit et les ingrédients sont requis', 'validation');
       return;
     }
     const runId = ++runIdRef.current;
+    log('performAnalysis start', { source, runId, name, ingrPreview: ingr.slice(0, 50) + '...' });
     try {
       setLoading(true);
-      setError(null);
+      setErrorSafe(null, 'start_analysis');
 
       const result = await analyzeProduct(name.trim(), ingr.trim());
-      if (runId !== runIdRef.current) return; // réponse obsolète ignorée
+      if (runId !== runIdRef.current) {
+        log('performAnalysis aborted (obsolete run)', { runId, current: runIdRef.current });
+        return;
+      }
 
       if (!result || typeof result !== 'object') throw new Error("Résultat d'analyse invalide");
       if (typeof result.novaGroup !== 'number' || result.novaGroup < 1 || result.novaGroup > 4)
@@ -131,31 +159,50 @@ const ProductPage: React.FC = () => {
       if (typeof result.healthScore !== 'number' || result.healthScore < 0 || result.healthScore > 100)
         result.healthScore = 50;
 
-      setData(result);
-      setError(null); // on efface toute erreur précédente
+      setDataSafe(result, 'analysis_success');
+      setErrorSafe(null, 'analysis_success_clear_error');
+
       setDebugInfo((p: any) => ({
         ...p,
         lastSource: source,
         analysisSuccess: true,
         novaGroup: result.novaGroup,
         healthScore: result.healthScore,
-        additivesCount: result.additives?.total || 0
+        additivesCount: result.additives?.total || 0,
+        ts: Date.now()
       }));
+      log('performAnalysis success', {
+        runId,
+        novaGroup: result.novaGroup,
+        healthScore: result.healthScore
+      });
     } catch (e: any) {
-      if (runId !== runIdRef.current) return;
+      if (runId !== runIdRef.current) {
+        log('performAnalysis catch aborted (obsolete run)', { runId, current: runIdRef.current });
+        return;
+      }
       const msg = e?.message || "Impossible d'analyser ce produit";
-      setError(msg);
+      setErrorSafe(msg, 'analysis_error');
+      log('performAnalysis error', { runId, msg });
 
       if (/impossible|critique/i.test(msg)) {
-        // fallback local
         const fb = generateFallbackAnalysis(name, ingr);
-        setData(fb);
-        setError(null); // on cache l'erreur si fallback ok
+        setDataSafe(fb, 'fallback_generated');
+        setErrorSafe(null, 'fallback_success_clear_error');
+        log('Fallback generated', { runId, novaGroup: fb.novaGroup });
       }
 
-      setDebugInfo((p: any) => ({ ...p, analysisError: true, errorMessage: msg }));
+      setDebugInfo((p: any) => ({
+        ...p,
+        analysisError: true,
+        errorMessage: msg,
+        ts: Date.now()
+      }));
     } finally {
-      if (runId === runIdRef.current) setLoading(false);
+      if (runId === runIdRef.current) {
+        setLoading(false);
+        log('performAnalysis finished', { runId, loadingSetFalse: true });
+      }
     }
   };
 
@@ -200,7 +247,14 @@ const ProductPage: React.FC = () => {
     else navigate('/chat');
   };
 
-  // Mode saisie manuelle initiale
+  // Exposition minimale globale pour débogage via console
+  (window as any).__PRODUCT_PAGE_STATE__ = {
+    get snapshot() {
+      return { productName, hasData: !!data, error, loading, runId: runIdRef.current, analysisSource };
+    }
+  };
+
+  // Mode manuel initial
   if (analysisSource === 'manual' && !productName && !ingredients) {
     return (
       <ErrorBoundary>
@@ -253,7 +307,7 @@ const ProductPage: React.FC = () => {
                   <textarea
                     value={ingredients}
                     onChange={(e) => setIngredients(e.target.value)}
-                    placeholder="Ex: Lait, ferments lactiques (Streptococcus thermophilus, ...)"
+                    placeholder="Ex: Lait, ferments lactiques..."
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
@@ -283,10 +337,10 @@ const ProductPage: React.FC = () => {
                 💡 Conseils pour une analyse précise
               </h3>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li>• <strong>Nom complet :</strong> marque + type</li>
-                <li>• <strong>Ingrédients complets :</strong> recopiez l'étiquette</li>
-                <li>• <strong>Codes E :</strong> incluez tous les additifs (E150d, E322, ...)</li>
-                <li>• <strong>Pourcentages :</strong> gardez les % indiqués</li>
+                <li>• Nom complet : marque + type</li>
+                <li>• Copiez exactement la liste d'ingrédients</li>
+                <li>• Incluez tous les additifs (E150d, E322, ...)</li>
+                <li>• Conservez les pourcentages (%)</li>
               </ul>
             </div>
           </div>
@@ -295,13 +349,12 @@ const ProductPage: React.FC = () => {
     );
   }
 
-  // Interface d'analyse
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
-          <button
+            <button
               onClick={analysisSource === 'url' ? handleBackToSearch : handleBackToHome}
               className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
             >
@@ -361,7 +414,7 @@ const ProductPage: React.FC = () => {
               <div className="ml-6 text-right">
                 {loading && (
                   <div className="flex items-center text-blue-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
                     <span className="text-sm font-medium">Analyse...</span>
                   </div>
                 )}
@@ -437,7 +490,7 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-            {data && !error && (
+          {data && !error && (
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
 
@@ -542,4 +595,4 @@ const ProductPage: React.FC = () => {
 };
 
 export default ProductPage;
-// EOF (version corrigée)
+// EOF DEBUG
