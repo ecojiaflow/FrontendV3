@@ -1,4 +1,5 @@
-// PATH: frontend/src/services/ai/novaClassifier.ts
+function processBackendResponse(backendData: any, productName: string, ingredients: string): NovaResult {
+  // La réponse backend cont// PATH: frontend/src/services/ai/novaClassifier.ts
 export interface NovaResult {
   productName: string;
   novaGroup: number;
@@ -60,13 +61,12 @@ export const analyzeProduct = async (
     try {
       const API_BASE = 'https://ecolojia-backend-working.onrender.com';
       
-      console.log('🌐 Appel API backend...', API_BASE);
+      console.log('🌐 Appel API backend...', `${API_BASE}/api/products/analyze`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 secondes de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes pour Render
       
-      // Essayons d'abord le endpoint /analyze
-      const response = await fetch(`${API_BASE}/api/analyze`, {
+      const response = await fetch(`${API_BASE}/api/products/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,8 +74,7 @@ export const analyzeProduct = async (
         },
         body: JSON.stringify({
           productName: productName.trim(),
-          ingredients: ingredients.trim(),
-          category: 'alimentaire'
+          ingredients: ingredients.trim()
         }),
         signal: controller.signal
       });
@@ -96,7 +95,7 @@ export const analyzeProduct = async (
       }
     } catch (backendError: any) {
       if (backendError.name === 'AbortError') {
-        console.warn('⏱️ Backend timeout après 8s, fallback local');
+        console.warn('⏱️ Backend timeout après 10s, fallback local');
       } else {
         console.warn('⚠️ Backend indisponible, mode local activé:', backendError.message);
       }
@@ -127,47 +126,158 @@ export const analyzeProduct = async (
  * Formate la réponse du backend au format attendu par le frontend
  */
 function processBackendResponse(backendData: any, productName: string, ingredients: string): NovaResult {
-  // Gestion des différents formats de réponse possibles
-  const data = backendData.data || backendData.result || backendData;
+  // La réponse backend contient un objet 'nova' avec toutes les infos
+  const novaData = backendData.nova || backendData;
   
-  // Extraction des données avec gestion flexible des noms de champs
-  const novaGroup = data.nova_group || data.novaGroup || data.nova || 4;
-  const healthScore = data.health_score || data.healthScore || data.score || 50;
-  const confidence = data.confidence || 85;
+  // Extraction du groupe NOVA
+  const novaGroup = novaData.novaGroup || 4;
   
-  // Gestion flexible des additifs
-  let additives = data.additives || data.additivesAnalysis || { detected: [], total: 0 };
-  if (Array.isArray(additives)) {
-    additives = { detected: additives, total: additives.length };
-  }
+  // Extraction des additifs depuis l'analyse
+  const backendAdditives = novaData.analysis?.additives || [];
+  const detectedAdditives = backendAdditives.map((a: any) => ({
+    code: a.code || a.e_number || '',
+    name: a.name || a.additive_name || '',
+    riskLevel: (a.riskLevel || a.risk_level || 'medium') as 'low' | 'medium' | 'high',
+    description: a.description || a.desc || ''
+  }));
   
-  // S'assurer que detected est un tableau
-  const detectedAdditives = Array.isArray(additives.detected) ? additives.detected : 
-                           Array.isArray(additives) ? additives : [];
+  // Calcul du score de santé basé sur NOVA et autres facteurs
+  const healthScore = calculateHealthScoreFromBackend(novaGroup, novaData, backendAdditives);
+  
+  // Extraction des recommandations
+  const recommendations = extractRecommendations(novaData, novaGroup);
+  
+  // Construction du reasoning depuis les infos backend
+  const reasoning = buildReasoning(novaData, novaGroup, backendAdditives);
   
   return {
-    productName: data.productName || productName,
-    novaGroup: Math.min(4, Math.max(1, Number(novaGroup) || 4)),
-    confidence: Number(confidence) || 85,
-    reasoning: data.reasoning || data.analysis || generateAdvancedReasoning(ingredients, novaGroup, detectedAdditives),
+    productName: backendData.productName || productName,
+    novaGroup: Math.min(4, Math.max(1, Number(novaGroup))),
+    confidence: Math.round((novaData.confidence || 0.85) * 100),
+    reasoning,
     additives: {
-      detected: detectedAdditives.map((a: any) => ({
-        code: a.code || a.e_number || a.eNumber || '',
-        name: a.name || a.additive_name || a.additiveName || '',
-        riskLevel: (a.riskLevel || a.risk_level || a.risk || 'medium') as 'low' | 'medium' | 'high',
-        description: a.description || a.desc || a.details || ''
-      })),
-      total: additives.total || detectedAdditives.length
+      detected: detectedAdditives.length > 0 ? detectedAdditives : 
+                detectAdditivesAdvanced(ingredients), // Fallback local si pas d'additifs du backend
+      total: detectedAdditives.length || novaData.analysis?.totalCount || 0
     },
-    recommendations: Array.isArray(data.recommendations) ? data.recommendations : 
-                    generateAdvancedRecommendations(ingredients, novaGroup, detectedAdditives),
-    healthScore: Math.min(100, Math.max(0, Number(healthScore) || 50)),
+    recommendations,
+    healthScore,
     isProcessed: novaGroup >= 3,
-    category: data.category || 'alimentaire',
-    timestamp: data.timestamp || new Date().toISOString(),
-    analysis: data.analysis || data.detailedAnalysis || 
-             performDetailedAnalysis(ingredients, novaGroup, detectedAdditives)
+    category: 'alimentaire',
+    timestamp: new Date().toISOString(),
+    analysis: {
+      totalCount: novaData.analysis?.totalCount || 0,
+      ultraProcessingMarkers: novaData.analysis?.ultraProcessingMarkers || [],
+      industrialIngredients: novaData.analysis?.industrialIngredients || [],
+      additives: novaData.analysis?.additives || [],
+      naturalIngredients: novaData.analysis?.naturalIngredients || [],
+      suspiciousTerms: novaData.analysis?.suspiciousTerms || []
+    }
   };
+}
+
+/**
+ * Calcule le score de santé depuis les données backend
+ */
+function calculateHealthScoreFromBackend(novaGroup: number, novaData: any, additives: any[]): number {
+  let score = 100;
+  
+  // Pénalités basées sur NOVA
+  const novaPenalties = { 1: 0, 2: 10, 3: 30, 4: 60 };
+  score -= novaPenalties[novaGroup as keyof typeof novaPenalties] || 0;
+  
+  // Pénalités pour additifs
+  score -= additives.length * 5;
+  
+  // Ajustement selon le niveau de santé du backend
+  const healthLevel = novaData.healthImpact?.level;
+  if (healthLevel === 'warning') score -= 20;
+  else if (healthLevel === 'danger') score -= 40;
+  else if (healthLevel === 'optimal') score += 10;
+  
+  // Bonus si bio dans le nom
+  if (/bio|biologique/i.test(novaData.productName || '')) score += 15;
+  
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+/**
+ * Extrait les recommandations du format backend
+ */
+function extractRecommendations(novaData: any, novaGroup: number): string[] {
+  const recommendations = [];
+  
+  // Message principal du backend
+  if (novaData.recommendations?.message) {
+    recommendations.push(`✅ ${novaData.recommendations.message}`);
+  }
+  
+  // Ajout selon le groupe NOVA
+  if (novaGroup === 1) {
+    recommendations.push('🌟 Aliment non transformé - Excellence nutritionnelle');
+    recommendations.push('🥗 À privilégier dans votre alimentation quotidienne');
+  } else if (novaGroup === 2) {
+    recommendations.push('👌 Ingrédient culinaire - Usage modéré recommandé');
+    recommendations.push('🏠 Idéal pour vos préparations maison');
+  } else if (novaGroup === 3) {
+    recommendations.push('⚠️ Produit transformé - Consommation occasionnelle');
+    recommendations.push('🔄 Recherchez des alternatives moins transformées');
+  } else {
+    recommendations.push('🚨 Ultra-transformé - À limiter fortement');
+    recommendations.push('🏠 Privilégiez une version maison si possible');
+  }
+  
+  // Ajout des alternatives du backend
+  if (novaData.recommendations?.alternatives?.length > 0) {
+    novaData.recommendations.alternatives.forEach((alt: string) => {
+      recommendations.push(`💡 Alternative: ${alt}`);
+    });
+  }
+  
+  // Conseil éducatif
+  if (novaData.recommendations?.educationalTip) {
+    recommendations.push(`📚 ${novaData.recommendations.educationalTip}`);
+  }
+  
+  return recommendations;
+}
+
+/**
+ * Construit le reasoning depuis les infos backend
+ */
+function buildReasoning(novaData: any, novaGroup: number, additives: any[]): string {
+  let reasoning = '';
+  
+  // Nom et description du groupe NOVA
+  if (novaData.groupInfo?.name) {
+    reasoning = `Produit classé NOVA ${novaGroup} (${novaData.groupInfo.name}). `;
+  } else {
+    reasoning = `Produit classé NOVA ${novaGroup}. `;
+  }
+  
+  // Description du groupe
+  if (novaData.groupInfo?.description) {
+    reasoning += novaData.groupInfo.description + '. ';
+  }
+  
+  // Mention des additifs
+  if (additives.length > 0) {
+    reasoning += `Présence de ${additives.length} additif(s). `;
+  } else {
+    reasoning += 'Aucun additif détecté. ';
+  }
+  
+  // Impact santé
+  if (novaData.healthImpact?.description) {
+    reasoning += novaData.healthImpact.description + '. ';
+  }
+  
+  // Source scientifique
+  if (novaData.scientificSource) {
+    reasoning += `(${novaData.scientificSource})`;
+  }
+  
+  return reasoning;
 }
 
 /**
