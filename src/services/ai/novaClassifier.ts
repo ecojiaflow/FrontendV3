@@ -26,6 +26,7 @@ export interface NovaResult {
     naturalIngredients: string[];
     suspiciousTerms: string[];
   };
+  source?: 'backend' | 'local'; // Ajout du champ source optionnel
 }
 
 // État global

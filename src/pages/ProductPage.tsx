@@ -142,17 +142,8 @@ const ProductPage: React.FC = () => {
       console.log('📊 ProductPage: Résultat reçu', result);
 
       // Validation basique du résultat
-      if (result && typeof result === 'object') {
-        // Correction des valeurs si nécessaire
-        if (typeof result.novaGroup !== 'number' || result.novaGroup < 1 || result.novaGroup > 4) {
-          console.warn('⚠️ Correction novaGroup:', result.novaGroup, '→ 4');
-          result.novaGroup = 4;
-        }
-        if (typeof result.healthScore !== 'number' || result.healthScore < 0 || result.healthScore > 100) {
-          console.warn('⚠️ Correction healthScore:', result.healthScore, '→ 50');
-          result.healthScore = 50;
-        }
-        
+      if (result && typeof result === 'object' && result.novaGroup && result.healthScore !== undefined) {
+        // Les données sont valides, on les utilise
         setData(result);
         setError(null);
         
@@ -166,7 +157,10 @@ const ProductPage: React.FC = () => {
           backend: result.source || 'unknown',
           ts: Date.now()
         }));
+        
+        console.log('✅ ProductPage: Analyse réussie et données sauvegardées');
       } else {
+        console.error('❌ ProductPage: Format de résultat invalide', result);
         throw new Error("Format de résultat invalide");
       }
       
