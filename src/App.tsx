@@ -17,9 +17,19 @@ const App: React.FC = () => {
       <ErrorBoundary>
         <Router>
           <Routes>
+            {/* Page d'accueil */}
             <Route path="/" element={<HomePage />} />
+            
+            {/* Page de recherche Algolia */}
             <Route path="/search" element={<SearchPage />} />
+            
+            {/* Pages d'analyse NOVA - TOUTES LES VARIANTES */}
             <Route path="/product/:slug" element={<ProductPage />} />
+            <Route path="/product" element={<ProductPage />} />
+            <Route path="/analyze" element={<ProductPage />} />
+            <Route path="/results" element={<ProductPage />} />
+            
+            {/* Autres pages */}
             <Route path="/category/:categoryName" element={<CategoryPage />} />
             <Route path="/multi-categories" element={<MultiCategoriesPage />} />
             <Route path="/not-found" element={<ProductNotFoundPage />} />

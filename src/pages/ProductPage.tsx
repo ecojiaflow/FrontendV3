@@ -1,6 +1,6 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/ProductPage.tsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { analyzeProduct, reset } from '../services/ai/novaClassifier';
 import NovaResults from '../components/NovaResults';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -9,49 +9,93 @@ import ErrorBoundary from '../components/ErrorBoundary';
 const ProductPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  
   const [productName, setProductName] = useState<string>('');
   const [ingredients, setIngredients] = useState<string>('');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
 
   useEffect(() => {
-    const productMap: Record<string, { name: string; ingredients: string }> = {
-      'pizza-surgelee-e621-glucose': {
-        name: 'Pizza 4 Fromages Surgelée',
-        ingredients: 'Pâte (farine de BLÉ, eau, huile de tournesol, levure, sel, sucre), fromages 25% (MOZZARELLA, EMMENTAL, GORGONZOLA, PARMESAN), sauce tomate, conservateur E202, exhausteur de goût E621, stabilisant E412, colorant E150d'
-      },
-      'coca-cola-original': {
-        name: 'Coca-Cola Original',
-        ingredients: 'Eau gazéifiée, sucre, sirop de glucose-fructose, arôme naturel de cola, colorant E150d (caramel IV), acidifiant E338 (acide phosphorique), édulcorant E952 (cyclamate de sodium), conservateur E211 (benzoate de sodium)'
-      },
-      'nutella-pate-tartiner': {
-        name: 'Nutella Pâte à tartiner',
-        ingredients: 'Sucre, huile de palme, NOISETTES 13%, cacao maigre 7.4%, LAIT écrémé en poudre 6.6%, LACTOSÉRUM en poudre, émulsifiants E322 (lécithines) E471 (mono- et diglycérides d\'acides gras), arôme vanilline'
-      },
-      'galette-riz-bio': {
-        name: 'Galette de riz bio',
-        ingredients: 'Riz complet biologique, sucre de canne, huile de tournesol, sel marin, arôme naturel'
-      },
-      'yaourt-nature-bio': {
-        name: 'Yaourt Nature Bio',
-        ingredients: 'LAIT entier pasteurisé issu de l\'agriculture biologique, ferments lactiques (Streptococcus thermophilus, Lactobacillus bulgaricus)'
-      },
-      'pain-mie-complet': {
-        name: 'Pain de Mie Complet',
-        ingredients: 'Farine complète de BLÉ, eau, levure, huile de tournesol, sucre, sel, gluten de BLÉ, conservateur E282, émulsifiant E471, agent de traitement de la farine E300'
-      },
-      'biscuits-petit-dejeuner': {
-        name: 'Biscuits Petit-Déjeuner',
-        ingredients: 'Céréales 58% (farine de BLÉ, flocons d\'AVOINE 14%), sucre, huile de palme, sirop de glucose-fructose, poudre à lever E500, sel, arômes, vitamines (B1, B6, B9, B12, C, E), colorant E160a, émulsifiant E322'
-      }
-    };
+    console.log('🔍 ProductPage - Navigation détectée:', { 
+      slug, 
+      searchParams: Object.fromEntries(searchParams.entries()),
+      pathname: location.pathname 
+    });
 
+    // ✅ PRIORITÉ 1: Paramètres URL depuis recherche Algolia
+    const productNameParam = searchParams.get('productName');
+    const ingredientsParam = searchParams.get('ingredients');
+    
+    if (productNameParam && ingredientsParam) {
+      console.log('🔗 Analyse depuis URL params:', { productNameParam, ingredientsParam });
+      setProductName(decodeURIComponent(productNameParam));
+      setIngredients(decodeURIComponent(ingredientsParam));
+      setAnalysisSource('url');
+      
+      // Lancer analyse automatiquement
+      const timer = setTimeout(async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const result = await analyzeProduct(
+            decodeURIComponent(productNameParam), 
+            decodeURIComponent(ingredientsParam)
+          );
+          setData(result);
+        } catch (err: any) {
+          setError(err.message || 'Erreur inconnue');
+        } finally {
+          setLoading(false);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+
+    // ✅ PRIORITÉ 2: Slug prédéfini (exemples de démonstration)
     if (slug) {
+      const productMap: Record<string, { name: string; ingredients: string }> = {
+        'pizza-surgelee-e621-glucose': {
+          name: 'Pizza 4 Fromages Surgelée',
+          ingredients: 'Pâte (farine de BLÉ, eau, huile de tournesol, levure, sel, sucre), fromages 25% (MOZZARELLA, EMMENTAL, GORGONZOLA, PARMESAN), sauce tomate, conservateur E202, exhausteur de goût E621, stabilisant E412, colorant E150d'
+        },
+        'coca-cola-original': {
+          name: 'Coca-Cola Original',
+          ingredients: 'Eau gazéifiée, sucre, sirop de glucose-fructose, arôme naturel de cola, colorant E150d (caramel IV), acidifiant E338 (acide phosphorique), édulcorant E952 (cyclamate de sodium), conservateur E211 (benzoate de sodium)'
+        },
+        'nutella-pate-tartiner': {
+          name: 'Nutella Pâte à tartiner',
+          ingredients: 'Sucre, huile de palme, NOISETTES 13%, cacao maigre 7.4%, LAIT écrémé en poudre 6.6%, LACTOSÉRUM en poudre, émulsifiants E322 (lécithines) E471 (mono- et diglycérides d\'acides gras), arôme vanilline'
+        },
+        'galette-riz-bio': {
+          name: 'Galette de riz bio',
+          ingredients: 'Riz complet biologique, sucre de canne, huile de tournesol, sel marin, arôme naturel'
+        },
+        'yaourt-nature-bio': {
+          name: 'Yaourt Nature Bio',
+          ingredients: 'LAIT entier pasteurisé issu de l\'agriculture biologique, ferments lactiques (Streptococcus thermophilus, Lactobacillus bulgaricus)'
+        },
+        'pain-mie-complet': {
+          name: 'Pain de Mie Complet',
+          ingredients: 'Farine complète de BLÉ, eau, levure, huile de tournesol, sucre, sel, gluten de BLÉ, conservateur E282, émulsifiant E471, agent de traitement de la farine E300'
+        },
+        'biscuits-petit-dejeuner': {
+          name: 'Biscuits Petit-Déjeuner',
+          ingredients: 'Céréales 58% (farine de BLÉ, flocons d\'AVOINE 14%), sucre, huile de palme, sirop de glucose-fructose, poudre à lever E500, sel, arômes, vitamines (B1, B6, B9, B12, C, E), colorant E160a, émulsifiant E322'
+        }
+      };
+
       const product = productMap[slug];
       if (product) {
+        console.log('📦 Analyse depuis slug:', { slug, product });
         setProductName(product.name);
         setIngredients(product.ingredients);
+        setAnalysisSource('slug');
+        
         const timer = setTimeout(async () => {
           try {
             setLoading(true);
@@ -66,10 +110,18 @@ const ProductPage: React.FC = () => {
         }, 500);
         return () => clearTimeout(timer);
       } else {
-        navigate('/demo');
+        console.warn('❌ Slug inconnu:', slug);
+        navigate('/');
       }
     }
-  }, [slug, navigate]);
+
+    // ✅ PRIORITÉ 3: Aucun paramètre - Interface manuelle
+    if (!productNameParam && !ingredientsParam && !slug) {
+      console.log('📝 Mode saisie manuelle');
+      setAnalysisSource('manual');
+    }
+
+  }, [slug, searchParams, navigate, location.pathname, location.search]);
 
   const handleRetry = async () => {
     if (productName && ingredients) {
@@ -86,47 +138,148 @@ const ProductPage: React.FC = () => {
     }
   };
 
-  const handleBackToDemo = () => {
-    reset();
-    navigate('/demo');
+  const handleBackToSearch = () => {
+    navigate('/search');
+  };
+
+  const handleBackToHome = () => {
+    navigate('/');
   };
 
   const handleNewAnalysis = () => {
     reset();
-    navigate('/results');
+    navigate('/analyze');
   };
 
-  if (!slug) {
+  const handleManualAnalysis = async () => {
+    if (!productName.trim() || !ingredients.trim()) {
+      setError('Veuillez renseigner le nom du produit et les ingrédients');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await analyzeProduct(productName, ingredients);
+      setData(result);
+    } catch (err: any) {
+      setError(err.message || 'Erreur inconnue');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Interface pour saisie manuelle
+  if (analysisSource === 'manual' && !productName && !ingredients) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center bg-white rounded-lg shadow-md p-8">
-          <div className="text-6xl mb-4">❓</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Produit non spécifié</h2>
-          <p className="text-gray-600 mb-6">
-            Aucun produit n'a été spécifié pour l'analyse.
-          </p>
-          <button 
-            onClick={handleBackToDemo}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Retour à la démo
-          </button>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={handleBackToHome}
+                className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
+              >
+                <span className="mr-2 text-lg">←</span>
+                Retour à l'accueil
+              </button>
+              <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">
+                Analyse NOVA Manuelle
+              </h1>
+              <button
+                onClick={handleBackToSearch}
+                className="text-green-600 hover:text-green-800 font-medium transition-colors"
+              >
+                Recherche Algolia
+              </button>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-8">
+              <div className="text-center mb-8">
+                <div className="text-6xl mb-4">🔬</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Analyse personnalisée
+                </h2>
+                <p className="text-gray-600">
+                  Analysez n'importe quel produit avec notre IA NOVA
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="productName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom du produit *
+                  </label>
+                  <input
+                    type="text"
+                    id="productName"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    placeholder="Ex: Yaourt nature bio, Coca-Cola, Pain complet..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="ingredients" className="block text-sm font-medium text-gray-700 mb-2">
+                    Liste des ingrédients *
+                  </label>
+                  <textarea
+                    id="ingredients"
+                    value={ingredients}
+                    onChange={(e) => setIngredients(e.target.value)}
+                    placeholder="Ex: Lait pasteurisé, ferments lactiques (Lactobacillus bulgaricus, Streptococcus thermophilus)..."
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <p className="mt-2 text-sm text-gray-500">
+                    Copiez la liste complète des ingrédients depuis l'étiquette du produit
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleManualAnalysis}
+                  disabled={!productName.trim() || !ingredients.trim() || loading}
+                  className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+                >
+                  {loading ? 'Analyse en cours...' : '🔬 Analyser avec NOVA'}
+                </button>
+              </div>
+
+              {error && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">💡 Conseils pour une analyse précise</h3>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li>• <strong>Nom complet :</strong> Incluez la marque et le type de produit</li>
+                <li>• <strong>Ingrédients complets :</strong> Copiez exactement la liste depuis l'étiquette</li>
+                <li>• <strong>Codes E :</strong> Incluez tous les additifs (E150d, E322, etc.)</li>
+                <li>• <strong>Pourcentages :</strong> Conservez les % indiqués si présents</li>
+              </ul>
+            </div>
+          </div>
         </div>
-      </div>
+      </ErrorBoundary>
     );
   }
 
+  // ✅ Interface d'analyse normale
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
             <button
-              onClick={handleBackToDemo}
+              onClick={analysisSource === 'url' ? handleBackToSearch : handleBackToHome}
               className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
             >
               <span className="mr-2 text-lg">←</span>
-              Retour à la démo
+              {analysisSource === 'url' ? 'Retour à la recherche' : 'Retour à l\'accueil'}
             </button>
             <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">
               Analyse NOVA
@@ -144,10 +297,20 @@ const ProductPage: React.FC = () => {
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-gray-800 mb-2">{productName}</h2>
                 <div className="space-y-3">
+                  {slug && (
+                    <div>
+                      <span className="inline-block w-24 font-medium text-gray-700">Slug:</span>
+                      <span className="text-gray-600 font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        {slug}
+                      </span>
+                    </div>
+                  )}
                   <div>
-                    <span className="inline-block w-24 font-medium text-gray-700">Slug:</span>
-                    <span className="text-gray-600 font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                      {slug}
+                    <span className="inline-block w-24 font-medium text-gray-700">Source:</span>
+                    <span className="text-gray-600 text-sm">
+                      {analysisSource === 'url' ? '🔗 Recherche Algolia' : 
+                       analysisSource === 'slug' ? '📦 Exemple prédéfini' : 
+                       '📝 Saisie manuelle'}
                     </span>
                   </div>
                   <div>
@@ -234,24 +397,24 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-          {!loading && !data && !error && (
+          {!loading && !data && !error && productName && ingredients && (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <div className="text-4xl mb-4">🔬</div>
               <h3 className="text-lg font-bold text-gray-800 mb-2">Prêt pour l'analyse NOVA</h3>
               <p className="text-gray-600 mb-6">L'analyse va démarrer automatiquement pour ce produit.</p>
               <div className="flex justify-center space-x-4">
                 <button
-                  onClick={() => analyzeProduct(productName, ingredients)}
+                  onClick={handleManualAnalysis}
                   disabled={!productName || !ingredients}
                   className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                 >
                   Lancer l'analyse
                 </button>
                 <button
-                  onClick={handleBackToDemo}
+                  onClick={handleNewAnalysis}
                   className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                 >
-                  Choisir un autre produit
+                  Nouvelle analyse
                 </button>
               </div>
             </div>

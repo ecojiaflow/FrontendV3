@@ -28,11 +28,13 @@ const ProductHit: React.FC<{ hit: any }> = ({ hit }) => {
   };
 
   const handleAnalyze = () => {
-    const searchParams = new URLSearchParams({
-      productName: hit.product_name || 'Produit',
-      ingredients: hit.ingredients_text || ''
-    });
-    navigate(`/product?${searchParams.toString()}`);
+    // ✅ CORRECTION: Navigation vers /analyze avec paramètres URL encodés
+    const productName = hit.product_name || 'Produit sans nom';
+    const ingredients = hit.ingredients_text || '';
+    
+    console.log('🔍 Navigation vers analyse:', { productName, ingredients });
+    
+    navigate(`/analyze?productName=${encodeURIComponent(productName)}&ingredients=${encodeURIComponent(ingredients)}`);
   };
 
   // Helper pour les couleurs NOVA
