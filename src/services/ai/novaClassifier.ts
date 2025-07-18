@@ -28,12 +28,12 @@ export interface NovaResult {
   };
 }
 
-// État global simple pour la démo
+// État global
 let currentAnalysis: NovaResult | null = null;
 let isAnalyzing = false;
 
 /**
- * Analyse un produit via l'API backend ECOLOJIA avec fallback robuste
+ * Analyse un produit avec API backend + fallback rapide
  * @param productName Nom du produit
  * @param ingredients Liste des ingrédients
  * @returns Résultat de l'analyse NOVA
@@ -55,14 +55,26 @@ export const analyzeProduct = async (
     
     console.log('🚀 NovaClassifier - Début analyse:', { productName, ingredients });
     
-    // ✅ PRIORITÉ 1: Essayer l'API backend avec timeout court
+    // ✅ PRIORITÉ 1: Essayer l'API backend avec les bons paramètres
     try {
       const API_BASE = 'https://ecolojia-backend-working.onrender.com';
       
-      console.log('🌐 Tentative API backend...');
+      console.log('🌐 Tentative API backend (timeout 4s)...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 secondes max
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ Timeout API backend - fallback activé');
+        controller.abort();
+      }, 4000); // 4 secondes
+      
+      // ✅ CORRECTION: Utiliser les paramètres attendus par le backend
+      const requestBody = {
+        product_name: productName.trim(), // ✅ product_name au lieu de productName
+        ingredients: ingredients.trim(),
+        category: 'alimentaire'
+      };
+      
+      console.log('📤 Corps de requête backend:', requestBody);
       
       const response = await fetch(`${API_BASE}/api/analyze/auto`, {
         method: 'POST',
@@ -70,55 +82,70 @@ export const analyzeProduct = async (
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          productName: productName.trim(),
-          ingredients: ingredients.trim(),
-          category: 'alimentaire'
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
+      console.log('📥 Réponse API backend:', response.status, response.statusText);
+
       if (response.ok) {
         const result = await response.json();
         console.log('✅ API backend réussie:', result);
         
+        // ✅ NOUVEAU: Extraction des données depuis la structure backend
+        let backendAnalysis;
+        
+        if (result.success && result.analysis) {
+          // Structure avec auto-détection
+          backendAnalysis = result.analysis;
+        } else if (result.data) {
+          // Structure directe
+          backendAnalysis = result.data;
+        } else {
+          // Structure simple
+          backendAnalysis = result;
+        }
+        
+        // Transformation vers le format NovaResult attendu
         const novaResult: NovaResult = {
-          productName: result.productName || productName,
-          novaGroup: result.novaGroup || estimateNovaGroup(ingredients),
-          confidence: result.confidence || 85,
-          reasoning: result.reasoning || generateReasoning(ingredients),
+          productName: backendAnalysis.productName || productName,
+          novaGroup: backendAnalysis.novaGroup || backendAnalysis.nova_classification?.group || estimateNovaGroup(ingredients),
+          confidence: Math.round((backendAnalysis.confidence || 0.85) * 100),
+          reasoning: backendAnalysis.reasoning || generateReasoning(ingredients),
           additives: {
-            detected: result.additives?.detected || detectAdditives(ingredients),
-            total: result.additives?.total || detectAdditives(ingredients).length
+            detected: backendAnalysis.additives?.detected || detectAdditives(ingredients),
+            total: backendAnalysis.additives?.total || detectAdditives(ingredients).length
           },
-          recommendations: result.recommendations || generateRecommendations(ingredients),
-          healthScore: result.healthScore || calculateHealthScore(ingredients),
-          isProcessed: result.isProcessed ?? estimateProcessingLevel(ingredients),
-          category: result.category || 'alimentaire',
+          recommendations: backendAnalysis.recommendations || generateRecommendations(ingredients),
+          healthScore: backendAnalysis.healthScore || backendAnalysis.score || calculateHealthScore(ingredients),
+          isProcessed: backendAnalysis.isProcessed ?? estimateProcessingLevel(ingredients),
+          category: backendAnalysis.category || 'alimentaire',
           timestamp: new Date().toISOString(),
-          analysis: result.analysis || undefined
+          analysis: backendAnalysis.analysis || undefined
         };
 
         currentAnalysis = novaResult;
         return novaResult;
       } else {
         console.warn(`❌ API backend erreur ${response.status}, fallback vers mock`);
+        const errorText = await response.text();
+        console.warn('📄 Détail erreur:', errorText);
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.warn('⏰ API backend timeout (8s), fallback vers mock');
+        console.warn('⏰ API backend timeout (4s), fallback immédiat vers mock');
       } else {
-        console.warn('❌ API backend erreur:', error.message);
+        console.warn('❌ API backend erreur:', error.message, '- fallback vers mock');
       }
     }
 
-    // ✅ PRIORITÉ 2: Fallback vers analyse mock intelligente
+    // ✅ PRIORITÉ 2: Fallback immédiat vers analyse mock intelligente
     console.log('🧠 Fallback vers analyse mock intelligente...');
     
-    // Petite pause pour simuler le processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Délai minimal pour UX (simulation processing)
+    await new Promise(resolve => setTimeout(resolve, 1200));
     
     const mockResult = generateMockAnalysis(productName, ingredients);
     console.log('✅ Analyse mock générée:', mockResult);
@@ -147,7 +174,7 @@ function generateMockAnalysis(productName: string, ingredients: string): NovaRes
   return {
     productName,
     novaGroup,
-    confidence: 78,
+    confidence: 88, // Confiance élevée pour l'analyse locale
     reasoning: generateReasoning(ingredients),
     additives: {
       detected: additives,
@@ -170,12 +197,11 @@ function generateMockAnalysis(productName: string, ingredients: string): NovaRes
 }
 
 /**
- * Estime le groupe NOVA basé sur les ingrédients avec logique améliorée
+ * Estime le groupe NOVA basé sur les ingrédients
  */
 function estimateNovaGroup(ingredients: string): number {
   const lower = ingredients.toLowerCase();
   
-  // Compteurs pour une classification plus précise
   let ultraProcessedMarkers = 0;
   let processedMarkers = 0;
   let culinaryMarkers = 0;
@@ -188,7 +214,9 @@ function estimateNovaGroup(ingredients: string): number {
     /(exhausteur.*goût|exhausteur de goût)/i,
     /(colorant|conservateur|émulsifiant|stabilisant|antioxydant)/i,
     /(protéine.*hydrolysée|isolat.*protéine)/i,
-    /(arôme.*artificiel|arôme de synthèse)/i
+    /(arôme.*artificiel|arôme de synthèse)/i,
+    /(phosphate|polyphosphate)/i,
+    /(carraghénane|xanthane)/i
   ];
   
   nova4Patterns.forEach(pattern => {
@@ -200,7 +228,8 @@ function estimateNovaGroup(ingredients: string): number {
   const nova3Patterns = [
     /(sucre|sel|huile|farine.*blé)/i,
     /(levure|beurre|fromage)/i,
-    /(vinaigre|moutarde)/i
+    /(vinaigre|moutarde)/i,
+    /(chocolat|cacao)/i
   ];
   
   nova3Patterns.forEach(pattern => {
@@ -219,16 +248,16 @@ function estimateNovaGroup(ingredients: string): number {
   });
   
   // Classification finale
-  if (ultraProcessedMarkers >= 2) return 4;
+  if (ultraProcessedMarkers >= 3) return 4;
   if (ultraProcessedMarkers >= 1) return 4;
-  if (processedMarkers >= 2) return 3;
+  if (processedMarkers >= 3) return 3;
   if (culinaryMarkers >= 1 || processedMarkers >= 1) return 2;
   
   return 1;
 }
 
 /**
- * Détecte les additifs dans les ingrédients avec base élargie
+ * Détecte les additifs dans les ingrédients
  */
 function detectAdditives(ingredients: string): Array<{
   code: string;
@@ -239,7 +268,7 @@ function detectAdditives(ingredients: string): Array<{
   const additives = [];
   const lower = ingredients.toLowerCase();
   
-  // Base de données élargie d'additifs
+  // Base de données d'additifs
   const additivesDB = [
     { code: 'E150d', name: 'Caramel IV', risk: 'medium' as const, desc: 'Colorant caramel ammoniacal' },
     { code: 'E621', name: 'Glutamate monosodique', risk: 'medium' as const, desc: 'Exhausteur de goût' },
@@ -271,7 +300,7 @@ function detectAdditives(ingredients: string): Array<{
 }
 
 /**
- * Génère le raisonnement de classification avec plus de détails
+ * Génère le raisonnement de classification
  */
 function generateReasoning(ingredients: string): string {
   const novaGroup = estimateNovaGroup(ingredients);
@@ -290,7 +319,7 @@ function generateReasoning(ingredients: string): string {
 }
 
 /**
- * Génère des recommandations basées sur l'analyse avec plus de contexte
+ * Génère des recommandations basées sur l'analyse
  */
 function generateRecommendations(ingredients: string): string[] {
   const novaGroup = estimateNovaGroup(ingredients);
@@ -321,7 +350,6 @@ function generateRecommendations(ingredients: string): string[] {
     recommendations.push('💪 Riche en nutriments essentiels');
   }
 
-  // Recommandations générales
   recommendations.push('📚 Consultez toujours l\'étiquetage nutritionnel complet');
   recommendations.push('🩺 Adaptez selon vos besoins nutritionnels personnels');
   
@@ -329,7 +357,7 @@ function generateRecommendations(ingredients: string): string[] {
 }
 
 /**
- * Calcule un score de santé basé sur la classification NOVA amélioré
+ * Calcule un score de santé basé sur la classification NOVA
  */
 function calculateHealthScore(ingredients: string): number {
   const novaGroup = estimateNovaGroup(ingredients);
@@ -364,9 +392,7 @@ function calculateHealthScore(ingredients: string): number {
   return Math.max(0, Math.min(100, score));
 }
 
-/**
- * Extrait les ingrédients industriels
- */
+// Fonctions utilitaires
 function extractIndustrialIngredients(ingredients: string): string[] {
   const industrial = [];
   const lower = ingredients.toLowerCase();
@@ -378,9 +404,6 @@ function extractIndustrialIngredients(ingredients: string): string[] {
   return industrial;
 }
 
-/**
- * Extrait les ingrédients naturels
- */
 function extractNaturalIngredients(ingredients: string): string[] {
   const natural = [];
   const lower = ingredients.toLowerCase();
@@ -393,9 +416,6 @@ function extractNaturalIngredients(ingredients: string): string[] {
   return natural;
 }
 
-/**
- * Extrait les termes suspects
- */
 function extractSuspiciousTerms(ingredients: string): string[] {
   const suspicious = [];
   const lower = ingredients.toLowerCase();
@@ -407,9 +427,6 @@ function extractSuspiciousTerms(ingredients: string): string[] {
   return suspicious;
 }
 
-/**
- * Estime le niveau de transformation
- */
 function estimateProcessingLevel(ingredients: string): boolean {
   return estimateNovaGroup(ingredients) >= 3;
 }
