@@ -1,4 +1,4 @@
-// PATH: frontend/ecolojiaFrontV3/src/services/ai/novaClassifier.ts
+// PATH: frontend/src/services/ai/novaClassifier.ts
 export interface NovaResult {
   productName: string;
   novaGroup: number;
@@ -51,9 +51,9 @@ export const analyzeProduct = async (
     throw new Error('Le nom du produit et les ingrédients sont requis');
   }
 
+  isAnalyzing = true;
+  
   try {
-    isAnalyzing = true;
-    
     console.log('🚀 NovaClassifier - Mode production locale:', { productName, ingredients });
     
     // ✅ ANALYSE LOCALE INTELLIGENTE IMMÉDIATE
@@ -68,47 +68,9 @@ export const analyzeProduct = async (
     currentAnalysis = result;
     return result;
 
-    /* ❌ BACKEND TEMPORAIREMENT DÉSACTIVÉ - Render service indisponible
-    // Code API backend conservé pour réactivation ultérieure
-    
-    try {
-      const API_BASE = 'https://ecolojia-backend-working.onrender.com';
-      
-      console.log('🌐 Tentative API backend...');
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
-      const response = await fetch(`${API_BASE}/api/analyze/auto`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          product_name: productName.trim(),
-          ingredients: ingredients.trim(),
-          category: 'alimentaire'
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ API backend réussie:', result);
-        // Traitement réponse backend...
-        return processBackendResponse(result, productName, ingredients);
-      }
-    } catch (error) {
-      console.warn('❌ Backend indisponible, mode local activé');
-    }
-    */
-
   } catch (error) {
-    console.error('❌ Erreur critique NovaClassifier:', error);
-    throw new Error(`Analyse impossible: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    console.error('❌ Erreur durant l\'analyse:', error);
+    throw error;
   } finally {
     isAnalyzing = false;
   }
