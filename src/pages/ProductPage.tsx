@@ -368,10 +368,10 @@ const ProductPage: React.FC = () => {
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4">💡 Conseils pour une analyse précise</h3>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><span>{'•'}</span> <strong>Nom complet :</strong> Incluez la marque et le type de produit</li>
-                <li><span>{'•'}</span> <strong>Ingrédients complets :</strong> Copiez exactement la liste depuis l'étiquette</li>
-                <li><span>{'•'}</span> <strong>Codes E :</strong> Incluez tous les additifs (E150d, E322, etc.)</li>
-                <li><span>{'•'}</span> <strong>Pourcentages :</strong> Conservez les % indiqués si présents</li>
+                <li><span>{'&bull;'}</span> <strong>Nom complet :</strong> Incluez la marque et le type de produit</li>
+                <li><span>{'&bull;'}</span> <strong>Ingrédients complets :</strong> Copiez exactement la liste depuis l'étiquette</li>
+                <li><span>{'&bull;'}</span> <strong>Codes E :</strong> Incluez tous les additifs (E150d, E322, etc.)</li>
+                <li><span>{'&bull;'}</span> <strong>Pourcentages :</strong> Conservez les % indiqués si présents</li>
               </ul>
             </div>
           </div>
@@ -603,8 +603,8 @@ const ProductPage: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-gray-800 mb-2">Configuration</h4>
                   <ul className="text-gray-600 space-y-1">
-                    <li><span>{'•'}</span> <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
-                    <li><span>{'•'}</span> <strong>Mode:</strong> Production locale avancée</li>
+                    <li><span>{'&bull;'}</span> <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Mode:</strong> Production locale avancée</li>
                   </ul>
                 </div>
               </div>
@@ -634,21 +634,21 @@ const ProductPage: React.FC = () => {
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li><span>{'•'}</span> <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
-                  <li><span>{'•'}</span> <strong>Backend:</strong> Désactivé (Render indisponible)</li>
-                  <li><span>{'•'}</span> <strong>Fallback:</strong> Intelligence artificielle locale</li>
-                  <li><span>{'•'}</span> <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
-                  <li><span>{'•'}</span> <strong>Confiance:</strong> 88-92% selon complexité</li>
+                  <li><span>{'&bull;'}</span> <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
+                  <li><span>{'&bull;'}</span> <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li><span>{'&bull;'}</span> <strong>Fallback:</strong> Intelligence artificielle locale</li>
+                  <li><span>{'&bull;'}</span> <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
+                  <li><span>{'&bull;'}</span> <strong>Confiance:</strong> 88-92% selon complexité</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li><span>{'•'}</span> Classification NOVA avancée (patterns étendus)</li>
-                  <li><span>{'•'}</span> Détection automatique type produit</li>
-                  <li><span>{'•'}</span> Analyse additifs avec évaluation risques</li>
-                  <li><span>{'•'}</span> Score santé multi-facteurs</li>
-                  <li><span>{'•'}</span> Recommandations personnalisées contextuelles</li>
+                  <li><span>{'&bull;'}</span> Classification NOVA avancée (patterns étendus)</li>
+                  <li><span>{'&bull;'}</span> Détection automatique type produit</li>
+                  <li><span>{'&bull;'}</span> Analyse additifs avec évaluation risques</li>
+                  <li><span>{'&bull;'}</span> Score santé multi-facteurs</li>
+                  <li><span>{'&bull;'}</span> Recommandations personnalisées contextuelles</li>
                 </ul>
               </div>
             </div>
@@ -665,19 +665,20 @@ const ProductPage: React.FC = () => {
 };
 
 export default ProductPage;
+/*
 // EOFSource:</strong> {debugInfo.source}</li>
-                    <li><span>{'•'}</span> <strong>URL:</strong> {location.pathname + location.search}</li>
-                    <li><span>{'•'}</span> <strong>Slug:</strong> {slug || 'N/A'}</li>
-                    <li><span>{'•'}</span> <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
+                    <li><span>{'&bull;'}</span> <strong>URL:</strong> {location.pathname + location.search}</li>
+                    <li><span>{'&bull;'}</span> <strong>Slug:</strong> {slug || 'N/A'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-800 mb-2">État de l'analyse</h4>
                   <ul className="text-gray-600 space-y-1">
-                    <li><span>{'•'}</span> <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
-                    <li><span>{'•'}</span> <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
-                    <li><span>{'•'}</span> <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
-                    <li><span>{'•'}</span> <strong>Mode:</strong> Production locale avancée</li>
+                    <li><span>{'&bull;'}</span> <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li><span>{'&bull;'}</span> <strong>Mode:</strong> Production locale avancée</li>
                   </ul>
                 </div>
               </div>
@@ -707,21 +708,21 @@ export default ProductPage;
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li><span>{'•'}</span> <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
-                  <li><span>{'•'}</span> <strong>Backend:</strong> Désactivé (Render indisponible)</li>
-                  <li><span>{'•'}</span> <strong>Fallback:</strong> Intelligence artificielle locale</li>
-                  <li><span>{'•'}</span> <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
-                  <li><span>{'•'}</span> <strong>Confiance:</strong> 88-92% selon complexité</li>
+                  <li><span>{'&bull;'}</span> <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
+                  <li><span>{'&bull;'}</span> <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li><span>{'&bull;'}</span> <strong>Fallback:</strong> Intelligence artificielle locale</li>
+                  <li><span>{'&bull;'}</span> <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
+                  <li><span>{'&bull;'}</span> <strong>Confiance:</strong> 88-92% selon complexité</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li><span>{'•'}</span> Classification NOVA avancée (patterns étendus)</li>
-                  <li><span>{'•'}</span> Détection automatique type produit</li>
-                  <li><span>{'•'}</span> Analyse additifs avec évaluation risques</li>
-                  <li><span>{'•'}</span> Score santé multi-facteurs</li>
-                  <li><span>{'•'}</span> Recommandations personnalisées contextuelles</li>
+                  <li><span>{'&bull;'}</span> Classification NOVA avancée (patterns étendus)</li>
+                  <li><span>{'&bull;'}</span> Détection automatique type produit</li>
+                  <li><span>{'&bull;'}</span> Analyse additifs avec évaluation risques</li>
+                  <li><span>{'&bull;'}</span> Score santé multi-facteurs</li>
+                  <li><span>{'&bull;'}</span> Recommandations personnalisées contextuelles</li>
                 </ul>
               </div>
             </div>
@@ -739,5 +740,3 @@ export default ProductPage;
 
 export default ProductPage;
 // EOF
-
-                      
