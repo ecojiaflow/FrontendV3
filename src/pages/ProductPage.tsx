@@ -7,10 +7,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 /**
- * ProductPage (Release)
- * - Affiche l'analyse NOVA d'un produit (slug prédéfini, paramètres URL ou saisie manuelle).
- * - Protection anti-race via runIdRef.
- * - Le bloc d'erreur n'apparaît que si (error && !data).
+ * ProductPage (Version Finale)
+ * - Affiche l'analyse NOVA d'un produit
+ * - Backend activé avec fallback local
+ * - Gestion d'erreur améliorée
  */
 
 const predefinedProducts: Record<string, { name: string; ingredients: string }> = {
@@ -65,7 +65,7 @@ const ProductPage: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false);
 
-  // Anti-race: chaque analyse increment runIdRef; seules les réponses du run courant sont prises.
+  // Anti-race: chaque analyse increment runIdRef
   const runIdRef = useRef(0);
 
   useEffect(() => {
@@ -125,44 +125,57 @@ const ProductPage: React.FC = () => {
       setHasAttemptedAnalysis(true);
       return;
     }
+    
     const runId = ++runIdRef.current;
+    
     try {
       setLoading(true);
       setError(null);
       setHasAttemptedAnalysis(true);
 
+      console.log('🎯 ProductPage: Démarrage analyse', { name, source });
+      
       const result = await analyzeProduct(name.trim(), ingr.trim());
+      
       if (runId !== runIdRef.current) return; // réponse obsolète ignorée
 
-      if (!result || typeof result !== 'object') throw new Error("Résultat d'analyse invalide");
-      if (typeof result.novaGroup !== 'number' || result.novaGroup < 1 || result.novaGroup > 4)
-        result.novaGroup = 4;
-      if (typeof result.healthScore !== 'number' || result.healthScore < 0 || result.healthScore > 100)
-        result.healthScore = 50;
+      console.log('📊 ProductPage: Résultat reçu', result);
 
-      setData(result);
-      setError(null); // efface toute erreur précédente
-
-      setDebugInfo((p: any) => ({
-        ...p,
-        analysisSuccess: true,
-        sourceRun: source,
-        novaGroup: result.novaGroup,
-        healthScore: result.healthScore,
-        additivesCount: result.additives?.total || 0,
-        ts: Date.now()
-      }));
+      // Validation basique du résultat
+      if (result && typeof result === 'object') {
+        // Correction des valeurs si nécessaire
+        if (typeof result.novaGroup !== 'number' || result.novaGroup < 1 || result.novaGroup > 4) {
+          console.warn('⚠️ Correction novaGroup:', result.novaGroup, '→ 4');
+          result.novaGroup = 4;
+        }
+        if (typeof result.healthScore !== 'number' || result.healthScore < 0 || result.healthScore > 100) {
+          console.warn('⚠️ Correction healthScore:', result.healthScore, '→ 50');
+          result.healthScore = 50;
+        }
+        
+        setData(result);
+        setError(null);
+        
+        setDebugInfo((p: any) => ({
+          ...p,
+          analysisSuccess: true,
+          sourceRun: source,
+          novaGroup: result.novaGroup,
+          healthScore: result.healthScore,
+          additivesCount: result.additives?.total || 0,
+          backend: result.source || 'unknown',
+          ts: Date.now()
+        }));
+      } else {
+        throw new Error("Format de résultat invalide");
+      }
+      
     } catch (e: any) {
       if (runId !== runIdRef.current) return;
+      
+      console.error('❌ ProductPage: Erreur analyse', e);
       const msg = e?.message || "Impossible d'analyser ce produit";
       setError(msg);
-
-      // Fallback si message critique
-      if (/impossible|critique/i.test(msg)) {
-        const fb = generateFallbackAnalysis(name, ingr);
-        setData(fb);
-        setError(null);
-      }
 
       setDebugInfo((p: any) => ({
         ...p,
@@ -173,30 +186,6 @@ const ProductPage: React.FC = () => {
     } finally {
       if (runId === runIdRef.current) setLoading(false);
     }
-  };
-
-  const generateFallbackAnalysis = (name: string, ingr: string) => {
-    const lower = ingr.toLowerCase();
-    let nova = 1;
-    if (/e1|e2|e3|e4|e5/.test(lower)) nova = 4;
-    else if (/sucre|huile|sel/.test(lower)) nova = 3;
-    else if (/farine|beurre/.test(lower)) nova = 2;
-    const score = nova === 1 ? 90 : nova === 2 ? 70 : nova === 3 ? 50 : 25;
-    return {
-      productName: name,
-      novaGroup: nova,
-      healthScore: score,
-      confidence: 60,
-      reasoning: `Analyse de base (NOVA ${nova}) via mots-clés.`,
-      additives: { detected: [], total: 0 },
-      recommendations: [
-        `Produit classé NOVA ${nova}`,
-        nova >= 3 ? 'Consommation modérée' : 'Bon choix nutritionnel',
-        'Analyse complète indisponible (fallback)'
-      ],
-      category: 'alimentaire',
-      timestamp: new Date().toISOString()
-    };
   };
 
   // Handlers
@@ -299,10 +288,10 @@ const ProductPage: React.FC = () => {
                 💡 Conseils pour une analyse précise
               </h3>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li>• Nom complet : marque + type</li>
+                <li>• Nom complet : marque + type de produit</li>
                 <li>• Copiez exactement la liste d'ingrédients</li>
                 <li>• Incluez tous les additifs (E150d, E322, ...)</li>
-                <li>• Conservez les pourcentages (%)</li>
+                <li>• Conservez les pourcentages si indiqués</li>
               </ul>
             </div>
           </div>
@@ -380,13 +369,13 @@ const ProductPage: React.FC = () => {
                     <span className="text-sm font-medium">Analyse...</span>
                   </div>
                 )}
-                {data && !error && (
+                {data && !loading && (
                   <div className="flex items-center text-green-600">
                     <span className="mr-2">✅</span>
                     <span className="text-sm font-medium">Analysé</span>
                   </div>
                 )}
-                {error && !data && hasAttemptedAnalysis && (
+                {error && !data && hasAttemptedAnalysis && !loading && (
                   <div className="flex items-center text-red-600">
                     <span className="mr-2">❌</span>
                     <span className="text-sm font-medium">Erreur</span>
@@ -395,7 +384,7 @@ const ProductPage: React.FC = () => {
               </div>
             </div>
 
-            {error && !data && hasAttemptedAnalysis && (
+            {error && !data && hasAttemptedAnalysis && !loading && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -525,7 +514,8 @@ const ProductPage: React.FC = () => {
                     <li>• <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
                     <li>• <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
                     <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
-                    <li>• <strong>Mode:</strong> Production locale avancée</li>
+                    <li>• <strong>Mode:</strong> Backend + Fallback local</li>
+                    <li>• <strong>Backend:</strong> {debugInfo.backend || 'N/A'}</li>
                   </ul>
                 </div>
               </div>
@@ -555,17 +545,17 @@ const ProductPage: React.FC = () => {
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• <strong>Mode:</strong> <span className="text-green-600">Production locale avancée</span></li>
-                  <li>• <strong>Backend:</strong> Désactivé (Render indisponible)</li>
+                  <li>• <strong>Mode:</strong> <span className="text-green-600">Production avec Backend</span></li>
+                  <li>• <strong>Backend:</strong> <span className="text-green-600">Activé (Render API)</span></li>
                   <li>• <strong>Fallback:</strong> Intelligence artificielle locale</li>
                   <li>• <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
-                  <li>• <strong>Confiance:</strong> 88-92% selon complexité</li>
+                  <li>• <strong>Confiance:</strong> 70-92% selon source</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• Classification NOVA avancée (patterns étendus)</li>
+                  <li>• Classification NOVA backend + local</li>
                   <li>• Détection automatique type produit</li>
                   <li>• Analyse additifs avec évaluation risques</li>
                   <li>• Score santé multi-facteurs</li>
@@ -575,7 +565,7 @@ const ProductPage: React.FC = () => {
             </div>
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-blue-700 text-sm">
-                <strong>🎯 Objectif :</strong> Cette page démontre une analyse NOVA complète et autonome sans dépendance backend, utilisant une intelligence artificielle locale avancée pour une expérience utilisateur optimale.
+                <strong>🎯 Objectif :</strong> Analyse NOVA complète avec backend prioritaire et fallback local intelligent pour une fiabilité maximale.
               </p>
             </div>
           </div>
