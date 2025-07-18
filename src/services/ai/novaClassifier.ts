@@ -85,6 +85,8 @@ export const analyzeProduct = async (
         
         // Validation et formatage de la réponse backend
         const formattedResult = processBackendResponse(result, productName, ingredients);
+        console.log('📊 Résultat formaté:', formattedResult);
+        
         currentAnalysis = formattedResult;
         return formattedResult;
       } else {
@@ -193,8 +195,10 @@ function calculateHealthScoreFromBackend(novaGroup: number, novaData: any, addit
   else if (healthLevel === 'danger') score -= 40;
   else if (healthLevel === 'optimal') score += 10;
   
-  // Bonus si bio dans le nom
-  if (/bio|biologique/i.test(novaData.productName || '')) score += 15;
+  // Bonus si bio dans le nom ou les ingrédients
+  if (/bio|biologique/i.test(productName || '') || /bio|biologique/i.test(ingredients || '')) {
+    score += 15;
+  }
   
   return Math.max(0, Math.min(100, Math.round(score)));
 }
