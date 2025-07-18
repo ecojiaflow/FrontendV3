@@ -19,7 +19,7 @@ const searchClient = algoliasearch(
   '085aeee2b3ec8efa66dabb7691a01b67' // Search API Key
 );
 
-// ✅ Composant Hit personnalisé pour afficher un produit
+// ✅ Composant Hit personnalisé pour afficher un produit - CORRIGÉ
 const ProductHit: React.FC<{ hit: any }> = ({ hit }) => {
   const navigate = useNavigate();
 
@@ -29,10 +29,16 @@ const ProductHit: React.FC<{ hit: any }> = ({ hit }) => {
 
   const handleAnalyze = () => {
     // ✅ CORRECTION: Navigation vers /analyze avec paramètres URL encodés
-    const productName = hit.product_name || 'Produit sans nom';
-    const ingredients = hit.ingredients_text || '';
+    // ✅ NOUVEAU: Mapping intelligent des champs produit
+    const productName = hit.product_name || hit.name || hit.title || hit.brands || `Produit ${hit.objectID}`;
+    const ingredients = hit.ingredients_text || hit.ingredients || '';
     
-    console.log('🔍 Navigation vers analyse:', { productName, ingredients });
+    console.log('🔍 Navigation vers analyse:', { 
+      hit,
+      productName, 
+      ingredients,
+      availableFields: Object.keys(hit)
+    });
     
     navigate(`/analyze?productName=${encodeURIComponent(productName)}&ingredients=${encodeURIComponent(ingredients)}`);
   };
@@ -58,19 +64,63 @@ const ProductHit: React.FC<{ hit: any }> = ({ hit }) => {
     }
   };
 
+  // ✅ NOUVEAU: Fonction de récupération intelligente du nom du produit
+  const getProductName = (): string => {
+    // Ordre de priorité pour récupérer le nom
+    const candidates = [
+      hit.product_name,
+      hit.name,
+      hit.title,
+      hit.product_title,
+      hit.brands,
+      hit.brand_name
+    ];
+    
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    
+    // Fallback intelligent avec l'ID
+    return `Produit ${hit.objectID}`;
+  };
+
+  // ✅ NOUVEAU: Fonction de récupération intelligente de la marque
+  const getBrandName = (): string | null => {
+    const brandCandidates = [hit.brands, hit.brand_name, hit.brand];
+    for (const candidate of brandCandidates) {
+      if (candidate && typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return null;
+  };
+
+  // ✅ NOUVEAU: Fonction de récupération des ingrédients
+  const getIngredients = (): string => {
+    const ingredientCandidates = [hit.ingredients_text, hit.ingredients, hit.ingredient_list];
+    for (const candidate of ingredientCandidates) {
+      if (candidate && typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return '';
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          {/* Nom du produit */}
+          {/* ✅ CORRIGÉ: Nom du produit avec mapping intelligent */}
           <h3 className="text-lg font-bold text-gray-800 mb-2">
-            {hit.product_name || 'Produit sans nom'}
+            {getProductName()}
           </h3>
           
-          {/* Marque */}
-          {hit.brands && (
+          {/* ✅ CORRIGÉ: Marque avec mapping intelligent */}
+          {getBrandName() && (
             <p className="text-sm text-gray-600 mb-2">
-              <span className="font-medium">Marque:</span> {hit.brands}
+              <span className="font-medium">Marque:</span> {getBrandName()}
             </p>
           )}
           
@@ -116,21 +166,37 @@ const ProductHit: React.FC<{ hit: any }> = ({ hit }) => {
             </span>
           </div>
           
-          {/* Ingrédients (extrait) */}
-          {hit.ingredients_text && (
+          {/* ✅ CORRIGÉ: Ingrédients avec mapping intelligent */}
+          {getIngredients() && (
             <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-              <span className="font-medium">Ingrédients:</span> {hit.ingredients_text.substring(0, 120)}
-              {hit.ingredients_text.length > 120 && '...'}
+              <span className="font-medium">Ingrédients:</span> {getIngredients().substring(0, 120)}
+              {getIngredients().length > 120 && '...'}
             </p>
+          )}
+
+          {/* ✅ NOUVEAU: Debug info en mode développement */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-500">
+              <details>
+                <summary className="cursor-pointer">🔧 Debug Algolia</summary>
+                <div className="mt-1 space-y-1">
+                  <div>ObjectID: {hit.objectID}</div>
+                  <div>Champs disponibles: {Object.keys(hit).join(', ')}</div>
+                  <div>product_name: {hit.product_name || 'null'}</div>
+                  <div>name: {hit.name || 'null'}</div>
+                  <div>brands: {hit.brands || 'null'}</div>
+                </div>
+              </details>
+            </div>
           )}
         </div>
         
         {/* Image du produit */}
-        {hit.image_url && (
+        {(hit.image_url || hit.image) && (
           <div className="ml-4 flex-shrink-0">
             <img 
-              src={hit.image_url} 
-              alt={hit.product_name}
+              src={hit.image_url || hit.image} 
+              alt={getProductName()}
               className="w-16 h-16 object-cover rounded-lg border border-gray-200"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -201,8 +267,10 @@ const SearchPage: React.FC = () => {
         <Configure
           hitsPerPage={20}
           attributesToRetrieve={[
-            'objectID', 'id', 'product_name', 'brands', 'categories',
-            'nova_group', 'nutriscore_grade', 'image_url', 'ingredients_text',
+            'objectID', 'id', 'product_name', 'name', 'title', 'product_title',
+            'brands', 'brand_name', 'brand', 'categories',
+            'nova_group', 'nutriscore_grade', 'image_url', 'image',
+            'ingredients_text', 'ingredients', 'ingredient_list',
             'confidence_color', 'verification_status', 'category'
           ]}
           facets={[
@@ -256,7 +324,7 @@ const SearchPage: React.FC = () => {
               }}
             />
             <div className="mt-3 text-sm text-gray-500">
-              Recherchez parmi 99 produits indexés • Filtres avancés disponibles
+              Recherchez parmi 99 produits indexés • Filtres avancés disponibles • Mapping intelligent des champs
             </div>
           </div>
 
@@ -364,7 +432,7 @@ const SearchPage: React.FC = () => {
                   }}
                 />
                 <div className="text-sm text-gray-500">
-                  99 produits indexés dans Algolia
+                  99 produits indexés • Mapping intelligent ✅
                 </div>
               </div>
               

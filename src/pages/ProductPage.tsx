@@ -18,39 +18,36 @@ const ProductPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
     console.log('🔍 ProductPage - Navigation détectée:', { 
       slug, 
       searchParams: Object.fromEntries(searchParams.entries()),
-      pathname: location.pathname 
+      pathname: location.pathname,
+      search: location.search
     });
 
+    setError(null);
+    setData(null);
+    
     // ✅ PRIORITÉ 1: Paramètres URL depuis recherche Algolia
     const productNameParam = searchParams.get('productName');
     const ingredientsParam = searchParams.get('ingredients');
     
     if (productNameParam && ingredientsParam) {
       console.log('🔗 Analyse depuis URL params:', { productNameParam, ingredientsParam });
-      setProductName(decodeURIComponent(productNameParam));
-      setIngredients(decodeURIComponent(ingredientsParam));
-      setAnalysisSource('url');
+      const decodedName = decodeURIComponent(productNameParam);
+      const decodedIngredients = decodeURIComponent(ingredientsParam);
       
-      // Lancer analyse automatiquement
+      setProductName(decodedName);
+      setIngredients(decodedIngredients);
+      setAnalysisSource('url');
+      setDebugInfo({ source: 'url_params', productNameParam, ingredientsParam });
+      
+      // ✅ CORRECTION: Lancer analyse automatiquement avec gestion d'erreur améliorée
       const timer = setTimeout(async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const result = await analyzeProduct(
-            decodeURIComponent(productNameParam), 
-            decodeURIComponent(ingredientsParam)
-          );
-          setData(result);
-        } catch (err: any) {
-          setError(err.message || 'Erreur inconnue');
-        } finally {
-          setLoading(false);
-        }
+        await performAnalysis(decodedName, decodedIngredients, 'url_params');
       }, 500);
       
       return () => clearTimeout(timer);
@@ -95,23 +92,16 @@ const ProductPage: React.FC = () => {
         setProductName(product.name);
         setIngredients(product.ingredients);
         setAnalysisSource('slug');
+        setDebugInfo({ source: 'predefined_slug', slug, product });
         
         const timer = setTimeout(async () => {
-          try {
-            setLoading(true);
-            setError(null);
-            const result = await analyzeProduct(product.name, product.ingredients);
-            setData(result);
-          } catch (err: any) {
-            setError(err.message || 'Erreur inconnue');
-          } finally {
-            setLoading(false);
-          }
+          await performAnalysis(product.name, product.ingredients, 'predefined_slug');
         }, 500);
         return () => clearTimeout(timer);
       } else {
         console.warn('❌ Slug inconnu:', slug);
-        navigate('/');
+        setError(`Slug "${slug}" non reconnu`);
+        setDebugInfo({ source: 'unknown_slug', slug, availableSlugs: Object.keys(productMap) });
       }
     }
 
@@ -119,22 +109,62 @@ const ProductPage: React.FC = () => {
     if (!productNameParam && !ingredientsParam && !slug) {
       console.log('📝 Mode saisie manuelle');
       setAnalysisSource('manual');
+      setDebugInfo({ source: 'manual_input' });
     }
 
   }, [slug, searchParams, navigate, location.pathname, location.search]);
 
+  // ✅ NOUVEAU: Fonction centralisée d'analyse avec gestion d'erreur robuste
+  const performAnalysis = async (productName: string, ingredients: string, source: string) => {
+    if (!productName?.trim() || !ingredients?.trim()) {
+      setError('Le nom du produit et les ingrédients sont requis');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log(`🚀 Début analyse (${source}):`, { productName, ingredients });
+      
+      const result = await analyzeProduct(productName.trim(), ingredients.trim());
+      
+      console.log('✅ Analyse réussie:', result);
+      setData(result);
+      
+      // Mise à jour debug info
+      setDebugInfo(prev => ({
+        ...prev,
+        analysisSuccess: true,
+        result: {
+          novaGroup: result.novaGroup,
+          healthScore: result.healthScore,
+          additivesCount: result.additives?.total || 0
+        }
+      }));
+      
+    } catch (err: any) {
+      console.error('❌ Erreur analyse:', err);
+      
+      const errorMessage = err?.message || 'Erreur inconnue lors de l\'analyse';
+      setError(errorMessage);
+      
+      // Mise à jour debug info
+      setDebugInfo(prev => ({
+        ...prev,
+        analysisError: true,
+        errorMessage,
+        errorDetails: err
+      }));
+      
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRetry = async () => {
     if (productName && ingredients) {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await analyzeProduct(productName, ingredients);
-        setData(result);
-      } catch (err: any) {
-        setError(err.message || 'Erreur inconnue');
-      } finally {
-        setLoading(false);
-      }
+      await performAnalysis(productName, ingredients, 'retry');
     }
   };
 
@@ -152,20 +182,20 @@ const ProductPage: React.FC = () => {
   };
 
   const handleManualAnalysis = async () => {
-    if (!productName.trim() || !ingredients.trim()) {
-      setError('Veuillez renseigner le nom du produit et les ingrédients');
-      return;
-    }
+    await performAnalysis(productName, ingredients, 'manual');
+  };
 
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await analyzeProduct(productName, ingredients);
-      setData(result);
-    } catch (err: any) {
-      setError(err.message || 'Erreur inconnue');
-    } finally {
-      setLoading(false);
+  // ✅ NOUVEAU: Fonction pour aller au chat avec contexte
+  const handleGoToChat = () => {
+    if (data) {
+      navigate('/chat', {
+        state: {
+          context: data,
+          initialMessage: `Parle-moi de "${data.productName}"`
+        }
+      });
+    } else {
+      navigate('/chat');
     }
   };
 
@@ -284,12 +314,20 @@ const ProductPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">
               Analyse NOVA
             </h1>
-            <button
-              onClick={handleNewAnalysis}
-              className="text-green-600 hover:text-green-800 font-medium transition-colors"
-            >
-              Nouvelle analyse
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleGoToChat}
+                className="text-purple-600 hover:text-purple-800 font-medium transition-colors"
+              >
+                💬 Chat IA
+              </button>
+              <button
+                onClick={handleNewAnalysis}
+                className="text-green-600 hover:text-green-800 font-medium transition-colors"
+              >
+                Nouvelle analyse
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -343,29 +381,61 @@ const ProductPage: React.FC = () => {
               </div>
             </div>
 
+            {/* ✅ NOUVEAU: Gestion d'erreur améliorée avec plus d'informations */}
             {error && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="text-red-800 font-medium mb-1">Erreur d'analyse</h3>
                     <p className="text-red-700 text-sm mb-3">{error}</p>
+                    
+                    {/* Solutions suggérées selon le type d'erreur */}
                     <div className="text-sm">
-                      <p className="text-red-800 font-medium mb-2">💡 Suggestions:</p>
+                      <p className="text-red-800 font-medium mb-2">💡 Solutions suggérées:</p>
                       <ul className="text-red-700 list-disc list-inside space-y-1">
-                        <li>Vérifiez votre connexion internet</li>
+                        {error.includes('requis') && (
+                          <li>Vérifiez que le nom et les ingrédients sont bien renseignés</li>
+                        )}
+                        {error.includes('réseau') || error.includes('fetch') && (
+                          <>
+                            <li>Vérifiez votre connexion internet</li>
+                            <li>Le service backend pourrait être temporairement indisponible</li>
+                          </>
+                        )}
+                        {error.includes('quota') && (
+                          <li>Attendez quelques minutes avant de réessayer (quota API)</li>
+                        )}
+                        {error.includes('confidence') && (
+                          <li>Ajoutez plus d'informations détaillées sur le produit</li>
+                        )}
                         <li>Réessayez dans quelques secondes</li>
-                        <li>Testez avec un autre produit</li>
-                        {error.includes('quota') && <li>Attendez le renouvellement du quota</li>}
-                        {error.includes('confidence') && <li>Ajoutez plus d'informations sur le produit</li>}
+                        <li>Testez avec un autre produit (ex: Nutella, Yaourt bio)</li>
+                        <li>Utilisez un exemple prédéfini pour tester le système</li>
                       </ul>
                     </div>
+                    
+                    {/* Boutons d'action */}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        onClick={handleRetry}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                      >
+                        🔄 Réessayer
+                      </button>
+                      <button
+                        onClick={() => navigate('/product/nutella-pate-tartiner')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                      >
+                        🧪 Tester Nutella
+                      </button>
+                      <button
+                        onClick={() => navigate('/product/yaourt-nature-bio')}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                      >
+                        🥛 Tester Yaourt Bio
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={handleRetry}
-                    className="ml-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
-                  >
-                    Réessayer
-                  </button>
                 </div>
               </div>
             )}
@@ -387,6 +457,13 @@ const ProductPage: React.FC = () => {
                     <div className="bg-green-500 h-2 rounded-full animate-pulse" style={{ width: '75%' }}></div>
                   </div>
                 </div>
+                
+                {/* ✅ NOUVEAU: Informations sur le processus */}
+                <div className="mt-4 text-sm text-gray-500 text-center">
+                  <p>🔄 Connexion à l'API ECOLOJIA...</p>
+                  <p>🧠 Classification automatique avec IA...</p>
+                  <p>⚗️ Détection des additifs en cours...</p>
+                </div>
               </div>
             </div>
           )}
@@ -394,6 +471,31 @@ const ProductPage: React.FC = () => {
           {data && (
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
+              
+              {/* ✅ NOUVEAU: Actions post-analyse */}
+              <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">🚀 Que faire maintenant ?</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={handleGoToChat}
+                    className="flex items-center justify-center bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    💬 Discuter de ce produit
+                  </button>
+                  <button
+                    onClick={() => navigate('/search')}
+                    className="flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    🔍 Chercher des alternatives
+                  </button>
+                  <button
+                    onClick={handleNewAnalysis}
+                    className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    🔬 Analyser un autre produit
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -408,18 +510,62 @@ const ProductPage: React.FC = () => {
                   disabled={!productName || !ingredients}
                   className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                 >
-                  Lancer l'analyse
+                  🚀 Lancer l'analyse maintenant
                 </button>
                 <button
                   onClick={handleNewAnalysis}
                   className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                 >
-                  Nouvelle analyse
+                  📝 Nouvelle analyse
                 </button>
               </div>
             </div>
           )}
 
+          {/* ✅ NOUVEAU: Informations de debug en mode développement */}
+          {debugInfo && process.env.NODE_ENV === 'development' && (
+            <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Debug Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-2">Configuration</h4>
+                  <ul className="text-gray-600 space-y-1">
+                    <li>• <strong>Source:</strong> {debugInfo.source}</li>
+                    <li>• <strong>URL:</strong> {location.pathname + location.search}</li>
+                    <li>• <strong>Slug:</strong> {slug || 'N/A'}</li>
+                    <li>• <strong>Params:</strong> {Object.entries(Object.fromEntries(searchParams.entries())).length > 0 ? 'Présents' : 'Aucun'}</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-2">État de l'analyse</h4>
+                  <ul className="text-gray-600 space-y-1">
+                    <li>• <strong>Produit:</strong> {productName ? '✅' : '❌'}</li>
+                    <li>• <strong>Ingrédients:</strong> {ingredients ? '✅' : '❌'}</li>
+                    <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
+                    <li>• <strong>Backend API:</strong> https://ecolojia-backend-working.onrender.com</li>
+                  </ul>
+                </div>
+              </div>
+              
+              {debugInfo.result && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-700 text-sm">
+                    <strong>✅ Analyse réussie:</strong> NOVA {debugInfo.result.novaGroup}, Score {debugInfo.result.healthScore}/100, {debugInfo.result.additivesCount} additif(s)
+                  </p>
+                </div>
+              )}
+              
+              {debugInfo.analysisError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">
+                    <strong>❌ Erreur:</strong> {debugInfo.errorMessage}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Informations techniques */}
           <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Informations techniques</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
@@ -430,6 +576,7 @@ const ProductPage: React.FC = () => {
                   <li>• Endpoint: <code className="bg-gray-100 px-1 rounded">/api/analyze/auto</code></li>
                   <li>• Méthode: POST</li>
                   <li>• Format: JSON</li>
+                  <li>• Timeout: 30s avec fallback</li>
                 </ul>
               </div>
               <div>
@@ -439,12 +586,13 @@ const ProductPage: React.FC = () => {
                   <li>• Détection type produit (alimentaire/cosmétique/ménager)</li>
                   <li>• Analyse additifs avec évaluation risques</li>
                   <li>• Génération recommandations personnalisées</li>
+                  <li>• Fallback intelligent si API indisponible</li>
                 </ul>
               </div>
             </div>
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-blue-700 text-sm">
-                <strong>🎯 Objectif :</strong> Cette page démontre l'intégration complète entre votre interface React et l'API ECOLOJIA pour l'analyse nutritionnelle en temps réel.
+                <strong>🎯 Objectif :</strong> Cette page démontre l'intégration complète entre votre interface React et l'API ECOLOJIA pour l'analyse nutritionnelle en temps réel avec gestion robuste des erreurs.
               </p>
             </div>
           </div>
