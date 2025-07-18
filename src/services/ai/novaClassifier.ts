@@ -83,12 +83,18 @@ export const analyzeProduct = async (
         const result = await response.json();
         console.log('✅ API backend réussie:', result);
         
-        // Validation et formatage de la réponse backend
-        const formattedResult = processBackendResponse(result, productName, ingredients);
-        console.log('📊 Résultat formaté:', formattedResult);
-        
-        currentAnalysis = formattedResult;
-        return formattedResult;
+        try {
+          // Validation et formatage de la réponse backend
+          const formattedResult = processBackendResponse(result, productName, ingredients);
+          console.log('📊 Résultat formaté:', formattedResult);
+          
+          currentAnalysis = formattedResult;
+          return formattedResult;
+        } catch (formatError: any) {
+          console.error('❌ Erreur de formatage backend:', formatError);
+          // Continue vers le fallback local
+          throw new Error('Erreur de formatage, utilisation du fallback');
+        }
       } else {
         const errorText = await response.text().catch(() => '');
         console.warn(`❌ Backend erreur ${response.status}: ${errorText}, fallback local`);
@@ -172,7 +178,8 @@ function processBackendResponse(backendData: any, productName: string, ingredien
       additives: novaData.analysis?.additives || [],
       naturalIngredients: novaData.analysis?.naturalIngredients || [],
       suspiciousTerms: novaData.analysis?.suspiciousTerms || []
-    }
+    },
+    source: 'backend' // Marqueur pour savoir d'où vient l'analyse
   };
 }
 
@@ -314,7 +321,8 @@ function generateAdvancedAnalysis(productName: string, ingredients: string): Nov
     isProcessed: novaGroup >= 3,
     category: 'alimentaire',
     timestamp: new Date().toISOString(),
-    analysis
+    analysis,
+    source: 'local' // Marqueur pour l'analyse locale
   };
 }
 
