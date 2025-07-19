@@ -1,4 +1,4 @@
-// PATH: frontend/ecolojiaFrontV3/src/App.tsx
+﻿// PATH: frontend/ecolojiaFrontV3/src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
@@ -10,7 +10,6 @@ import CategoryPage from './pages/CategoryPage';
 import MultiCategoriesPage from './pages/MultiCategoriesPage';
 import ProductNotFoundPage from './pages/ProductNotFoundPage';
 import Scan from './pages/Scan';
-import DashboardPage from './pages/DashboardPage'; // ✅ NOUVEAU
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -20,34 +19,28 @@ const App: React.FC = () => {
       <ErrorBoundary>
         <Router>
           <Routes>
-            {/* Page d'accueil */}
             <Route path="/" element={<HomePage />} />
-            
-            {/* Page de recherche Algolia */}
             <Route path="/search" element={<SearchPage />} />
-            
-            {/* ✅ NOUVEAU: Page Dashboard Analytics */}
-            <Route path="/dashboard" element={<DashboardPage />} />
-            
-            {/* ✅ EXISTANT: Page de chat IA */}
             <Route path="/chat" element={<ChatPage />} />
-            
-            {/* ✅ EXISTANT: Page de scan mobile */}
             <Route path="/scan" element={<Scan />} />
-            
-            {/* Pages d'analyse NOVA - TOUTES LES VARIANTES */}
             <Route path="/product/:slug" element={<ProductPage />} />
             <Route path="/product" element={<ProductPage />} />
             <Route path="/analyze" element={<ProductPage />} />
             <Route path="/results" element={<ProductPage />} />
-            
-            {/* Autres pages */}
             <Route path="/category/:categoryName" element={<CategoryPage />} />
             <Route path="/multi-categories" element={<MultiCategoriesPage />} />
             <Route path="/not-found" element={<ProductNotFoundPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
-            
-            {/* ✅ EXISTANT: Route catch-all pour rediriger les URLs inconnues */}
+            <Route path="/dashboard" element={
+              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="bg-white p-8 rounded-lg shadow-md text-center">
+                  <h2 className="text-2xl font-bold mb-4">🚧 Dashboard Coming Soon</h2>
+                  <button onClick={() => window.location.href = '/'} className="bg-green-500 text-white px-6 py-2 rounded">
+                    Go Home
+                  </button>
+                </div>
+              </div>
+            } />
             <Route path="*" element={<ProductNotFoundPage />} />
           </Routes>
         </Router>
