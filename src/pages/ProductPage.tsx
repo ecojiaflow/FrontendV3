@@ -9,7 +9,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
 // ✅ NOUVEAU: Import Analytics
-import { useUserAnalytics } from '../hooks/useUserAnalytics';
+//// import { useUserAnalytics } from '../hooks/useUserAnalytics';
 
 /**
  * ProductPage (Version avec Ultra-Transformation + Analytics)
@@ -65,7 +65,7 @@ const ProductPage: React.FC = () => {
   const runIdRef = useRef(0);
 
   // ✅ NOUVEAU: Hook Analytics
-  const { trackScan } = useUserAnalytics();
+  //// const { trackScan } = useUserAnalytics();
 
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -173,24 +173,24 @@ const ProductPage: React.FC = () => {
         setError(null);
 
         // ✅ NOUVEAU: TRACKING ANALYTICS AUTOMATIQUE
-        try {
-          trackScan({
-            productName: name,
-            novaGroup: result.novaGroup,
-            healthScore: result.healthScore,
-            ultraTransformLevel: result.novaGroup >= 4 ? 4 : result.novaGroup,
-            additives: result.additives?.detected?.map((a: any) => a.code) || [],
-            ingredients: ingr,
-            analysisSource: 'nova',
-            userRating: undefined,
-            isBookmarked: false
-          });
+        //try {
+        //  // trackScan({
+          //  productName: name,
+            //novaGroup: result.novaGroup,
+            //healthScore: result.healthScore,
+            //ultraTransformLevel: result.novaGroup >= 4 ? 4 : result.novaGroup,
+            //additives: result.additives?.detected?.map((a: any) => a.code) || [],
+            //ingredients: ingr,
+            //analysisSource: 'nova',
+            //userRating: undefined,
+            //isBookmarked: false
+          //});
           
-          console.log('📊 ProductPage: Analyse trackée dans analytics');
-        } catch (trackError) {
-          console.warn('⚠️ Erreur tracking analytics:', trackError);
+          //console.log('📊 ProductPage: Analyse trackée dans analytics');
+        //} catch (trackError) {
+        //  console.warn('⚠️ Erreur tracking analytics:', trackError);
           // Ne pas faire échouer l'analyse si tracking échoue
-        }
+       // }
         
         setDebugInfo((p: any) => ({
           ...p,
@@ -256,7 +256,7 @@ const ProductPage: React.FC = () => {
 
       // ✅ NOUVEAU: TRACKING ULTRA-TRANSFORMATION
       try {
-        trackScan({
+        // trackScan({
           productName: productName,
           novaGroup: result.novaClass || 4,
           healthScore: 100 - (result.transformationScore || 80),
