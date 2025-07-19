@@ -10,6 +10,7 @@ import CategoryPage from './pages/CategoryPage';
 import MultiCategoriesPage from './pages/MultiCategoriesPage';
 import ProductNotFoundPage from './pages/ProductNotFoundPage';
 import Scan from './pages/Scan';
+import DashboardPage from './pages/DashboardPage'; // ✅ NOUVEAU
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -25,10 +26,13 @@ const App: React.FC = () => {
             {/* Page de recherche Algolia */}
             <Route path="/search" element={<SearchPage />} />
             
-            {/* ✅ NOUVEAU: Page de chat IA */}
+            {/* ✅ NOUVEAU: Page Dashboard Analytics */}
+            <Route path="/dashboard" element={<DashboardPage />} />
+            
+            {/* ✅ EXISTANT: Page de chat IA */}
             <Route path="/chat" element={<ChatPage />} />
             
-            {/* ✅ NOUVEAU: Page de scan mobile */}
+            {/* ✅ EXISTANT: Page de scan mobile */}
             <Route path="/scan" element={<Scan />} />
             
             {/* Pages d'analyse NOVA - TOUTES LES VARIANTES */}
@@ -43,7 +47,7 @@ const App: React.FC = () => {
             <Route path="/not-found" element={<ProductNotFoundPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             
-            {/* ✅ NOUVEAU: Route catch-all pour rediriger les URLs inconnues */}
+            {/* ✅ EXISTANT: Route catch-all pour rediriger les URLs inconnues */}
             <Route path="*" element={<ProductNotFoundPage />} />
           </Routes>
         </Router>
@@ -53,4 +57,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-// EOF

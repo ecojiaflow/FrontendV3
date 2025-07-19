@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Leaf, Search, X, MessageCircle, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
-// ✅ NOUVEAU: Import Analytics Widget  
+// ✅ NOUVEAU: Import Analytics Widget
 import QuickStatsWidget from '../components/analysis/QuickStatsWidget';
 
 const HomePage: React.FC = () => {

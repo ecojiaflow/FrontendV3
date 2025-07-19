@@ -1,4 +1,4 @@
-// PATH: src/pages/ProductPage.tsx
+// PATH: frontend/ecolojiaFrontV3/src/pages/ProductPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { analyzeProduct, reset } from '../services/ai/novaClassifier';
@@ -8,12 +8,15 @@ import ErrorBoundary from '../components/ErrorBoundary';
 // IMPORTS ULTRA-TRANSFORMATION
 import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
+// ✅ NOUVEAU: Import Analytics
+import { useUserAnalytics } from '../hooks/useUserAnalytics';
 
 /**
- * ProductPage (Version avec Ultra-Transformation)
+ * ProductPage (Version avec Ultra-Transformation + Analytics)
  * - Affiche l'analyse NOVA d'un produit
  * - Analyse Ultra-Transformation complémentaire
  * - Backend activé avec fallback local
+ * - ✅ NOUVEAU: Tracking analytics automatique
  * - Gestion d'erreur améliorée
  */
 
@@ -61,6 +64,9 @@ const ProductPage: React.FC = () => {
   const location = useLocation();
   const runIdRef = useRef(0);
 
+  // ✅ NOUVEAU: Hook Analytics
+  const { trackScan } = useUserAnalytics();
+
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');
   const [data, setData] = useState<any>(null);
@@ -71,7 +77,7 @@ const ProductPage: React.FC = () => {
   const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // NOUVEAUX STATES POUR ULTRA-TRANSFORMATION
+  // STATES POUR ULTRA-TRANSFORMATION
   const [ultraTransformData, setUltraTransformData] = useState<any>(null);
   const [ultraTransformLoading, setUltraTransformLoading] = useState(false);
   const [ultraTransformError, setUltraTransformError] = useState<string | null>(null);
@@ -165,6 +171,26 @@ const ProductPage: React.FC = () => {
         // Les données sont valides, on les utilise
         setData(result);
         setError(null);
+
+        // ✅ NOUVEAU: TRACKING ANALYTICS AUTOMATIQUE
+        try {
+          trackScan({
+            productName: name,
+            novaGroup: result.novaGroup,
+            healthScore: result.healthScore,
+            ultraTransformLevel: result.novaGroup >= 4 ? 4 : result.novaGroup,
+            additives: result.additives?.detected?.map((a: any) => a.code) || [],
+            ingredients: ingr,
+            analysisSource: 'nova',
+            userRating: undefined,
+            isBookmarked: false
+          });
+          
+          console.log('📊 ProductPage: Analyse trackée dans analytics');
+        } catch (trackError) {
+          console.warn('⚠️ Erreur tracking analytics:', trackError);
+          // Ne pas faire échouer l'analyse si tracking échoue
+        }
         
         setDebugInfo((p: any) => ({
           ...p,
@@ -174,6 +200,7 @@ const ProductPage: React.FC = () => {
           healthScore: result.healthScore,
           additivesCount: result.additives?.total || 0,
           backend: result.source || 'unknown',
+          tracked: true, // ✅ NOUVEAU: Indiquer tracking réussi
           ts: Date.now()
         }));
         
@@ -205,7 +232,7 @@ const ProductPage: React.FC = () => {
     }
   };
 
-  // NOUVELLE FONCTION POUR ULTRA-TRANSFORMATION
+  // FONCTION POUR ULTRA-TRANSFORMATION
   const performUltraTransformAnalysis = async () => {
     if (!productName || !ingredients) {
       setUltraTransformError('Données produit manquantes');
@@ -226,6 +253,25 @@ const ProductPage: React.FC = () => {
       console.log('✅ Résultat Ultra-Transformation:', result);
       setUltraTransformData(result);
       setShowUltraTransform(true);
+
+      // ✅ NOUVEAU: TRACKING ULTRA-TRANSFORMATION
+      try {
+        trackScan({
+          productName: productName,
+          novaGroup: result.novaClass || 4,
+          healthScore: 100 - (result.transformationScore || 80),
+          ultraTransformLevel: result.transformationLevel || 4,
+          additives: result.industrialMarkers?.map((m: string) => m.split(':')[1] || m) || [],
+          ingredients: ingredients,
+          analysisSource: 'ultra-transform',
+          userRating: undefined,
+          isBookmarked: false
+        });
+        
+        console.log('📊 Ultra-Transform trackée dans analytics');
+      } catch (trackError) {
+        console.warn('⚠️ Erreur tracking ultra-transform:', trackError);
+      }
       
     } catch (error: any) {
       console.error('❌ Erreur Ultra-Transformation:', error);
@@ -252,6 +298,11 @@ const ProductPage: React.FC = () => {
     else navigate('/chat');
   };
 
+  // ✅ NOUVEAU: Handler vers Dashboard
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
+  };
+
   // Mode manuel initial vide
   if (analysisSource === 'manual' && !productName && !ingredients && !hasAttemptedAnalysis) {
     return (
@@ -268,12 +319,20 @@ const ProductPage: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">
                 Analyse NOVA Manuelle
               </h1>
-              <button
-                onClick={handleBackToSearch}
-                className="text-green-600 hover:text-green-800 font-medium transition-colors"
-              >
-                Recherche Algolia
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleGoToDashboard}
+                  className="text-purple-600 hover:text-purple-800 font-medium transition-colors text-sm"
+                >
+                  📊 Dashboard
+                </button>
+                <button
+                  onClick={handleBackToSearch}
+                  className="text-green-600 hover:text-green-800 font-medium transition-colors text-sm"
+                >
+                  🔍 Recherche
+                </button>
+              </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-8">
@@ -361,17 +420,24 @@ const ProductPage: React.FC = () => {
             </button>
             <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">Analyse NOVA</h1>
             <div className="flex space-x-2">
+              {/* ✅ NOUVEAU: Bouton Dashboard */}
+              <button
+                onClick={handleGoToDashboard}
+                className="text-purple-600 hover:text-purple-800 font-medium transition-colors text-sm"
+              >
+                📊 Dashboard
+              </button>
               <button
                 onClick={handleGoToChat}
-                className="text-purple-600 hover:text-purple-800 font-medium transition-colors"
+                className="text-purple-600 hover:text-purple-800 font-medium transition-colors text-sm"
               >
                 💬 Chat IA
               </button>
               <button
                 onClick={handleNewAnalysis}
-                className="text-green-600 hover:text-green-800 font-medium transition-colors"
+                className="text-green-600 hover:text-green-800 font-medium transition-colors text-sm"
               >
-                Nouvelle analyse
+                🔬 Nouvelle analyse
               </button>
             </div>
           </div>
@@ -492,7 +558,7 @@ const ProductPage: React.FC = () => {
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
               
-              {/* NOUVEAU BOUTON ULTRA-TRANSFORMATION */}
+              {/* BOUTON ULTRA-TRANSFORMATION */}
               {!ultraTransformLoading && !showUltraTransform && (
                 <div className="mt-6 text-center">
                   <button
@@ -520,35 +586,49 @@ const ProductPage: React.FC = () => {
                 </div>
               )}
 
-              {/* QUE FAIRE MAINTENANT - VERSION MODIFIÉE */}
+              {/* QUE FAIRE MAINTENANT - VERSION AVEC DASHBOARD */}
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">🚀 Que faire maintenant ?</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {/* ✅ NOUVEAU: Bouton Dashboard */}
                   <button
-                    onClick={handleGoToChat}
+                    onClick={handleGoToDashboard}
                     className="flex items-center justify-center bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                   >
-                    💬 Discuter de ce produit
+                    📊 Mon Dashboard
+                  </button>
+                  <button
+                    onClick={handleGoToChat}
+                    className="flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    💬 Discuter IA
                   </button>
                   <button
                     onClick={() => navigate('/search')}
                     className="flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                   >
-                    🔍 Chercher des alternatives
+                    🔍 Alternatives
                   </button>
                   <button
                     onClick={performUltraTransformAnalysis}
                     disabled={ultraTransformLoading || showUltraTransform}
-                    className="flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                    className="flex items-center justify-center bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-400 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                   >
-                    🔬 {showUltraTransform ? 'Ultra-Transform analysé' : 'Ultra-Transformation'}
+                    🔬 {showUltraTransform ? 'Ultra OK ✅' : 'Ultra-Transform'}
                   </button>
                   <button
                     onClick={handleNewAnalysis}
                     className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                   >
-                    🔬 Nouveau produit
+                    🔬 Nouveau
                   </button>
+                </div>
+                
+                {/* ✅ NOUVEAU: Message Analytics */}
+                <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-purple-700 text-sm text-center">
+                    <strong>📊 Cette analyse a été ajoutée à votre dashboard personnel</strong> pour suivre vos progrès santé !
+                  </p>
                 </div>
               </div>
             </div>
@@ -600,6 +680,7 @@ const ProductPage: React.FC = () => {
                     <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
                     <li>• <strong>Mode:</strong> Backend + Fallback local</li>
                     <li>• <strong>Backend:</strong> {debugInfo.backend || 'N/A'}</li>
+                    <li>• <strong>Analytics:</strong> {debugInfo.tracked ? '✅ Tracké' : '⏸️ Non tracké'}</li>
                     <li>• <strong>Ultra-Transform:</strong> {showUltraTransform ? '✅ Analysé' : '⏸️ Non lancé'}</li>
                   </ul>
                 </div>
@@ -609,6 +690,7 @@ const ProductPage: React.FC = () => {
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-green-700 text-sm">
                     <strong>✅ Analyse réussie:</strong> NOVA {data.novaGroup}, Score {data.healthScore}/100, {data.additives?.total || 0} additif(s), Confiance {data.confidence}%
+                    {debugInfo.tracked && <span className="ml-2">📊 Analytics OK</span>}
                   </p>
                 </div>
               )}
@@ -639,10 +721,12 @@ const ProductPage: React.FC = () => {
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
+                <h4 className="font-medium text-gray-800 mb-2">Technologies IA + Analytics</h4>
                 <ul className="text-gray-600 space-y-1">
                   <li>• Classification NOVA backend + local</li>
-                  <li>• <span className="text-blue-600 font-medium">Analyse Ultra-Transformation NOUVEAU</span></li>
+                  <li>• <span className="text-blue-600 font-medium">Analyse Ultra-Transformation</span></li>
+                  <li>• <span className="text-purple-600 font-medium">📊 Tracking Analytics Auto</span></li>
+                  <li>• <span className="text-purple-600 font-medium">📈 Dashboard Personnel</span></li>
                   <li>• Détection méthodes de transformation</li>
                   <li>• Évaluation impact nutritionnel</li>
                   <li>• Matrice de naturalité</li>
@@ -650,9 +734,9 @@ const ProductPage: React.FC = () => {
                 </ul>
               </div>
             </div>
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-blue-700 text-sm">
-                <strong>🎯 Objectif :</strong> Analyse complète NOVA + Ultra-Transformation pour une évaluation exhaustive de la qualité nutritionnelle et du niveau de transformation industrielle.
+            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-purple-700 text-sm">
+                <strong>🎯 Nouveauté :</strong> Chaque analyse est maintenant automatiquement sauvegardée dans votre Dashboard personnel pour suivre l'évolution de votre score santé !
               </p>
             </div>
           </div>
@@ -663,4 +747,3 @@ const ProductPage: React.FC = () => {
 };
 
 export default ProductPage;
-// EOF
