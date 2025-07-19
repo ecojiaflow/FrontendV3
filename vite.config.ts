@@ -6,40 +6,25 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    // ✅ Optimisation des chunks pour réduire la taille
+    // ✅ Configuration simplifiée sans references problématiques
+    minify: 'terser',
+    
+    // ✅ Optimisation des chunks SANS références à DashboardPage
     rollupOptions: {
       output: {
         manualChunks: {
-          // Vendor libraries
+          // Vendor libraries principales
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['lucide-react'],
-          'search-vendor': ['algoliasearch'],
           
-          // App modules
-          'pages': [
-            './src/pages/HomePage',
-            './src/pages/SearchPage', 
-            './src/pages/DashboardPage',
-            './src/pages/ProductPage'
-          ],
-          'components': [
-            './src/components/analysis/QuickStatsWidget',
-            './src/components/scanner/BarcodeScanner'
-          ]
+          // ✅ CORRIGÉ: Pas de références directes aux fichiers pages
+          // Les pages sont incluses automatiquement via App.tsx
         }
       }
     },
-    // Augmenter la limite pour éviter le warning
-    chunkSizeWarningLimit: 1000,
     
-    // Optimisations supplémentaires
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Supprimer les console.log en prod
-        drop_debugger: true
-      }
-    }
+    // Augmenter la limite pour éviter le warning
+    chunkSizeWarningLimit: 1000
   },
   
   // ✅ Optimisations développement
@@ -48,13 +33,12 @@ export default defineConfig({
     open: true
   },
   
-  // ✅ Optimisations dépendances
+  // ✅ Optimisations dépendances (seulement les packages npm)
   optimizeDeps: {
     include: [
       'react',
       'react-dom', 
       'react-router-dom',
-      'algoliasearch',
       'lucide-react'
     ]
   }
