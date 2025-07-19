@@ -5,13 +5,14 @@ import { analyzeProduct, reset } from '../services/ai/novaClassifier';
 import NovaResults from '../components/NovaResults';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorBoundary from '../components/ErrorBoundary';
-// IMPORTS ULTRA-TRANSFORMATION COMMENTÉS TEMPORAIREMENT
-// import UltraTransformResults from '../components/UltraTransformResults';
-// import { ultraTransformService } from '../services/ai/ultraTransformService';
+// IMPORTS ULTRA-TRANSFORMATION
+import UltraTransformResults from '../components/UltraTransformResults';
+import { ultraTransformService } from '../services/ai/ultraTransformService';
 
 /**
- * ProductPage (Version Finale)
+ * ProductPage (Version avec Ultra-Transformation)
  * - Affiche l'analyse NOVA d'un produit
+ * - Analyse Ultra-Transformation complémentaire
  * - Backend activé avec fallback local
  * - Gestion d'erreur améliorée
  */
@@ -58,7 +59,7 @@ const ProductPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const runIdRef = useRef(0); // AJOUT DU REF MANQUANT
+  const runIdRef = useRef(0);
 
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -68,11 +69,21 @@ const ProductPage: React.FC = () => {
   const [analysisSource, setAnalysisSource] = useState<'slug' | 'url' | 'manual'>('slug');
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false); // Nouveau flag
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // NOUVEAUX STATES POUR ULTRA-TRANSFORMATION
+  const [ultraTransformData, setUltraTransformData] = useState<any>(null);
+  const [ultraTransformLoading, setUltraTransformLoading] = useState(false);
+  const [ultraTransformError, setUltraTransformError] = useState<string | null>(null);
+  const [showUltraTransform, setShowUltraTransform] = useState(false);
 
   // Reset le flag quand on change de page
   useEffect(() => {
     setIsInitialized(false);
+    // Reset Ultra-Transform aussi
+    setShowUltraTransform(false);
+    setUltraTransformData(null);
+    setUltraTransformError(null);
   }, [location.pathname, slug]);
 
   useEffect(() => {
@@ -191,6 +202,36 @@ const ProductPage: React.FC = () => {
       }));
     } finally {
       if (runId === runIdRef.current) setLoading(false);
+    }
+  };
+
+  // NOUVELLE FONCTION POUR ULTRA-TRANSFORMATION
+  const performUltraTransformAnalysis = async () => {
+    if (!productName || !ingredients) {
+      setUltraTransformError('Données produit manquantes');
+      return;
+    }
+
+    try {
+      setUltraTransformLoading(true);
+      setUltraTransformError(null);
+      
+      console.log('🔬 Lancement analyse Ultra-Transformation');
+      
+      const result = await ultraTransformService.analyzeUltraTransformation(
+        productName,
+        ingredients
+      );
+      
+      console.log('✅ Résultat Ultra-Transformation:', result);
+      setUltraTransformData(result);
+      setShowUltraTransform(true);
+      
+    } catch (error: any) {
+      console.error('❌ Erreur Ultra-Transformation:', error);
+      setUltraTransformError(error.message || 'Erreur lors de l\'analyse');
+    } finally {
+      setUltraTransformLoading(false);
     }
   };
 
@@ -450,9 +491,39 @@ const ProductPage: React.FC = () => {
           {data && (
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
+              
+              {/* NOUVEAU BOUTON ULTRA-TRANSFORMATION */}
+              {!ultraTransformLoading && !showUltraTransform && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={performUltraTransformAnalysis}
+                    disabled={ultraTransformLoading}
+                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
+                  >
+                    <span className="text-xl mr-2">🔬</span>
+                    {ultraTransformLoading ? 'Analyse en cours...' : 'Analyser l\'Ultra-Transformation'}
+                  </button>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Complément de NOVA : évaluation des procédés industriels
+                  </p>
+                </div>
+              )}
+
+              {/* AFFICHAGE RÉSULTATS ULTRA-TRANSFORMATION */}
+              {showUltraTransform && (
+                <div className="mt-6 transition-all duration-500 ease-in-out">
+                  <UltraTransformResults 
+                    result={ultraTransformData}
+                    loading={ultraTransformLoading}
+                    error={ultraTransformError}
+                  />
+                </div>
+              )}
+
+              {/* QUE FAIRE MAINTENANT - VERSION MODIFIÉE */}
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">🚀 Que faire maintenant ?</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <button
                     onClick={handleGoToChat}
                     className="flex items-center justify-center bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
@@ -466,10 +537,17 @@ const ProductPage: React.FC = () => {
                     🔍 Chercher des alternatives
                   </button>
                   <button
+                    onClick={performUltraTransformAnalysis}
+                    disabled={ultraTransformLoading || showUltraTransform}
+                    className="flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    🔬 {showUltraTransform ? 'Ultra-Transform analysé' : 'Ultra-Transformation'}
+                  </button>
+                  <button
                     onClick={handleNewAnalysis}
                     className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                   >
-                    🔬 Analyser un autre produit
+                    🔬 Nouveau produit
                   </button>
                 </div>
               </div>
@@ -522,6 +600,7 @@ const ProductPage: React.FC = () => {
                     <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
                     <li>• <strong>Mode:</strong> Backend + Fallback local</li>
                     <li>• <strong>Backend:</strong> {debugInfo.backend || 'N/A'}</li>
+                    <li>• <strong>Ultra-Transform:</strong> {showUltraTransform ? '✅ Analysé' : '⏸️ Non lancé'}</li>
                   </ul>
                 </div>
               </div>
@@ -544,34 +623,36 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-          {/* Informations techniques */}
+          {/* Informations techniques - VERSION MISE À JOUR */}
           <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Informations techniques</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">Mode Analyse</h4>
+                <h4 className="font-medium text-gray-800 mb-2">Analyses disponibles</h4>
                 <ul className="text-gray-600 space-y-1">
-                  <li>• <strong>Mode:</strong> <span className="text-green-600">Production avec Backend</span></li>
-                  <li>• <strong>Backend:</strong> <span className="text-green-600">Activé (Render API)</span></li>
-                  <li>• <strong>Fallback:</strong> Intelligence artificielle locale</li>
-                  <li>• <strong>Base additifs:</strong> 25+ additifs avec évaluation risques</li>
-                  <li>• <strong>Confiance:</strong> 70-92% selon source</li>
+                  <li>• <strong>NOVA :</strong> <span className="text-green-600">Classification 1-4 (INSERM)</span></li>
+                  <li>• <strong>Ultra-Transform :</strong> <span className="text-blue-600">Niveaux 1-5 (SIGA)</span></li>
+                  <li>• <strong>Backend :</strong> <span className="text-green-600">API Render activée</span></li>
+                  <li>• <strong>Fallback :</strong> Intelligence artificielle locale</li>
+                  <li>• <strong>Base additifs :</strong> 25+ additifs avec évaluation risques</li>
+                  <li>• <strong>Confiance :</strong> 70-95% selon les données</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
                   <li>• Classification NOVA backend + local</li>
-                  <li>• Détection automatique type produit</li>
-                  <li>• Analyse additifs avec évaluation risques</li>
-                  <li>• Score santé multi-facteurs</li>
-                  <li>• Recommandations personnalisées contextuelles</li>
+                  <li>• <span className="text-blue-600 font-medium">Analyse Ultra-Transformation NOUVEAU</span></li>
+                  <li>• Détection méthodes de transformation</li>
+                  <li>• Évaluation impact nutritionnel</li>
+                  <li>• Matrice de naturalité</li>
+                  <li>• Score holistique combiné</li>
                 </ul>
               </div>
             </div>
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-blue-700 text-sm">
-                <strong>🎯 Objectif :</strong> Analyse NOVA complète avec backend prioritaire et fallback local intelligent pour une fiabilité maximale.
+                <strong>🎯 Objectif :</strong> Analyse complète NOVA + Ultra-Transformation pour une évaluation exhaustive de la qualité nutritionnelle et du niveau de transformation industrielle.
               </p>
             </div>
           </div>
