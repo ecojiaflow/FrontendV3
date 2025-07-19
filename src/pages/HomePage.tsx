@@ -1,9 +1,11 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Search, X, MessageCircle } from 'lucide-react';
+import { Leaf, Search, X, MessageCircle, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
+// ✅ NOUVEAU: Import Analytics Widget  
+import QuickStatsWidget from '../components/analysis/QuickStatsWidget';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -221,7 +223,7 @@ const HomePage: React.FC = () => {
                 🔍 Rechercher des produits
               </Link>
               <Link
-                to="/analyze"
+                to="/product"
                 className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 📊 Analyser un produit
@@ -245,8 +247,96 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* ===== NOUVEAU: SECTION DASHBOARD PERSONNEL ===== */}
+      <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              📊 Suivez Vos Progrès Santé
+            </h2>
+            <p className="text-xl text-gray-600">
+              Votre coach personnel nutrition avec analytics avancées
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            {/* Widget Statistics */}
+            <div>
+              <QuickStatsWidget />
+            </div>
+            
+            {/* Description */}
+            <div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                Tableau de bord intelligent
+              </h3>
+              <ul className="space-y-4 text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-3 mt-1">📈</span>
+                  <div>
+                    <strong>Suivi évolution</strong> de votre score santé au fil du temps
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-3 mt-1">🎯</span>
+                  <div>
+                    <strong>Objectifs personnalisés</strong> pour améliorer votre alimentation
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-3 mt-1">🤖</span>
+                  <div>
+                    <strong>Insights IA</strong> et recommandations adaptées à vos habitudes
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-3 mt-1">🏆</span>
+                  <div>
+                    <strong>Système d'achievements</strong> pour vous motiver
+                  </div>
+                </li>
+              </ul>
+              
+              <div className="mt-6">
+                <Link
+                  to="/dashboard"
+                  className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
+                >
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  🚀 Voir mon Dashboard
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Fonctionnalités Dashboard */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-lg p-6 text-center shadow-sm border border-purple-200">
+              <div className="text-4xl mb-3">📊</div>
+              <h4 className="font-bold text-gray-800 mb-2">Score Santé</h4>
+              <p className="text-sm text-gray-600">Suivi en temps réel de votre score global ECOLOJIA</p>
+            </div>
+            <div className="bg-white rounded-lg p-6 text-center shadow-sm border border-purple-200">
+              <div className="text-4xl mb-3">📈</div>
+              <h4 className="font-bold text-gray-800 mb-2">Évolution</h4>
+              <p className="text-sm text-gray-600">Graphiques d'amélioration de vos habitudes alimentaires</p>
+            </div>
+            <div className="bg-white rounded-lg p-6 text-center shadow-sm border border-purple-200">
+              <div className="text-4xl mb-3">🎯</div>
+              <h4 className="font-bold text-gray-800 mb-2">Objectifs</h4>
+              <p className="text-sm text-gray-600">Goals personnalisés avec tracking de progression</p>
+            </div>
+            <div className="bg-white rounded-lg p-6 text-center shadow-sm border border-purple-200">
+              <div className="text-4xl mb-3">🏆</div>
+              <h4 className="font-bold text-gray-800 mb-2">Achievements</h4>
+              <p className="text-sm text-gray-600">Débloquez des badges selon vos progrès</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ===== ASSISTANT IA NUTRITIONNEL ===== */}
-      <section className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
+      <section className="py-16 bg-gradient-to-br from-indigo-50 to-blue-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
@@ -467,4 +557,3 @@ const HomePage: React.FC = () => {
 };
 
 export default HomePage;
-// EOF
