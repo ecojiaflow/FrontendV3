@@ -9,7 +9,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
 // ✅ NOUVEAU: Import Analytics
-//// import { useUserAnalytics } from '../hooks/useUserAnalytics';
+//import { useUserAnalytics } from '../hooks/useUserAnalytics';
 
 /**
  * ProductPage (Version avec Ultra-Transformation + Analytics)
@@ -65,7 +65,7 @@ const ProductPage: React.FC = () => {
   const runIdRef = useRef(0);
 
   // ✅ NOUVEAU: Hook Analytics
-  //// const { trackScan } = useUserAnalytics();
+  //const { trackScan } = useUserAnalytics();
 
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -174,7 +174,7 @@ const ProductPage: React.FC = () => {
 
         // ✅ NOUVEAU: TRACKING ANALYTICS AUTOMATIQUE
         //try {
-        //  // trackScan({
+        //  trackScan({
           //  productName: name,
             //novaGroup: result.novaGroup,
             //healthScore: result.healthScore,
@@ -256,7 +256,7 @@ const ProductPage: React.FC = () => {
 
       // ✅ NOUVEAU: TRACKING ULTRA-TRANSFORMATION
       try {
-        // trackScan({
+        trackScan({
           productName: productName,
           novaGroup: result.novaClass || 4,
           healthScore: 100 - (result.transformationScore || 80),
