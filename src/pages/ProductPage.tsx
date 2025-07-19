@@ -8,15 +8,15 @@ import ErrorBoundary from '../components/ErrorBoundary';
 // IMPORTS ULTRA-TRANSFORMATION
 import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
-// ✅ NOUVEAU: Import Analytics
-//import { useUserAnalytics } from '../hooks/useUserAnalytics';
+// ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Import Analytics
+// import { useUserAnalytics } from '../hooks/useUserAnalytics';
 
 /**
- * ProductPage (Version avec Ultra-Transformation + Analytics)
+ * ProductPage (Version fonctionnelle sans analytics)
  * - Affiche l'analyse NOVA d'un produit
  * - Analyse Ultra-Transformation complémentaire
  * - Backend activé avec fallback local
- * - ✅ NOUVEAU: Tracking analytics automatique
+ * - ⏸️ Analytics temporairement désactivés pour build
  * - Gestion d'erreur améliorée
  */
 
@@ -64,8 +64,8 @@ const ProductPage: React.FC = () => {
   const location = useLocation();
   const runIdRef = useRef(0);
 
-  // ✅ NOUVEAU: Hook Analytics
-  //const { trackScan } = useUserAnalytics();
+  // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Hook Analytics
+  // const { trackScan } = useUserAnalytics();
 
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -172,25 +172,27 @@ const ProductPage: React.FC = () => {
         setData(result);
         setError(null);
 
-        // ✅ NOUVEAU: TRACKING ANALYTICS AUTOMATIQUE
-        //try {
-        //  trackScan({
-          //  productName: name,
-            //novaGroup: result.novaGroup,
-            //healthScore: result.healthScore,
-            //ultraTransformLevel: result.novaGroup >= 4 ? 4 : result.novaGroup,
-            //additives: result.additives?.detected?.map((a: any) => a.code) || [],
-            //ingredients: ingr,
-            //analysisSource: 'nova',
-            //userRating: undefined,
-            //isBookmarked: false
-          //});
+        // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: TRACKING ANALYTICS AUTOMATIQUE
+        /*
+        try {
+          trackScan({
+            productName: name,
+            novaGroup: result.novaGroup,
+            healthScore: result.healthScore,
+            ultraTransformLevel: result.novaGroup >= 4 ? 4 : result.novaGroup,
+            additives: result.additives?.detected?.map((a: any) => a.code) || [],
+            ingredients: ingr,
+            analysisSource: 'nova',
+            userRating: undefined,
+            isBookmarked: false
+          });
           
-          //console.log('📊 ProductPage: Analyse trackée dans analytics');
-        //} catch (trackError) {
-        //  console.warn('⚠️ Erreur tracking analytics:', trackError);
+          console.log('📊 ProductPage: Analyse trackée dans analytics');
+        } catch (trackError) {
+          console.warn('⚠️ Erreur tracking analytics:', trackError);
           // Ne pas faire échouer l'analyse si tracking échoue
-       // }
+        }
+        */
         
         setDebugInfo((p: any) => ({
           ...p,
@@ -200,11 +202,11 @@ const ProductPage: React.FC = () => {
           healthScore: result.healthScore,
           additivesCount: result.additives?.total || 0,
           backend: result.source || 'unknown',
-          tracked: true, // ✅ NOUVEAU: Indiquer tracking réussi
+          // tracked: true, // ⏸️ Temporairement désactivé
           ts: Date.now()
         }));
         
-        console.log('✅ ProductPage: Analyse réussie et données sauvegardées');
+        console.log('✅ ProductPage: Analyse réussie');
       } else {
         console.error('❌ ProductPage: Format de résultat invalide', result);
         throw new Error("Format de résultat invalide");
@@ -254,7 +256,8 @@ const ProductPage: React.FC = () => {
       setUltraTransformData(result);
       setShowUltraTransform(true);
 
-      // ✅ NOUVEAU: TRACKING ULTRA-TRANSFORMATION
+      // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: TRACKING ULTRA-TRANSFORMATION
+      /*
       try {
         trackScan({
           productName: productName,
@@ -272,6 +275,7 @@ const ProductPage: React.FC = () => {
       } catch (trackError) {
         console.warn('⚠️ Erreur tracking ultra-transform:', trackError);
       }
+      */
       
     } catch (error: any) {
       console.error('❌ Erreur Ultra-Transformation:', error);
@@ -287,7 +291,7 @@ const ProductPage: React.FC = () => {
   const handleBackToHome = () => navigate('/');
   const handleNewAnalysis = () => {
     reset();
-    navigate('/analyze');
+    navigate('/product');
   };
   const handleManualAnalysis = () => performAnalysis(productName, ingredients, 'manual');
   const handleGoToChat = () => {
@@ -298,7 +302,7 @@ const ProductPage: React.FC = () => {
     else navigate('/chat');
   };
 
-  // ✅ NOUVEAU: Handler vers Dashboard
+  // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Handler vers Dashboard
   const handleGoToDashboard = () => {
     navigate('/dashboard');
   };
@@ -420,7 +424,7 @@ const ProductPage: React.FC = () => {
             </button>
             <h1 className="text-2xl font-bold text-gray-800 text-center flex-1">Analyse NOVA</h1>
             <div className="flex space-x-2">
-              {/* ✅ NOUVEAU: Bouton Dashboard */}
+              {/* ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Bouton Dashboard */}
               <button
                 onClick={handleGoToDashboard}
                 className="text-purple-600 hover:text-purple-800 font-medium transition-colors text-sm"
@@ -586,11 +590,11 @@ const ProductPage: React.FC = () => {
                 </div>
               )}
 
-              {/* QUE FAIRE MAINTENANT - VERSION AVEC DASHBOARD */}
+              {/* QUE FAIRE MAINTENANT - VERSION FONCTIONNELLE */}
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">🚀 Que faire maintenant ?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {/* ✅ NOUVEAU: Bouton Dashboard */}
+                  {/* ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Bouton Dashboard */}
                   <button
                     onClick={handleGoToDashboard}
                     className="flex items-center justify-center bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
@@ -624,10 +628,10 @@ const ProductPage: React.FC = () => {
                   </button>
                 </div>
                 
-                {/* ✅ NOUVEAU: Message Analytics */}
-                <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                  <p className="text-purple-700 text-sm text-center">
-                    <strong>📊 Cette analyse a été ajoutée à votre dashboard personnel</strong> pour suivre vos progrès santé !
+                {/* ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Message Analytics */}
+                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-gray-700 text-sm text-center">
+                    <strong>🔬 Analyse NOVA complète disponible</strong> - Chat IA et Ultra-Transformation opérationnels !
                   </p>
                 </div>
               </div>
@@ -680,7 +684,7 @@ const ProductPage: React.FC = () => {
                     <li>• <strong>Statut:</strong> {loading ? '⏳ En cours' : data ? '✅ Succès' : error ? '❌ Erreur' : '⏸️ En attente'}</li>
                     <li>• <strong>Mode:</strong> Backend + Fallback local</li>
                     <li>• <strong>Backend:</strong> {debugInfo.backend || 'N/A'}</li>
-                    <li>• <strong>Analytics:</strong> {debugInfo.tracked ? '✅ Tracké' : '⏸️ Non tracké'}</li>
+                    <li>• <strong>Analytics:</strong> ⏸️ Temporairement désactivé</li>
                     <li>• <strong>Ultra-Transform:</strong> {showUltraTransform ? '✅ Analysé' : '⏸️ Non lancé'}</li>
                   </ul>
                 </div>
@@ -690,7 +694,6 @@ const ProductPage: React.FC = () => {
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-green-700 text-sm">
                     <strong>✅ Analyse réussie:</strong> NOVA {data.novaGroup}, Score {data.healthScore}/100, {data.additives?.total || 0} additif(s), Confiance {data.confidence}%
-                    {debugInfo.tracked && <span className="ml-2">📊 Analytics OK</span>}
                   </p>
                 </div>
               )}
@@ -721,22 +724,23 @@ const ProductPage: React.FC = () => {
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">Technologies IA + Analytics</h4>
+                <h4 className="font-medium text-gray-800 mb-2">Technologies IA</h4>
                 <ul className="text-gray-600 space-y-1">
                   <li>• Classification NOVA backend + local</li>
                   <li>• <span className="text-blue-600 font-medium">Analyse Ultra-Transformation</span></li>
-                  <li>• <span className="text-purple-600 font-medium">📊 Tracking Analytics Auto</span></li>
-                  <li>• <span className="text-purple-600 font-medium">📈 Dashboard Personnel</span></li>
+                  <li>• <span className="text-gray-500">📊 Analytics (temporairement désactivés)</span></li>
                   <li>• Détection méthodes de transformation</li>
                   <li>• Évaluation impact nutritionnel</li>
                   <li>• Matrice de naturalité</li>
                   <li>• Score holistique combiné</li>
+                  <li>• Chat IA nutritionnel intégré</li>
                 </ul>
               </div>
             </div>
-            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-              <p className="text-purple-700 text-sm">
-                <strong>🎯 Nouveauté :</strong> Chaque analyse est maintenant automatiquement sauvegardée dans votre Dashboard personnel pour suivre l'évolution de votre score santé !
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-700 text-sm">
+                <strong>🎯 Version Fonctionnelle :</strong> Toutes les analyses NOVA et Ultra-Transformation opérationnelles ! 
+                Dashboard Analytics sera réactivé prochainement.
               </p>
             </div>
           </div>
