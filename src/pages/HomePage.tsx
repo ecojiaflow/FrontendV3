@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Leaf, Search, X, MessageCircle, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
-// ✅ TEMPORAIREMENT DÉSACTIVÉ: Import Analytics Widget
-// import QuickStatsWidget from '../components/analysis/QuickStatsWidget';
+// ✅ RÉACTIVÉ: Import Analytics Widget
+import QuickStatsWidget from '../components/analysis/QuickStatsWidget';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -247,7 +247,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== NOUVEAU: SECTION DASHBOARD PERSONNEL ===== */}
+      {/* ===== DASHBOARD PERSONNEL RÉACTIVÉ ===== */}
       <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
@@ -260,53 +260,9 @@ const HomePage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* Widget Statistics - TEMPORAIREMENT DÉSACTIVÉ */}
+            {/* ✅ Widget Statistics RÉACTIVÉ */}
             <div>
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-200">
-                <div className="text-center mb-6">
-                  <div className="text-4xl mb-3">📊</div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">
-                    Votre Dashboard Personnel
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    Analysez vos premiers produits pour débloquer vos statistiques
-                  </p>
-                </div>
-
-                {/* Stats Démo */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">--</div>
-                    <p className="text-xs text-green-700 font-medium">Score Santé</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">--</div>
-                    <p className="text-xs text-blue-700 font-medium">Analyses</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-purple-600">0</div>
-                    <p className="text-xs text-purple-700 font-medium">Objectifs</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-orange-600">0</div>
-                    <p className="text-xs text-orange-700 font-medium">Badges</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
-                >
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  Découvrir mon Dashboard
-                </button>
-
-                <div className="mt-4 p-3 bg-purple-50 rounded-lg text-center">
-                  <p className="text-purple-700 text-xs">
-                    <strong>🎯 Première étape :</strong> Analysez 3 produits pour commencer !
-                  </p>
-                </div>
-              </div>
+              <QuickStatsWidget />
             </div>
             
             {/* Description */}

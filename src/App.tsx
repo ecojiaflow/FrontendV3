@@ -1,4 +1,4 @@
-﻿// PATH: frontend/ecolojiaFrontV3/src/App.tsx
+﻿// REMPLACER dans src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
@@ -9,6 +9,7 @@ import ChatPage from './pages/ChatPage';
 import CategoryPage from './pages/CategoryPage';
 import MultiCategoriesPage from './pages/MultiCategoriesPage';
 import ProductNotFoundPage from './pages/ProductNotFoundPage';
+import DashboardPage from './pages/DashboardPage'; // ✅ AJOUTER CETTE LIGNE
 import Scan from './pages/Scan';
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './pages/AdminDashboard';
@@ -31,16 +32,10 @@ const App: React.FC = () => {
             <Route path="/multi-categories" element={<MultiCategoriesPage />} />
             <Route path="/not-found" element={<ProductNotFoundPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/dashboard" element={
-              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="bg-white p-8 rounded-lg shadow-md text-center">
-                  <h2 className="text-2xl font-bold mb-4">🚧 Dashboard Coming Soon</h2>
-                  <button onClick={() => window.location.href = '/'} className="bg-green-500 text-white px-6 py-2 rounded">
-                    Go Home
-                  </button>
-                </div>
-              </div>
-            } />
+            
+            {/* ✅ REMPLACER cette route par : */}
+            <Route path="/dashboard" element={<DashboardPage />} />
+            
             <Route path="*" element={<ProductNotFoundPage />} />
           </Routes>
         </Router>
