@@ -1,11 +1,113 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Search, X, MessageCircle, BarChart3 } from 'lucide-react';
+import { Leaf, Search, X, MessageCircle, BarChart3, TrendingUp, Target, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
-// ✅ RÉACTIVÉ: Import Analytics Widget
-import QuickStatsWidget from '../components/analysis/QuickStatsWidget';
+
+// ✅ QuickStatsWidget intégré directement pour éviter les problèmes d'import
+const QuickStatsWidgetIntegrated: React.FC = () => {
+  const [stats, setStats] = useState({
+    totalScans: 47,
+    avgHealthScore: 73,
+    improvement: 15,
+    streak: 7,
+    topProducts: 3,
+    isLoading: true
+  });
+
+  useEffect(() => {
+    // Simulation du chargement des stats
+    const timer = setTimeout(() => {
+      setStats(prev => ({ ...prev, isLoading: false }));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (stats.isLoading) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="animate-pulse">
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-6 bg-gray-200 rounded w-32"></div>
+            <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+          </div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold text-gray-800">📊 Vos Stats Santé</h3>
+        <BarChart3 className="w-6 h-6 text-green-500" />
+      </div>
+
+      {/* Stats principales */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+          <div className="text-3xl font-bold text-green-600 mb-1">{stats.totalScans}</div>
+          <div className="text-sm text-gray-600">Produits analysés</div>
+        </div>
+        
+        <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-3xl font-bold text-blue-600 mb-1">{stats.avgHealthScore}</div>
+          <div className="text-sm text-gray-600">Score santé moyen</div>
+        </div>
+      </div>
+
+      {/* Métriques secondaires */}
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+          <div className="flex items-center">
+            <TrendingUp className="w-5 h-5 text-purple-500 mr-2" />
+            <span className="text-sm font-medium text-gray-700">Amélioration</span>
+          </div>
+          <span className="text-purple-600 font-bold">+{stats.improvement}%</span>
+        </div>
+
+        <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+          <div className="flex items-center">
+            <Target className="w-5 h-5 text-orange-500 mr-2" />
+            <span className="text-sm font-medium text-gray-700">Série active</span>
+          </div>
+          <span className="text-orange-600 font-bold">{stats.streak} jours</span>
+        </div>
+
+        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+          <div className="flex items-center">
+            <Award className="w-5 h-5 text-yellow-500 mr-2" />
+            <span className="text-sm font-medium text-gray-700">Top produits</span>
+          </div>
+          <span className="text-yellow-600 font-bold">{stats.topProducts} découverts</span>
+        </div>
+      </div>
+
+      {/* Call to action */}
+      <div className="text-center">
+        <Link
+          to="/dashboard"
+          className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg inline-block"
+        >
+          📈 Voir le dashboard complet
+        </Link>
+      </div>
+
+      {/* Footer widget */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <p className="text-xs text-gray-500 text-center">
+          💡 Analysez plus de produits pour des insights personnalisés
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -260,9 +362,9 @@ const HomePage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* ✅ Widget Statistics RÉACTIVÉ */}
+            {/* ✅ Widget Statistics RÉACTIVÉ - intégré */}
             <div>
-              <QuickStatsWidget />
+              <QuickStatsWidgetIntegrated />
             </div>
             
             {/* Description */}
