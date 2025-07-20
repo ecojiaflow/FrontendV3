@@ -1,9 +1,103 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Search, X, MessageCircle, BarChart3, TrendingUp, Target, Award, Sparkles, Apple, Droplets } from 'lucide-react';
+import { 
+  Leaf, Search, X, MessageCircle, BarChart3, TrendingUp, Target, Award, 
+  Sparkles, Apple, Droplets, Camera, ArrowRight, Globe, Zap, Shield 
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
+
+// ✅ NOUVEAU : Composant EnhancedSearchInterface simplifié intégré
+interface EnhancedSearchInterfaceProps {
+  placeholder?: string;
+  onResultSelect: (result: any) => void;
+  showFilters?: boolean;
+  className?: string;
+  categories?: string[];
+}
+
+const EnhancedSearchInterface: React.FC<EnhancedSearchInterfaceProps> = ({
+  placeholder = "Rechercher un produit...",
+  onResultSelect,
+  className = ""
+}) => {
+  const [query, setQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  
+  const popularSuggestions = [
+    { query: 'nutella bio', icon: '🍫', category: 'Alimentaire' },
+    { query: 'shampoing sans sulfate', icon: '🧴', category: 'Cosmétiques' },
+    { query: 'lessive écologique', icon: '🧽', category: 'Détergents' },
+    { query: 'yaourt sans additifs', icon: '🥛', category: 'Alimentaire' }
+  ];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      onResultSelect({ query: query.trim() });
+      setShowDropdown(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: any) => {
+    setQuery(suggestion.query);
+    onResultSelect(suggestion);
+    setShowDropdown(false);
+  };
+
+  return (
+    <div className={`enhanced-search-interface relative ${className}`}>
+      <form onSubmit={handleSubmit} className="relative">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setShowDropdown(true)}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+            placeholder={placeholder}
+            className="w-full pl-12 pr-6 py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all text-lg"
+          />
+        </div>
+      </form>
+
+      {/* Dropdown suggestions */}
+      {showDropdown && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
+          <div className="p-3 border-b border-gray-100 bg-gray-50">
+            <span className="text-sm font-medium text-gray-700">
+              {query ? 'Suggestions' : 'Recherches populaires'}
+            </span>
+          </div>
+
+          <div className="py-2">
+            {popularSuggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="w-full flex items-center px-4 py-3 hover:bg-gray-50 transition-colors text-left group"
+              >
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-gray-200 transition-colors">
+                  <span className="text-lg">{suggestion.icon}</span>
+                </div>
+                
+                <div className="flex-1">
+                  <div className="font-medium text-gray-800">{suggestion.query}</div>
+                  <div className="text-xs text-gray-500">{suggestion.category}</div>
+                </div>
+                
+                <TrendingUp className="w-4 h-4 text-orange-500" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ✅ QuickStatsWidget intégré directement pour éviter les problèmes d'import
 const QuickStatsWidgetIntegrated: React.FC = () => {
@@ -111,7 +205,6 @@ const QuickStatsWidgetIntegrated: React.FC = () => {
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
@@ -123,192 +216,353 @@ const HomePage: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  /* ---------- Recherche texte ---------- */
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      /* ✅ redirection correcte vers la page de recherche Algolia */
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
-  const handleClear = () => setSearchQuery('');
-
   /* ---------- Scanner mobile ---------- */
   const handleScanSuccess = (barcode: string) => {
     console.log('📱 Code-barres scanné :', barcode);
     setShowScanner(false);
     const params = new URLSearchParams({ barcode, method: 'scan' });
-    /* ✅ template string + params */
     navigate(`/results?${params.toString()}`);
   };
 
   const handleCloseScanner = () => setShowScanner(false);
   const openScanner = () => setShowScanner(true);
 
+  // ✅ NOUVEAU : Handler pour la recherche universelle
+  const handleUniversalSearchSelect = (result: any) => {
+    console.log('🔍 Recherche sélectionnée:', result);
+    // Navigation intelligente selon le type de résultat
+    if (result.barcode) {
+      navigate(`/product?barcode=${result.barcode}&source=${result.source}`);
+    } else if (result.id) {
+      navigate(`/product/${result.id}?source=${result.source}`);
+    } else if (result.query) {
+      navigate(`/search?q=${encodeURIComponent(result.query)}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(result.name || result.query || '')}`);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* ===== HERO ===== */}
-      <section className="bg-gradient-to-br from-green-50 to-blue-50 py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      {/* ===== HERO SECTION AMÉLIORÉ ===== */}
+      <section className="bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 py-16 md:py-24 relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-200 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* Badge NOUVEAU */}
+          <div className="inline-flex items-center px-4 py-2 bg-white bg-opacity-80 backdrop-blur-sm rounded-full border border-green-200 mb-8">
+            <Sparkles className="w-4 h-4 text-green-600 mr-2" />
+            <span className="text-sm font-medium text-green-800">
+              Nouveau : Recherche universelle multi-sources • 2M+ produits
+            </span>
+          </div>
+
+          {/* Logo Hero */}
           <div className="flex justify-center mb-8">
             <Leaf className="h-16 w-16 text-green-500 animate-pulse" />
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-6">
-            Trouvez des produits <span className="text-green-500">éco-responsables</span>
+
+          {/* Titre principal */}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-6 leading-tight">
+            L'assistant IA pour une{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">
+              consommation consciente
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-12">
-            Découvrez des milliers de produits éthiques avec des scores écologiques vérifiés par IA
+          
+          <p className="text-lg md:text-xl text-gray-600 max-w-4xl mx-auto mb-12 leading-relaxed">
+            Analysez instantanément vos produits <strong>alimentaires</strong>, <strong>cosmétiques</strong> et <strong>détergents</strong> 
+            grâce à notre IA scientifique basée sur INSERM, ANSES et EFSA
           </p>
 
-          {/* Bouton scanner (mobile) */}
-          {isMobile && (
-            <div className="mb-8">
+          {/* ✅ RECHERCHE UNIVERSELLE HERO - REMPLACEMENT DE L'ANCIENNE BARRE */}
+          <div className="max-w-4xl mx-auto mb-12">
+            <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl p-2 shadow-2xl border border-white">
+              <EnhancedSearchInterface
+                placeholder="🌍 Recherchez parmi 2M+ produits... (nutella bio, shampoing L'Oréal, lessive Ariel)"
+                onResultSelect={handleUniversalSearchSelect}
+                className="text-lg"
+              />
+            </div>
+            
+            {/* Métriques de confiance intégrées */}
+            <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+              {[
+                { number: '2M+', label: 'Produits', sublabel: 'Multi-sources', color: 'text-green-600' },
+                { number: '3', label: 'Catégories', sublabel: 'Alimentaire, Cosmétique, Détergent', color: 'text-blue-600' },
+                { number: '<2s', label: 'Analyse', sublabel: 'Temps réel', color: 'text-purple-600' },
+                { number: '100%', label: 'Scientifique', sublabel: 'INSERM, ANSES, EFSA', color: 'text-orange-600' }
+              ].map((metric, index) => (
+                <div key={index} className="bg-white bg-opacity-70 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-50">
+                  <div className={`text-2xl lg:text-3xl font-bold ${metric.color} mb-1`}>
+                    {metric.number}
+                  </div>
+                  <div className="font-semibold text-gray-800 text-sm mb-1">
+                    {metric.label}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {metric.sublabel}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Suggestions populaires */}
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {[
+                { text: 'nutella bio', category: 'Alimentaire', icon: '🍫' },
+                { text: 'shampoing sans sulfate', category: 'Cosmétiques', icon: '🧴' },
+                { text: 'lessive écologique', category: 'Détergents', icon: '🧽' },
+                { text: 'yaourt sans additifs', category: 'Alimentaire', icon: '🥛' }
+              ].map((suggestion, index) => (
+                <button
+                  key={index}
+                  className="group flex items-center px-4 py-2 bg-white bg-opacity-70 hover:bg-opacity-100 text-gray-700 rounded-full text-sm transition-all hover:scale-105 shadow-sm hover:shadow-md"
+                  onClick={() => navigate(`/search?q=${encodeURIComponent(suggestion.text)}`)}
+                >
+                  <span className="mr-2">{suggestion.icon}</span>
+                  <span className="font-medium">{suggestion.text}</span>
+                  <ArrowRight className="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Boutons d'action principaux */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            {/* Bouton scanner mobile */}
+            {isMobile && (
               <button
                 onClick={openScanner}
-                className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg transition-all transform hover:scale-105 w-full max-w-sm mx-auto flex items-center justify-center space-x-2"
+                className="inline-flex items-center px-8 py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-all hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                <span className="text-xl">📷</span>
-                <span>Scanner un produit</span>
+                <Camera className="w-5 h-5 mr-2" />
+                📷 Scanner un produit
               </button>
-              <p className="text-sm text-gray-500 mt-2">📱 Scannez directement avec votre caméra</p>
-            </div>
-          )}
+            )}
+            
+            {/* Multi-Produits */}
+            <button
+              onClick={() => navigate('/multi-scan')}
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              <Sparkles className="w-5 h-5 mr-2" />
+              ✨ Analyse Multi-Catégories
+            </button>
+            
+            {/* Dashboard */}
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-600 transition-all hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              <BarChart3 className="w-5 h-5 mr-2" />
+              📊 Mon Dashboard
+            </button>
+          </div>
 
-          {/* Barre de recherche */}
-          <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto mb-8">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher shampoing bio, jean éthique, miel local..."
-                className="w-full py-4 px-12 pr-16 border-2 border-gray-200 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-gray-800 placeholder-gray-500 bg-white"
-                autoComplete="off"
-              />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                </button>
-              )}
+          {/* Note sur la recherche universelle */}
+          <div className="bg-blue-50 bg-opacity-80 backdrop-blur-sm border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center mb-2">
+              <Globe className="w-5 h-5 text-blue-600 mr-2" />
+              <span className="font-semibold text-blue-800">Recherche Multi-Sources</span>
             </div>
-            <div className="mt-6">
-              <button
-                type="submit"
-                className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg"
-              >
-                Rechercher des produits
-              </button>
-            </div>
-          </form>
-
-          <div className="text-gray-500 text-sm">
-            Essayez la démonstration pour voir notre IA en action !
+            <p className="text-sm text-blue-700">
+              Notre moteur combine <strong>Algolia</strong> (base ECOLOJIA), <strong>OpenFoodFacts</strong> (2M+ produits alimentaires) 
+              et notre <strong>base locale enrichie</strong> pour des résultats complets avec scores IA automatiques.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* 🚀 NOUVEAU : Section Multi-Produits */}
+      {/* ===== AVANTAGES RECHERCHE UNIVERSELLE ===== */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
+              🌍 Recherche Universelle Révolutionnaire
+            </h2>
+            <p className="text-xl text-gray-600">
+              La seule plateforme européenne avec recherche multi-sources intelligente
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            {[
+              {
+                icon: <Shield className="w-8 h-8 text-green-600" />,
+                title: 'Multi-Sources',
+                description: 'Algolia + OpenFoodFacts + Base locale enrichie',
+                count: '2M+'
+              },
+              {
+                icon: <Zap className="w-8 h-8 text-blue-600" />,
+                title: 'Temps Réel',
+                description: 'Recherche parallèle sur toutes sources en <2s',
+                count: '<2s'
+              },
+              {
+                icon: <Sparkles className="w-8 h-8 text-purple-600" />,
+                title: 'IA Enrichissement',
+                description: 'Score ECOLOJIA automatique sur tous résultats',
+                count: '100%'
+              },
+              {
+                icon: <Target className="w-8 h-8 text-orange-600" />,
+                title: 'Déduplication',
+                description: 'Algorithme intelligent évite les doublons',
+                count: '3x'
+              }
+            ].map((advantage, index) => (
+              <div key={index} className="text-center group">
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform border border-gray-100">
+                  {advantage.icon}
+                </div>
+                <div className="text-2xl font-bold text-gray-800 mb-2">{advantage.count}</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">{advantage.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-sm">{advantage.description}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Sources détaillées */}
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8">
+            <h3 className="text-2xl font-bold text-gray-800 mb-8 text-center">
+              📊 Sources de Données
+            </h3>
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-blue-600" />
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">Algolia ECOLOJIA</h4>
+                <p className="text-sm text-gray-600 mb-2">Base propriétaire avec scores IA et analyses expertes</p>
+                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                  Haute qualité
+                </span>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Globe className="w-8 h-8 text-orange-600" />
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">OpenFoodFacts</h4>
+                <p className="text-sm text-gray-600 mb-2">2+ millions de produits alimentaires avec données nutritionnelles</p>
+                <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                  Large couverture
+                </span>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Leaf className="w-8 h-8 text-green-600" />
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">Base Locale</h4>
+                <p className="text-sm text-gray-600 mb-2">Produits analysés par nos experts avec métadonnées enrichies</p>
+                <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                  Expert validé
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 SECTION MULTI-PRODUITS - CONSERVÉE ET AMÉLIORÉE */}
       <section className="bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white py-16 px-4 rounded-2xl mx-4 mb-12">
         <div className="max-w-4xl mx-auto text-center">
           <div className="mb-8">
             <span className="inline-block px-4 py-2 bg-white bg-opacity-20 rounded-full text-sm font-medium mb-4">
-              ✨ NOUVEAU
+              ✨ ANALYSE AVANCÉE
             </span>
             <h2 className="text-4xl font-bold mb-4">
-              Analyse Multi-Catégories
+              IA Spécialisée Multi-Catégories
             </h2>
             <p className="text-xl opacity-90 max-w-2xl mx-auto">
-              Notre IA s'adapte maintenant à <strong>tous vos produits</strong> : alimentaire, cosmétiques, et détergents
+              Notre IA s'adapte automatiquement selon le type de produit avec des critères scientifiques spécialisés
             </p>
           </div>
 
-          {/* Features Grid */}
+          {/* Features Grid améliorée */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
-              <div className="text-3xl mb-3">🍎</div>
+              <div className="text-4xl mb-3">🍎</div>
               <h3 className="font-semibold mb-2">Alimentaire</h3>
-              <p className="text-sm opacity-90">Classification NOVA & ultra-transformation</p>
+              <p className="text-sm opacity-90 mb-3">Classification NOVA, ultra-transformation, additifs E-numbers</p>
+              <ul className="text-xs opacity-75 space-y-1">
+                <li>• Score NOVA (INSERM)</li>
+                <li>• Détection ultra-transformation</li>
+                <li>• Analyse additifs</li>
+                <li>• Score nutritionnel</li>
+              </ul>
             </div>
             
             <div className="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
-              <div className="text-3xl mb-3">✨</div>
+              <div className="text-4xl mb-3">✨</div>
               <h3 className="font-semibold mb-2">Cosmétiques</h3>
-              <p className="text-sm opacity-90">Perturbateurs endocriniens & allergènes</p>
+              <p className="text-sm opacity-90 mb-3">Perturbateurs endocriniens, allergènes INCI, naturalité</p>
+              <ul className="text-xs opacity-75 space-y-1">
+                <li>• Perturbateurs endocriniens</li>
+                <li>• Allergènes réglementaires</li>
+                <li>• Analyse INCI complète</li>
+                <li>• Score naturalité</li>
+              </ul>
             </div>
             
             <div className="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
-              <div className="text-3xl mb-3">💧</div>
+              <div className="text-4xl mb-3">💧</div>
               <h3 className="font-semibold mb-2">Détergents</h3>
-              <p className="text-sm opacity-90">Impact environnemental & toxicité</p>
+              <p className="text-sm opacity-90 mb-3">Impact environnemental, toxicité aquatique, biodégradabilité</p>
+              <ul className="text-xs opacity-75 space-y-1">
+                <li>• Toxicité vie aquatique</li>
+                <li>• Biodégradabilité OECD</li>
+                <li>• Émissions COV</li>
+                <li>• Labels écologiques</li>
+              </ul>
             </div>
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <button
               onClick={() => navigate('/multi-scan')}
               className="px-8 py-4 bg-white text-purple-600 rounded-xl font-semibold hover:shadow-xl transform hover:scale-105 transition-all duration-200"
             >
-              🚀 Essayer Maintenant
+              🚀 Analyser Mes Produits
             </button>
             
             <button
-              onClick={() => navigate('/about')}
+              onClick={() => navigate('/search')}
               className="px-8 py-4 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl font-semibold hover:bg-opacity-30 transition-all duration-200"
             >
-              En savoir plus
+              🔍 Recherche Universelle
             </button>
           </div>
 
           {/* Stats */}
-          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold">3</div>
               <div className="text-sm opacity-75">Catégories analysées</div>
             </div>
             <div>
-              <div className="text-2xl font-bold">2.7M+</div>
-              <div className="text-sm opacity-75">Produits en base</div>
+              <div className="text-2xl font-bold">2M+</div>
+              <div className="text-sm opacity-75">Produits recherchables</div>
             </div>
             <div>
-              <div className="text-2xl font-bold">98%</div>
-              <div className="text-sm opacity-75">Précision IA</div>
+              <div className="text-2xl font-bold">AI</div>
+              <div className="text-sm opacity-75">Enrichissement automatique</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Mise à jour des boutons d'action existants */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-        <button
-          onClick={() => navigate('/scan')}
-          className="px-8 py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors"
-        >
-          📱 Scanner Alimentaire
-        </button>
-        
-        <button
-          onClick={() => navigate('/multi-scan')}
-          className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
-        >
-          ✨ Multi-Produits
-        </button>
-        
-        <button
-          onClick={() => navigate('/search')}
-          className="px-8 py-4 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
-        >
-          🔍 Rechercher
-        </button>
-      </div>
-
-      {/* ===== FONCTIONNALITÉS ===== */}
+      {/* ===== RESTE DU CONTENU CONSERVÉ ===== */}
+      
+      {/* FONCTIONNALITÉS */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
@@ -417,7 +671,7 @@ const HomePage: React.FC = () => {
                 to="/search"
                 className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                🔍 Rechercher des produits
+                🌍 Recherche Universelle
               </Link>
               <Link
                 to="/product"
@@ -444,7 +698,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== DASHBOARD PERSONNEL RÉACTIVÉ ===== */}
+      {/* DASHBOARD PERSONNEL */}
       <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
@@ -457,12 +711,10 @@ const HomePage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* ✅ Widget Statistics RÉACTIVÉ - intégré */}
             <div>
               <QuickStatsWidgetIntegrated />
             </div>
             
-            {/* Description */}
             <div>
               <h3 className="text-2xl font-bold text-gray-800 mb-6">
                 Tableau de bord intelligent
@@ -532,7 +784,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== ASSISTANT IA NUTRITIONNEL ===== */}
+      {/* ASSISTANT IA NUTRITIONNEL */}
       <section className="py-16 bg-gradient-to-br from-indigo-50 to-blue-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
@@ -630,79 +882,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ===== RECHERCHE ALGOLIA ===== */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">
-              🔍 Recherche Instantanée
-            </h2>
-            <p className="text-xl text-gray-600">
-              Explorez notre base de données de 99 produits analysés
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">
-                  Recherche alimentée par Algolia
-                </h3>
-                <ul className="space-y-4 text-gray-700">
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-3 mt-1">⚡</span>
-                    <div>
-                      <strong>Recherche instantanée</strong> avec tolérance aux fautes de frappe
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-3 mt-1">🏷️</span>
-                    <div>
-                      <strong>Filtres avancés</strong> par groupe NOVA, catégorie, statut
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-3 mt-1">📊</span>
-                    <div>
-                      <strong>Métadonnées complètes</strong> avec scores et badges
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-3 mt-1">🔗</span>
-                    <div>
-                      <strong>Intégration directe</strong> avec l'analyse NOVA et le chat IA
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              
-              <div className="text-center">
-                <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
-                  <div className="text-4xl mb-3">🔍</div>
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <p className="text-gray-600 text-sm mb-2">Exemples de recherches :</p>
-                    <div className="space-y-2">
-                      <div className="bg-white px-3 py-2 rounded text-sm text-gray-700">"bio" → 15 résultats</div>
-                      <div className="bg-white px-3 py-2 rounded text-sm text-gray-700">"nutella" → 3 résultats</div>
-                      <div className="bg-white px-3 py-2 rounded text-sm text-gray-700">"sans additifs" → 8 résultats</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <Link
-                  to="/search"
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
-                >
-                  <Search className="w-5 h-5 mr-2" />
-                  Explorer la base de données
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== SOURCES ===== */}
+      {/* SOURCES */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="bg-white rounded-xl shadow-md p-8 text-center">
