@@ -1,7 +1,7 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Search, X, MessageCircle, BarChart3, TrendingUp, Target, Award } from 'lucide-react';
+import { Leaf, Search, X, MessageCircle, BarChart3, TrendingUp, Target, Award, Sparkles, Apple, Droplets } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
 
@@ -212,6 +212,101 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* 🚀 NOUVEAU : Section Multi-Produits */}
+      <section className="bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white py-16 px-4 rounded-2xl mx-4 mb-12">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-8">
+            <span className="inline-block px-4 py-2 bg-white bg-opacity-20 rounded-full text-sm font-medium mb-4">
+              ✨ NOUVEAU
+            </span>
+            <h2 className="text-4xl font-bold mb-4">
+              Analyse Multi-Catégories
+            </h2>
+            <p className="text-xl opacity-90 max-w-2xl mx-auto">
+              Notre IA s'adapte maintenant à <strong>tous vos produits</strong> : alimentaire, cosmétiques, et détergents
+            </p>
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
+              <div className="text-3xl mb-3">🍎</div>
+              <h3 className="font-semibold mb-2">Alimentaire</h3>
+              <p className="text-sm opacity-90">Classification NOVA & ultra-transformation</p>
+            </div>
+            
+            <div className="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
+              <div className="text-3xl mb-3">✨</div>
+              <h3 className="font-semibold mb-2">Cosmétiques</h3>
+              <p className="text-sm opacity-90">Perturbateurs endocriniens & allergènes</p>
+            </div>
+            
+            <div className="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
+              <div className="text-3xl mb-3">💧</div>
+              <h3 className="font-semibold mb-2">Détergents</h3>
+              <p className="text-sm opacity-90">Impact environnemental & toxicité</p>
+            </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/multi-scan')}
+              className="px-8 py-4 bg-white text-purple-600 rounded-xl font-semibold hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
+              🚀 Essayer Maintenant
+            </button>
+            
+            <button
+              onClick={() => navigate('/about')}
+              className="px-8 py-4 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl font-semibold hover:bg-opacity-30 transition-all duration-200"
+            >
+              En savoir plus
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold">3</div>
+              <div className="text-sm opacity-75">Catégories analysées</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold">2.7M+</div>
+              <div className="text-sm opacity-75">Produits en base</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold">98%</div>
+              <div className="text-sm opacity-75">Précision IA</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Mise à jour des boutons d'action existants */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <button
+          onClick={() => navigate('/scan')}
+          className="px-8 py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors"
+        >
+          📱 Scanner Alimentaire
+        </button>
+        
+        <button
+          onClick={() => navigate('/multi-scan')}
+          className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+        >
+          ✨ Multi-Produits
+        </button>
+        
+        <button
+          onClick={() => navigate('/search')}
+          className="px-8 py-4 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+        >
+          🔍 Rechercher
+        </button>
+      </div>
 
       {/* ===== FONCTIONNALITÉS ===== */}
       <section className="py-16 bg-white">
