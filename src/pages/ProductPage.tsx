@@ -9,7 +9,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
 // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Import Analytics
-// import { useUserAnalytics } from '../hooks/useUserAnalytics';
+ import { useUserAnalytics } from '../hooks/useUserAnalytics';
 
 /**
  * ProductPage (Version fonctionnelle sans analytics)
@@ -65,7 +65,7 @@ const ProductPage: React.FC = () => {
   const runIdRef = useRef(0);
 
   // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Hook Analytics
-  // const { trackScan } = useUserAnalytics();
+   const { trackScan } = useUserAnalytics();
 
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');

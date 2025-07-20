@@ -1,10 +1,12 @@
 // PATH: frontend/src/components/NovaResults.tsx
 import React from 'react';
 import { NovaAdaptedResult } from '../services/novaAdapter';
+import { CosmeticAnalysisDisplay, DetergentAnalysisDisplay } from './analysis/CosmeticAnalysisDisplay';
 
 interface NovaResultsProps {
-  result: NovaAdaptedResult;
-  loading?: boolean;
+  result: any;
+  loading: boolean;
+  category?: 'food' | 'cosmetic' | 'detergent';
 }
 
 const NovaResults: React.FC<NovaResultsProps> = ({ result, loading = false }) => {
