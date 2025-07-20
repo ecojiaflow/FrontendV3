@@ -22,6 +22,9 @@ import {
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
+// ✅ NOUVEAU : Import des états de chargement intelligents
+import { SmartLoading, useAnalysisProgress } from './components/ui/LoadingStates';
+
 // ✅ Pages principales
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
@@ -32,10 +35,14 @@ import Results from './pages/Results';
 import Scan from './pages/Scan';
 import Demo from './pages/Demo';
 
-// ✅ SOLUTION BULLETPROOF: Page Multi-Produits intégrée directement
+// ✅ SOLUTION BULLETPROOF: Page Multi-Produits avec Loading States intégrés
 const MultiProductScanPageBuiltIn: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<'food' | 'cosmetics' | 'detergents'>('food');
   const [scanMode, setScanMode] = useState<'barcode' | 'manual'>('barcode');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // ✅ NOUVEAU : Hook pour gérer les états de chargement
+  const { stage, progress, simulateAnalysis } = useAnalysisProgress(selectedCategory);
 
   const categories = [
     {
@@ -61,10 +68,37 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
     }
   ];
 
-  const handleAnalyze = () => {
-    // Redirection vers la page de recherche appropriée
-    window.location.href = '/search';
+  // ✅ NOUVEAU : Fonction d'analyse avec états de chargement
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    
+    try {
+      // Démarrer la simulation d'analyse avec états
+      await simulateAnalysis();
+      
+      // Après l'analyse, rediriger vers les résultats
+      setTimeout(() => {
+        window.location.href = '/search';
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse:', error);
+      setIsAnalyzing(false);
+    }
   };
+
+  // ✅ NOUVEAU : Si en cours d'analyse, afficher les états de chargement
+  if (isAnalyzing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+        <SmartLoading 
+          stage={stage} 
+          progress={progress} 
+          category={selectedCategory} 
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -99,6 +133,16 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
             Analysez la composition de vos produits alimentaires, cosmétiques et détergents 
             avec notre IA scientifique avancée
           </p>
+        </div>
+
+        {/* ✅ NOUVEAU : Bouton de test des états de chargement */}
+        <div className="text-center mb-8">
+          <button
+            onClick={handleAnalyze}
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+          >
+            🧪 Tester les États de Chargement
+          </button>
         </div>
 
         {/* Sélecteur de catégorie */}

@@ -1,8 +1,13 @@
-// src/main.tsx - FIX IMMÉDIAT
+// PATH: frontend/ecolojiaFrontV3/src/main.tsx
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+
+// ✅ Imports CSS dans l'ordre correct
 import './i18n';
 import './index.css';
+
+// ✅ NOUVEAU : Import des animations CSS pour les états de chargement
+import './styles/animations.css';
 
 // Import explicite pour éviter la dépendance circulaire
 import * as AppModule from './App';
