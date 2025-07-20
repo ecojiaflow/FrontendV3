@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Leaf, Search, X, MessageCircle, BarChart3, TrendingUp, Target, Award, 
-  Sparkles, Apple, Droplets, Camera, ArrowRight, Globe, Zap, Shield 
+  Sparkles, Apple, Droplets, Camera, ArrowRight, Zap, Shield 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BarcodeScanner from '../components/scanner/BarcodeScanner';
@@ -227,9 +227,9 @@ const HomePage: React.FC = () => {
   const handleCloseScanner = () => setShowScanner(false);
   const openScanner = () => setShowScanner(true);
 
-  // ✅ NOUVEAU : Handler pour la recherche universelle
-  const handleUniversalSearchSelect = (result: any) => {
-    console.log('🔍 Recherche sélectionnée:', result);
+  // ✅ Handler pour l'IA scientifique
+  const handleScientificSearchSelect = (result: any) => {
+    console.log('🔬 Analyse IA sélectionnée:', result);
     // Navigation intelligente selon le type de résultat
     if (result.barcode) {
       navigate(`/product?barcode=${result.barcode}&source=${result.source}`);
@@ -257,7 +257,7 @@ const HomePage: React.FC = () => {
           <div className="inline-flex items-center px-4 py-2 bg-white bg-opacity-80 backdrop-blur-sm rounded-full border border-green-200 mb-8">
             <Sparkles className="w-4 h-4 text-green-600 mr-2" />
             <span className="text-sm font-medium text-green-800">
-              Nouveau : Recherche universelle multi-sources • 2M+ produits
+              Nouveau : IA Scientifique Multi-Catégories • 2M+ produits analysés
             </span>
           </div>
 
@@ -279,23 +279,43 @@ const HomePage: React.FC = () => {
             grâce à notre IA scientifique basée sur INSERM, ANSES et EFSA
           </p>
 
-          {/* ✅ RECHERCHE UNIVERSELLE HERO - REMPLACEMENT DE L'ANCIENNE BARRE */}
+          {/* ✅ IA SCIENTIFIQUE HERO */}
           <div className="max-w-4xl mx-auto mb-12">
             <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl p-2 shadow-2xl border border-white">
               <EnhancedSearchInterface
-                placeholder="🌍 Recherchez parmi 2M+ produits... (nutella bio, shampoing L'Oréal, lessive Ariel)"
-                onResultSelect={handleUniversalSearchSelect}
+                placeholder="🔬 Recherchez parmi 2M+ produits analysés par IA... (nutella bio, shampoing L'Oréal, lessive Ariel)"
+                onResultSelect={handleScientificSearchSelect}
                 className="text-lg"
               />
             </div>
             
-            {/* Métriques de confiance intégrées */}
+            {/* 🔬 Métriques de confiance scientifique */}
             <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
               {[
-                { number: '2M+', label: 'Produits', sublabel: 'Multi-sources', color: 'text-green-600' },
-                { number: '3', label: 'Catégories', sublabel: 'Alimentaire, Cosmétique, Détergent', color: 'text-blue-600' },
-                { number: '<2s', label: 'Analyse', sublabel: 'Temps réel', color: 'text-purple-600' },
-                { number: '100%', label: 'Scientifique', sublabel: 'INSERM, ANSES, EFSA', color: 'text-orange-600' }
+                { 
+                  number: 'IA', 
+                  label: 'Scientifique', 
+                  sublabel: 'Algorithmes NOVA, INCI, ECO propriétaires', 
+                  color: 'text-green-600' 
+                },
+                { 
+                  number: '3', 
+                  label: 'Catégories', 
+                  sublabel: 'Alimentaire, Cosmétique, Détergent', 
+                  color: 'text-blue-600' 
+                },
+                { 
+                  number: '<2s', 
+                  label: 'Enrichissement', 
+                  sublabel: 'Calcul temps réel', 
+                  color: 'text-purple-600' 
+                },
+                { 
+                  number: '100%', 
+                  label: 'Scientifique', 
+                  sublabel: 'INSERM, ANSES, EFSA', 
+                  color: 'text-orange-600' 
+                }
               ].map((metric, index) => (
                 <div key={index} className="bg-white bg-opacity-70 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-50">
                   <div className={`text-2xl lg:text-3xl font-bold ${metric.color} mb-1`}>
@@ -364,29 +384,29 @@ const HomePage: React.FC = () => {
             </button>
           </div>
 
-          {/* Note sur la recherche universelle */}
+          {/* Note sur l'IA scientifique */}
           <div className="bg-blue-50 bg-opacity-80 backdrop-blur-sm border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
             <div className="flex items-center justify-center mb-2">
-              <Globe className="w-5 h-5 text-blue-600 mr-2" />
-              <span className="font-semibold text-blue-800">Recherche Multi-Sources</span>
+              <Zap className="w-5 h-5 text-blue-600 mr-2" />
+              <span className="font-semibold text-blue-800">IA Scientifique Propriétaire</span>
             </div>
             <p className="text-sm text-blue-700">
-              Notre moteur combine <strong>Algolia</strong> (base ECOLOJIA), <strong>OpenFoodFacts</strong> (2M+ produits alimentaires) 
-              et notre <strong>base locale enrichie</strong> pour des résultats complets avec scores IA automatiques.
+              Notre intelligence artificielle combine <strong>algorithmes NOVA V2</strong> (classification scientifique), <strong>INCI V2</strong> (analyse cosmétiques) 
+              et <strong>ECO V2</strong> (impact environnemental) pour des scores fiables basés sur INSERM, ANSES et EFSA.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ===== AVANTAGES RECHERCHE UNIVERSELLE ===== */}
+      {/* ===== IA SCIENTIFIQUE MULTI-CATÉGORIES ===== */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
-              🌍 Recherche Universelle Révolutionnaire
+              🔬 IA Scientifique Multi-Catégories
             </h2>
             <p className="text-xl text-gray-600">
-              La seule plateforme européenne avec recherche multi-sources intelligente
+              La seule plateforme européenne avec algorithmes propriétaires spécialisés
             </p>
           </div>
 
@@ -394,27 +414,27 @@ const HomePage: React.FC = () => {
             {[
               {
                 icon: <Shield className="w-8 h-8 text-green-600" />,
-                title: 'Multi-Sources',
-                description: 'Algolia + OpenFoodFacts + Base locale enrichie',
-                count: '2M+'
+                title: 'Algorithmes Propriétaires',
+                description: 'NOVA V2 + INCI V2 + ECO V2 développés en interne',
+                count: '3'
               },
               {
                 icon: <Zap className="w-8 h-8 text-blue-600" />,
-                title: 'Temps Réel',
-                description: 'Recherche parallèle sur toutes sources en <2s',
+                title: 'Enrichissement Temps Réel',
+                description: 'Calcul automatique des scores sur tous produits',
                 count: '<2s'
               },
               {
                 icon: <Sparkles className="w-8 h-8 text-purple-600" />,
-                title: 'IA Enrichissement',
-                description: 'Score ECOLOJIA automatique sur tous résultats',
+                title: 'IA Spécialisée',
+                description: 'Adaptation automatique selon type de produit',
                 count: '100%'
               },
               {
                 icon: <Target className="w-8 h-8 text-orange-600" />,
-                title: 'Déduplication',
-                description: 'Algorithme intelligent évite les doublons',
-                count: '3x'
+                title: 'Base Scientifique',
+                description: 'Critères validés INSERM, ANSES, EFSA',
+                count: 'Expert'
               }
             ].map((advantage, index) => (
               <div key={index} className="text-center group">
@@ -428,43 +448,70 @@ const HomePage: React.FC = () => {
             ))}
           </div>
 
-          {/* Sources détaillées */}
+          {/* 🔬 Base Scientifique ECOLOJIA */}
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8">
             <h3 className="text-2xl font-bold text-gray-800 mb-8 text-center">
-              📊 Sources de Données
+              🔬 Base Scientifique ECOLOJIA
             </h3>
             <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-8 h-8 text-blue-600" />
-                </div>
-                <h4 className="font-semibold text-gray-800 mb-2">Algolia ECOLOJIA</h4>
-                <p className="text-sm text-gray-600 mb-2">Base propriétaire avec scores IA et analyses expertes</p>
-                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  Haute qualité
-                </span>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Globe className="w-8 h-8 text-orange-600" />
-                </div>
-                <h4 className="font-semibold text-gray-800 mb-2">OpenFoodFacts</h4>
-                <p className="text-sm text-gray-600 mb-2">2+ millions de produits alimentaires avec données nutritionnelles</p>
-                <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
-                  Large couverture
-                </span>
-              </div>
-              
-              <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Leaf className="w-8 h-8 text-green-600" />
+                  <Apple className="w-8 h-8 text-green-600" />
                 </div>
-                <h4 className="font-semibold text-gray-800 mb-2">Base Locale</h4>
-                <p className="text-sm text-gray-600 mb-2">Produits analysés par nos experts avec métadonnées enrichies</p>
+                <h4 className="font-semibold text-gray-800 mb-2">Algorithme NOVA V2</h4>
+                <p className="text-sm text-gray-600 mb-2">Classification scientifique basée sur INSERM avec détection ultra-transformation</p>
                 <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                  Expert validé
+                  INSERM validé
                 </span>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8 text-pink-600" />
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">Algorithme INCI V2</h4>
+                <p className="text-sm text-gray-600 mb-2">Analyse cosmétiques selon ANSES avec détection perturbateurs endocriniens</p>
+                <span className="inline-block px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-medium">
+                  ANSES référentiel
+                </span>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Droplets className="w-8 h-8 text-blue-600" />
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">Algorithme ECO V2</h4>
+                <p className="text-sm text-gray-600 mb-2">Impact environnemental selon REACH et OECD pour détergents</p>
+                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                  REACH/OECD
+                </span>
+              </div>
+            </div>
+            
+            {/* Transparence méthodologique */}
+            <div className="mt-8 bg-white rounded-xl p-6 border border-gray-200">
+              <h4 className="font-semibold text-gray-800 mb-4 text-center">
+                🔍 Transparence Méthodologique
+              </h4>
+              <div className="grid md:grid-cols-2 gap-6 text-sm text-gray-600">
+                <div>
+                  <h5 className="font-medium text-gray-800 mb-2">📊 Critères Objectifs</h5>
+                  <ul className="space-y-1">
+                    <li>• Classification NOVA 1-4 (INSERM 2024)</li>
+                    <li>• Indice INCI perturbateurs endocriniens</li>
+                    <li>• Score biodégradabilité OECD</li>
+                    <li>• Détection additifs E-numbers</li>
+                  </ul>
+                </div>
+                <div>
+                  <h5 className="font-medium text-gray-800 mb-2">⚖️ Pondération Scientifique</h5>
+                  <ul className="space-y-1">
+                    <li>• Facteurs de risque EFSA</li>
+                    <li>• Niveaux d'exposition ANSES</li>
+                    <li>• Seuils réglementaires UE</li>
+                    <li>• Études épidémiologiques récentes</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -538,7 +585,7 @@ const HomePage: React.FC = () => {
               onClick={() => navigate('/search')}
               className="px-8 py-4 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl font-semibold hover:bg-opacity-30 transition-all duration-200"
             >
-              🔍 Recherche Universelle
+              🔬 IA Scientifique
             </button>
           </div>
 
@@ -550,7 +597,7 @@ const HomePage: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold">2M+</div>
-              <div className="text-sm opacity-75">Produits recherchables</div>
+              <div className="text-sm opacity-75">Produits analysables</div>
             </div>
             <div>
               <div className="text-2xl font-bold">AI</div>
@@ -671,7 +718,7 @@ const HomePage: React.FC = () => {
                 to="/search"
                 className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                🌍 Recherche Universelle
+                🔬 IA Scientifique
               </Link>
               <Link
                 to="/product"

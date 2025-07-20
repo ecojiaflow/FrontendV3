@@ -1,338 +1,418 @@
 // PATH: frontend/ecolojiaFrontV3/src/pages/ChatPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Send, MessageCircle, Search, Zap, User, Bot, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Search, Zap, User, Bot, RefreshCw, Crown, Lock, Calculator, Clock, AlertTriangle } from 'lucide-react';
 
-// ✅ CORRECTION: Interfaces locales au lieu d'imports manquants
+// ✅ TYPES DEEPSEEK INTÉGRÉS
+type UserTier = 'free' | 'premium';
+
 interface ChatMessage {
   id: string;
-  type: 'user' | 'ai';
+  type: 'user' | 'ai' | 'system';
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  cost?: number;
+  tokens?: number;
 }
 
 interface ProductContext {
   productName: string;
+  category: 'alimentaire' | 'cosmetique' | 'detergent';
   novaGroup?: number;
   healthScore?: number;
   additives?: Array<{ code: string; name: string; riskLevel: string }>;
   ingredients?: string;
   score?: number;
+  // Cosmétique
+  inciIngredients?: string[];
+  naturalityScore?: number;
+  // Détergent
+  ecoScore?: number;
+  biodegradability?: string;
 }
 
-// ✅ CORRECTION: Service Chat local simplifié
-class LocalChatService {
-  private history: ChatMessage[] = [];
-  private productContext: ProductContext | null = null;
+// 🚀 SERVICE DEEPSEEK PRODUCTION AVEC VRAIE API
+class DeepSeekProductionService {
+  private readonly API_KEY = 'sk-ef74bf314166463ebbd45badd4eb6de7'; // Votre vraie clé API
+  private readonly BASE_URL = 'https://api.deepseek.com/v1/chat/completions';
+  private readonly PRODUCTION_MODE = true; // Mode production activé
+  
+  // Usage tracking local
+  private usageStorage = new Map<string, Array<{
+    date: string;
+    questions: number;
+    tokens: number;
+    cost: number;
+  }>>();
 
-  setProductContext(context: ProductContext | null) {
-    this.productContext = context;
+  async sendMessage(
+    message: string,
+    userTier: UserTier,
+    userId: string,
+    context?: ProductContext
+  ): Promise<{
+    reply: string;
+    suggestions: string[];
+    cost: number;
+    tokens: number;
+    upgradePrompt?: string;
+  }> {
+    
+    // Vérification limites gratuit
+    if (userTier === 'free') {
+      const today = new Date().toISOString().split('T')[0];
+      const userUsage = this.usageStorage.get(userId) || [];
+      const dailyUsage = userUsage.filter(u => u.date === today);
+      const questionsToday = dailyUsage.reduce((sum, u) => sum + u.questions, 0);
+
+      if (questionsToday >= 5) {
+        return {
+          reply: '🔒 **Limite quotidienne atteinte (5/5 questions)**\n\n⭐ **Passez Premium pour :**\n• Questions illimitées\n• Cosmétiques + Détergents\n• DeepSeek Reasoner (IA avancée)\n• Analyses expertes\n\n💰 **Coût réel** : ~0,02€ par question Premium',
+          suggestions: ['Upgrade Premium', 'Voir mes limites'],
+          cost: 0,
+          tokens: 0,
+          upgradePrompt: 'Limite atteinte. Upgrade Premium ?'
+        };
+      }
+
+      // Vérifier catégorie autorisée
+      if (context && context.category !== 'alimentaire') {
+        const categoryName = context.category === 'cosmetique' ? 'cosmétiques' : 'détergents';
+        return {
+          reply: `🔒 **Analyse ${categoryName} réservée Premium**\n\n✨ **Version gratuite** : Alimentaire uniquement\n💎 **Version Premium** : Alimentaire + Cosmétiques + Détergents\n\nUpgrade pour analyser "${context.productName}" ?`,
+          suggestions: ['Upgrade Premium', 'Retour alimentaire'],
+          cost: 0,
+          tokens: 0,
+          upgradePrompt: `Upgrade pour analyser ${categoryName} ?`
+        };
+      }
+    }
+
+    // 🚀 APPEL API DEEPSEEK RÉEL
+    try {
+      console.log('🚀 Appel DeepSeek API Production...');
+      
+      const model = userTier === 'premium' ? 'deepseek-reasoner' : 'deepseek-chat';
+      const systemPrompt = this.buildSystemPrompt(userTier, context);
+      const userMessage = this.buildUserMessage(message, context);
+
+      const response = await fetch(this.BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userMessage
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: userTier === 'premium' ? 2000 : 1000,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('❌ Erreur API DeepSeek:', response.status, errorData);
+        
+        // Fallback en cas d'erreur API
+        return this.getFallbackResponse(message, userTier, context, userId);
+      }
+
+      const data = await response.json();
+      
+      // Extraction des données de réponse
+      const aiReply = data.choices[0]?.message?.content || 'Erreur de réponse DeepSeek';
+      const usage = data.usage;
+      const totalTokens = usage?.total_tokens || 0;
+      
+      // Calcul coût réel selon modèle
+      const inputCost = userTier === 'premium' ? 0.55 : 0.27; // $ per 1M tokens
+      const outputCost = userTier === 'premium' ? 2.19 : 1.10; // $ per 1M tokens
+      const inputTokens = usage?.prompt_tokens || 0;
+      const outputTokens = usage?.completion_tokens || 0;
+      
+      const realCost = (inputTokens * inputCost / 1000000) + (outputTokens * outputCost / 1000000);
+
+      // Tracking usage
+      this.trackUsage(userId, totalTokens, realCost);
+
+      console.log('✅ Réponse DeepSeek reçue:', {
+        model,
+        tokens: totalTokens,
+        cost: realCost.toFixed(6) + '$'
+      });
+
+      return {
+        reply: aiReply,
+        suggestions: this.generateSuggestions(userTier, context),
+        cost: realCost,
+        tokens: totalTokens
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur réseau DeepSeek:', error);
+      return this.getFallbackResponse(message, userTier, context, userId);
+    }
   }
 
-  clearHistory() {
-    this.history = [];
+  private buildSystemPrompt(userTier: UserTier, context?: ProductContext): string {
+    if (userTier === 'free') {
+      return `Tu es un assistant nutritionnel ECOLOJIA gratuit alimenté par DeepSeek Chat.
+
+LIMITATIONS VERSION GRATUITE :
+- Analyses alimentaires basiques uniquement
+- Classification NOVA simple selon INSERM 2024
+- Réponses concises (max 400 mots)
+- Conseils généraux nutrition
+
+EXPERTISE DISPONIBLE :
+- Classification NOVA 1-4 avec explications
+- Additifs E-numbers courants et risques EFSA
+- Conseils nutrition équilibrée
+- Identification ultra-transformation
+
+STYLE : Accessible, bienveillant, scientifiquement rigoureux, encourage naturellement upgrade Premium pour analyses expertes.
+
+SOURCES : INSERM, ANSES, EFSA 2024`;
+    }
+
+    // Premium - Assistant spécialisé selon catégorie
+    if (context?.category === 'cosmetique') {
+      return `Tu es Dr. Sophie Laurent, dermatologue et chimiste cosmétique experte INCI, alimentée par DeepSeek Reasoner.
+
+EXPERTISE PREMIUM COSMÉTIQUES :
+- Analyse INCI complète avec détection perturbateurs endocriniens
+- Base Commission Européenne 2024 + ANSES cosmétiques
+- Détection 26 allergènes réglementaires UE
+- Score naturalité détaillé avec justifications
+- Conseils selon types de peau (normale, sensible, acnéique)
+- Alternatives clean beauty validées scientifiquement
+- Analyse interactions ingrédients
+
+APPROCHE : Utilise DeepSeek Reasoner pour analyses multi-factorielles approfondies.
+
+SOURCES : ANSM, Commission Européenne, IFRA, CIR, SCCS`;
+    }
+
+    if (context?.category === 'detergent') {
+      return `Tu es Dr. Thomas Moreau, éco-toxicologue expert REACH alimenté par DeepSeek Reasoner.
+
+EXPERTISE PREMIUM DÉTERGENTS :
+- Biodégradabilité selon tests OECD 301-310
+- Toxicité vie aquatique (Daphnia, poissons, algues)
+- Émissions COV et qualité air intérieur
+- Conformité labels écologiques (Ecolabel EU, Nordic Swan)
+- Alternatives écologiques efficaces
+- Impact emballages et transport
+
+APPROCHE : Utilise DeepSeek Reasoner pour évaluations environnementales complexes.
+
+SOURCES : ECHA, OECD, EPA, Ecolabel Européen 2024`;
+    }
+
+    // Nutritionniste par défaut
+    return `Tu es Dr. Marie Dubois, diététicienne-nutritionniste experte NOVA alimentée par DeepSeek Reasoner.
+
+EXPERTISE PREMIUM ALIMENTAIRE :
+- Classification NOVA détaillée avec justifications INSERM 2024
+- Analyse additifs E-numbers + évaluation risques EFSA complète
+- Impact microbiote intestinal selon recherches récentes
+- Recommandations personnalisées selon profils (diabète, hypertension, etc.)
+- Alternatives spécifiques avec équivalences nutritionnelles
+- Analyse procédés industriels ultra-transformation
+
+APPROCHE : Utilise DeepSeek Reasoner pour analyses nutritionnelles systémiques.
+
+SOURCES : INSERM, ANSES, EFSA, BMJ Nutrition 2024`;
   }
 
-  getSuggestedQuestions(context?: ProductContext | null): string[] {
-    if (context) {
+  private buildUserMessage(message: string, context?: ProductContext): string {
+    if (!context) return message;
+
+    let contextStr = `CONTEXTE PRODUIT ANALYSÉ :
+Nom: ${context.productName}
+Catégorie: ${context.category}
+Score santé ECOLOJIA: ${context.healthScore || context.score}/100`;
+
+    if (context.novaGroup) {
+      contextStr += `\nGroupe NOVA: ${context.novaGroup}`;
+    }
+
+    if (context.additives && context.additives.length > 0) {
+      contextStr += `\nAdditifs détectés: ${context.additives.length}`;
+      contextStr += `\nDétail additifs: ${context.additives.map(a => `${a.code} (${a.name}, risque: ${a.riskLevel})`).join(', ')}`;
+    }
+
+    if (context.ingredients) {
+      contextStr += `\nIngrédients: ${context.ingredients.substring(0, 200)}${context.ingredients.length > 200 ? '...' : ''}`;
+    }
+
+    // Cosmétiques
+    if (context.category === 'cosmetique') {
+      if (context.inciIngredients) {
+        contextStr += `\nIngrédients INCI: ${context.inciIngredients.join(', ')}`;
+      }
+      if (context.naturalityScore) {
+        contextStr += `\nScore naturalité: ${context.naturalityScore}/100`;
+      }
+    }
+
+    // Détergents
+    if (context.category === 'detergent') {
+      if (context.ecoScore) {
+        contextStr += `\nScore écologique: ${context.ecoScore}/100`;
+      }
+      if (context.biodegradability) {
+        contextStr += `\nBiodégradabilité: ${context.biodegradability}`;
+      }
+    }
+
+    return `${contextStr}
+
+QUESTION UTILISATEUR : ${message}`;
+  }
+
+  private generateSuggestions(userTier: UserTier, context?: ProductContext): string[] {
+    if (userTier === 'free') {
       return [
-        `Pourquoi ${context.productName} a ce score ?`,
-        "Quels sont les ingrédients problématiques ?",
-        "Suggérez-moi des alternatives saines",
-        "C'est dangereux pour ma santé ?",
-        "Comment améliorer ce produit ?",
-        "Explication du groupe NOVA"
+        'Classification NOVA ?',
+        'Additifs dangereux ?',
+        'Upgrade Premium',
+        'Conseils nutrition'
       ];
     }
-    
+
+    // Premium suggestions selon contexte
+    if (context?.category === 'cosmetique') {
+      return [
+        'Analyse INCI complète',
+        'Perturbateurs endocriniens',
+        'Conseils peau sensible',
+        'Alternatives naturelles'
+      ];
+    }
+
+    if (context?.category === 'detergent') {
+      return [
+        'Impact environnemental',
+        'Biodégradabilité OECD',
+        'Labels écologiques',
+        'Usage éco-responsable'
+      ];
+    }
+
     return [
-      "Comment fonctionne la classification NOVA ?",
-      "Qu'est-ce que l'ultra-transformation ?",
-      "Quels additifs éviter absolument ?",
-      "Comment lire une étiquette alimentaire ?",
-      "Conseils pour une alimentation plus saine",
-      "Différence entre bio et naturel"
+      'Analyse nutritionnelle',
+      'Alternatives saines',
+      'Impact microbiote',
+      'Conseils personnalisés'
     ];
   }
 
-  async sendMessage(message: string, context?: ProductContext): Promise<{ reply: string; suggestions: string[] }> {
-    // ✅ Simulation d'attente réaliste
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
-
-    const lowerMessage = message.toLowerCase();
-    let reply = '';
-    let suggestions: string[] = [];
-
-    // ✅ CORRECTION: Intelligence conversationnelle améliorée
-    if (lowerMessage.includes('nova') || lowerMessage.includes('classification')) {
-      reply = `🔬 **Classification NOVA** selon INSERM 2024 :
-
-**NOVA 1** 🥬 : Aliments naturels ou minimalement transformés
-• Fruits, légumes, viandes fraîches, lait, œufs, graines
-• Excellent pour la santé
-
-**NOVA 2** 🧂 : Ingrédients culinaires transformés  
-• Huiles, beurre, sucre, sel, vinaigre
-• À utiliser avec modération
-
-**NOVA 3** 🍞 : Aliments transformés
-• Pain artisanal, conserves simples, fromages
-• Consommation occasionnelle acceptable
-
-**NOVA 4** 🚨 : Ultra-transformés (à éviter)
-• Sodas, plats préparés, biscuits industriels
-• Riches en additifs et procédés industriels`;
-
-      suggestions = [
-        "Pourquoi éviter les NOVA 4 ?",
-        "Comment identifier un ultra-transformé ?",
-        "Exemples de produits NOVA 1"
-      ];
-    }
-    else if (lowerMessage.includes('alternative') || lowerMessage.includes('remplacer')) {
-      if (context) {
-        reply = `🔄 **Alternatives pour ${context.productName}** :
-
-Voici des options plus saines :
-• **Version bio** : Recherchez l'équivalent certifié agriculture biologique
-• **Marques artisanales** : Privilégiez les producteurs locaux
-• **Fait maison** : Préparez votre propre version avec des ingrédients simples
-• **Magasins spécialisés** : BioCoop, Naturalia, marchés de producteurs
-
-💡 **Critères de choix** :
-✅ Liste d'ingrédients courte (< 5 éléments)
-✅ Ingrédients que vous reconnaissez
-✅ Absence d'additifs E-numbers
-✅ Certification bio ou équitable`;
-      } else {
-        reply = `🔄 **Guide des alternatives saines** :
-
-**Méthode ECOLOJIA** pour choisir :
-1️⃣ **Lisez les ingrédients** - plus c'est court, mieux c'est
-2️⃣ **Privilégiez le bio** quand le budget le permet
-3️⃣ **Cuisinez maison** - vous contrôlez tout
-4️⃣ **Circuits courts** - producteurs locaux
-5️⃣ **Marques transparentes** - qui expliquent leurs procédés
-
-🛒 **Où acheter** : BioCoop, Naturalia, AMAP, marchés, magasins vrac`;
-      }
-      
-      suggestions = [
-        "Où acheter des produits plus sains ?",
-        "Comment cuisiner maison facilement ?",
-        "Marques bio recommandées"
-      ];
-    }
-    else if (lowerMessage.includes('dangereux') || lowerMessage.includes('santé') || lowerMessage.includes('risque')) {
-      if (context && context.novaGroup && context.novaGroup >= 4) {
-        reply = `⚠️ **Impact santé - ${context.productName}** (NOVA ${context.novaGroup}) :
-
-**Études scientifiques récentes** :
-• +22% risque dépression (Nature 2024)
-• +53% risque diabète type 2 (BMJ 2024)  
-• +10% maladies cardiovasculaires (Lancet 2024)
-• Perturbation microbiote intestinal (INSERM 2024)
-
-**Pourquoi ces risques ?**
-🔬 Ultra-transformation détruit la matrice alimentaire
-🧪 Additifs perturbent l'absorption des nutriments
-⚗️ Procédés industriels créent des composés néoformés
-
-**Rassurez-vous** : consommation occasionnelle acceptable !
-**L'important** : 80% alimentation naturelle, 20% plaisir 😊`;
-      } else {
-        reply = `🩺 **Impact santé des aliments transformés** :
-
-**Ultra-transformés (NOVA 4)** - À limiter :
-• Perturbent le microbiote intestinal
-• Augmentent inflammation chronique
-• Pauvres en nutriments essentiels
-• Riches en calories vides
-
-**Signaux d'alarme** :
-⚠️ Plus de 5 ingrédients
-⚠️ Noms d'ingrédients incompréhensibles  
-⚠️ Additifs E-numbers multiples
-⚠️ Durée conservation très longue
-
-**Bonne nouvelle** : notre corps s'adapte rapidement à une meilleure alimentation ! 💪`;
-      }
-      
-      suggestions = [
-        "Quels additifs éviter absolument ?",
-        "Comment améliorer mon alimentation ?",
-        "C'est grave si j'en mange parfois ?"
-      ];
-    }
-    else if (lowerMessage.includes('additif') || lowerMessage.includes('e1') || lowerMessage.includes('conservateur')) {
-      reply = `⚗️ **Guide des additifs alimentaires** :
-
-**🔴 À éviter absolument** :
-• **E102, E110, E124** : Colorants liés hyperactivité enfants
-• **E320, E321** : BHA, BHT - perturbateurs endocriniens
-• **E249, E250** : Nitrites - cancérigènes potentiels
-• **E951** : Aspartame - controversé
-
-**🟡 Modération requise** :
-• **E471** : Émulsifiants courants mais omniprésents
-• **E330** : Acide citrique (naturel mais surajouté)
-• **E407** : Carraghénanes - inflammation intestinale
-
-**🟢 Généralement acceptables** :
-• **E300** : Vitamine C (acide ascorbique)
-• **E322** : Lécithine (soja/tournesol)
-• **E170** : Carbonate de calcium (craie)
-
-💡 **Règle d'or** : Moins de E-numbers = Mieux !`;
-      
-      suggestions = [
-        "Comment éviter ces additifs ?",
-        "Pourquoi sont-ils autorisés ?",
-        "App pour scanner les additifs"
-      ];
-    }
-    else if (context && (lowerMessage.includes('score') || lowerMessage.includes('pourquoi'))) {
+  private getFallbackResponse(message: string, userTier: UserTier, context?: ProductContext, userId?: string): any {
+    console.log('🔄 Fallback activé - IA Expert API indisponible');
+    
+    // Fallback intelligent basé sur les mots-clés
+    const msg = message.toLowerCase();
+    
+    let reply = `⚠️ **Service IA temporairement indisponible**\n\n🔄 **Réponse de base ECOLOJIA** :\n\n`;
+    
+    if (msg.includes('nova')) {
+      reply += `🔬 **Classification NOVA (INSERM 2024)** :\n• NOVA 1 🟢 : Aliments naturels\n• NOVA 2 🟡 : Ingrédients culinaires\n• NOVA 3 🟠 : Aliments transformés\n• NOVA 4 🔴 : Ultra-transformés (éviter)\n\n📚 Base : Recherches Carlos Monteiro, BMJ 2024`;
+    } else if (context) {
       const score = context.healthScore || context.score || 50;
-      const novaGroup = context.novaGroup || 4;
-      
-      reply = `📊 **Analyse de ${context.productName}** :
-
-**Score ECOLOJIA** : ${score}/100 ${score >= 70 ? '✅' : score >= 50 ? '⚠️' : '🚨'}
-**Groupe NOVA** : ${novaGroup} ${novaGroup === 1 ? '🥬' : novaGroup === 2 ? '🧂' : novaGroup === 3 ? '🍞' : '🚨'}
-
-**Facteurs du score** :
-🔬 **Transformation** : ${novaGroup >= 4 ? 'Ultra-industrielle (-30 pts)' : novaGroup >= 3 ? 'Modérée (-15 pts)' : 'Minimale (+10 pts)'}
-⚗️ **Additifs** : ${context.additives?.length || 0} détecté(s) ${(context.additives?.length || 0) > 3 ? '(-20 pts)' : '(-5 pts)'}
-🌿 **Naturalité** : ${score >= 60 ? 'Acceptable' : 'Faible'}
-
-**Conseil** : ${score < 40 ? 'Remplacer par alternative naturelle' : 
-                 score < 60 ? 'Consommer occasionnellement' : 
-                 'Produit acceptable dans alimentation équilibrée'}`;
-      
-      suggestions = [
-        "Comment améliorer ce score ?",
-        "Ingrédients les plus problématiques",
-        "Alternatives recommandées"
-      ];
-    }
-    else if (lowerMessage.includes('bio') || lowerMessage.includes('biologique')) {
-      reply = `🌿 **Agriculture biologique vs conventionnelle** :
-
-**Avantages du bio** :
-✅ **Sans pesticides** de synthèse
-✅ **Moins d'additifs** autorisés (47 vs 300+)
-✅ **Respect environnement** et biodiversité
-✅ **Meilleure traçabilité** des ingrédients
-✅ **OGM interdits** en agriculture bio
-
-**Limites du bio** :
-⚠️ Plus cher (20-40% en moyenne)
-⚠️ Durée conservation parfois réduite
-⚠️ Peut être ultra-transformé quand même !
-
-**IMPORTANT** : Bio ≠ forcément sain
-Un biscuit bio ultra-transformé reste NOVA 4 !
-
-💡 **Priorités budget** : fruits/légumes > céréales > produits animaux`;
-      
-      suggestions = [
-        "Bio vs local, que choisir ?",
-        "Comment reconnaître le vrai bio ?",
-        "Dirty Dozen - produits à acheter bio"
-      ];
-    }
-    else if (lowerMessage.includes('lire') || lowerMessage.includes('étiquette')) {
-      reply = `🔍 **Guide lecture d'étiquette ECOLOJIA** :
-
-**1️⃣ Liste ingrédients** (par ordre décroissant) :
-• ✅ **< 5 ingrédients** = Excellent  
-• ⚠️ **5-10 ingrédients** = Acceptable
-• 🚨 **> 10 ingrédients** = Ultra-transformé probable
-
-**2️⃣ Signaux d'alarme** :
-🚨 Mots que vous ne connaissez pas
-🚨 E-numbers multiples (E102, E471...)
-🚨 Sirop de glucose-fructose
-🚨 Huiles hydrogénées
-
-**3️⃣ Bon signaux** :
-✅ Certification bio
-✅ "Sans additifs"
-✅ "Fait artisanalement"
-✅ Origine des ingrédients indiquée
-
-**4️⃣ Méfiance marketing** :
-⚠️ "Naturel" (non réglementé)
-⚠️ "Enrichi en..." (compensation transformation)`;
-      
-      suggestions = [
-        "Exemples d'étiquettes à éviter",
-        "Labels fiables à rechercher",
-        "Apps pour scanner produits"
-      ];
-    }
-    else if (lowerMessage.includes('améliorer') || lowerMessage.includes('conseil')) {
-      reply = `💪 **Plan d'amélioration alimentaire ECOLOJIA** :
-
-**Semaine 1-2 : Audit personnel**
-📱 Scannez vos produits habituels avec ECOLOJIA
-📝 Identifiez vos 3 produits NOVA 4 les plus consommés
-🎯 Trouvez 1 alternative pour chacun
-
-**Semaine 3-4 : Substitutions progressives**  
-🔄 Remplacez 1 produit ultra-transformé par semaine
-🏠 Testez 2 recettes maison simples
-🛒 Explorez 1 nouveau magasin (bio, marché)
-
-**Mois 2 : Consolidation**
-👨‍🍳 Cuisinez 50% de vos repas
-📊 Objectif : 80% NOVA 1-2, 20% plaisir
-🎯 Score ECOLOJIA moyen > 60
-
-**Résultats attendus** : Énergie ↗️, Digestion ↗️, Bien-être ↗️`;
-      
-      suggestions = [
-        "Recettes simples pour débuter",
-        "Budget courses plus saines",
-        "Meal prep facile"
-      ];
-    }
-    else {
-      // ✅ Réponse par défaut intelligente
-      reply = `🤔 Je comprends votre question !
-
-En tant qu'assistant nutritionnel ECOLOJIA, je peux vous éclairer sur :
-
-🔬 **Classification NOVA** et ultra-transformation
-⚗️ **Décryptage additifs** et ingrédients  
-🔄 **Alternatives plus saines** et où les trouver
-🩺 **Impact santé** selon études scientifiques récentes
-🛒 **Conseils pratiques** pour mieux consommer
-📖 **Lecture d'étiquettes** et pièges marketing
-
-💡 **Reformulez votre question** ou cliquez sur une suggestion pour que je puisse mieux vous aider !`;
-      
-      suggestions = [
-        "Expliquez-moi NOVA",
-        "Décryptez des ingrédients",
-        "Trouvez des alternatives",
-        "Impact sur la santé",
-        "Conseils pour mieux manger"
-      ];
+      const evaluation = score >= 70 ? 'Plutôt bon' : score >= 50 ? 'Modéré' : 'À améliorer';
+      reply += `📊 "${context.productName}" - Score: ${score}/100 (${evaluation})\n\nService expert IA sera rétabli sous peu.`;
+    } else {
+      reply += `Notre IA experte sera rétablie sous peu.\n\nEn attendant, utilisez notre analyse ECOLOJIA de base.`;
     }
 
-    return { reply, suggestions };
+    reply += `\n\n🔧 **Statut** : Reconnexion automatique en cours...`;
+
+    return {
+      reply,
+      suggestions: ['Réessayer', 'Support technique'],
+      cost: 0,
+      tokens: 0
+    };
+  }
+
+  private trackUsage(userId: string, tokens: number, cost: number): void {
+    const today = new Date().toISOString().split('T')[0];
+    const userUsage = this.usageStorage.get(userId) || [];
+    
+    userUsage.push({
+      date: today,
+      questions: 1,
+      tokens,
+      cost
+    });
+    
+    this.usageStorage.set(userId, userUsage);
+  }
+
+  getUserStats(userId: string) {
+    const userUsage = this.usageStorage.get(userId) || [];
+    const today = new Date().toISOString().split('T')[0];
+    const dailyUsage = userUsage.filter(u => u.date === today);
+    
+    return {
+      dailyUsed: dailyUsage.reduce((sum, u) => sum + u.questions, 0),
+      dailyLimit: 5,
+      monthlyUsed: userUsage.reduce((sum, u) => sum + u.questions, 0),
+      totalCost: userUsage.reduce((sum, u) => sum + u.cost, 0),
+      totalTokens: userUsage.reduce((sum, u) => sum + u.tokens, 0)
+    };
+  }
+
+  // Méthode pour tester la connexion IA
+  async testConnection(): Promise<boolean> {
+    try {
+      const response = await fetch(this.BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'user',
+              content: 'Test connection'
+            }
+          ],
+          max_tokens: 10
+        })
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('❌ Test connexion IA Expert échoué:', error);
+      return false;
+    }
   }
 }
 
-// ✅ Instance globale du service
-const chatService = new LocalChatService();
+// Instance service production
+const deepSeekService = new DeepSeekProductionService();
 
 // ✅ Fonction utilitaire pour créer contexte
 const createProductContext = (analysisData: any): ProductContext => {
   return {
     productName: analysisData.productName || analysisData.name || 'Produit analysé',
+    category: analysisData.category || 'alimentaire',
     novaGroup: analysisData.novaGroup || analysisData.nova?.novaGroup,
     healthScore: analysisData.healthScore || analysisData.score || analysisData.nova?.healthScore,
     additives: analysisData.additives || analysisData.nova?.additives?.detected || [],
@@ -341,22 +421,23 @@ const createProductContext = (analysisData: any): ProductContext => {
   };
 };
 
-// ✅ Questions prédéfinies organisées
-const SUGGESTED_QUESTIONS = [
-  "Ce produit est-il bon pour la santé ?",
-  "Quels sont les additifs préoccupants ?", 
-  "Existe-t-il des alternatives plus saines ?",
-  "Comment améliorer mon alimentation ?",
-  "Que signifie le groupe NOVA 4 ?",
-  "Pourquoi éviter les produits ultra-transformés ?",
-  "Quels sont les bienfaits des aliments bio ?",
-  "Comment lire une étiquette nutritionnelle ?"
-];
-
 const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // 🔧 ÉTAT DEEPSEEK PRODUCTION
+  const [userTier, setUserTier] = useState<UserTier>('free'); // TODO: récupérer depuis auth
+  const [userId] = useState('user_' + Date.now()); // TODO: vrai userId
+  const [userStats, setUserStats] = useState({
+    dailyUsed: 0,
+    dailyLimit: 5,
+    monthlyUsed: 0,
+    totalCost: 0,
+    totalTokens: 0
+  });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'connected' | 'disconnected' | 'testing'>('testing');
   
   // État du chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -364,62 +445,90 @@ const ChatPage: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [context, setContext] = useState<ProductContext | null>(null);
 
-  // ✅ Initialisation améliorée
+  // ✅ Test connexion IA au démarrage
   useEffect(() => {
-    // Récupérer le contexte depuis la navigation
+    const testApi = async () => {
+      console.log('🔍 Test connexion IA Expert...');
+      const isConnected = await deepSeekService.testConnection();
+      setApiStatus(isConnected ? 'connected' : 'disconnected');
+      console.log(isConnected ? '✅ IA Expert connectée' : '❌ IA Expert indisponible');
+    };
+
+    testApi();
+  }, []);
+
+  // ✅ Charger stats utilisateur
+  useEffect(() => {
+    const stats = deepSeekService.getUserStats(userId);
+    setUserStats(stats);
+  }, [userId, messages]);
+
+  // ✅ Initialisation avec DeepSeek
+  useEffect(() => {
     const analysisContext = location.state?.context;
     let productContext: ProductContext | null = null;
 
     if (analysisContext) {
       productContext = createProductContext(analysisContext);
       setContext(productContext);
-      chatService.setProductContext(productContext);
     }
 
-    // Message de bienvenue personnalisé
+    // Message de bienvenue selon tier
     const welcomeMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'ai',
-      content: productContext 
-        ? `🔬 Bonjour ! J'ai analysé "${productContext.productName}" (NOVA ${productContext.novaGroup || '?'}, Score ${productContext.healthScore || productContext.score || '?'}/100).
-
-Je peux répondre à toutes vos questions sur ce produit : ingrédients problématiques, alternatives plus saines, impact santé, conseils nutritionnels...
-
-Que voulez-vous savoir ? 🤔`
-        : `🤖 Bonjour ! Je suis votre assistant nutritionnel ECOLOJIA.
-
-Je vous aide à :
-• 🔬 Comprendre la classification NOVA
-• ⚗️ Décoder les additifs alimentaires  
-• 🔄 Trouver des alternatives plus saines
-• 🩺 Évaluer l'impact santé de vos aliments
-• 💡 Améliorer votre alimentation au quotidien
-
-Posez-moi vos questions ou cliquez sur les suggestions ! 😊`,
+      content: getWelcomeMessage(userTier, productContext),
       timestamp: new Date(),
-      suggestions: chatService.getSuggestedQuestions(productContext)
+      suggestions: getSuggestions(userTier, productContext)
     };
 
     setMessages([welcomeMessage]);
+  }, [userTier, location.state, apiStatus]);
 
-    // Message initial automatique si fourni
-    const initialMessage = location.state?.initialMessage;
-    if (initialMessage && typeof initialMessage === 'string') {
-      setTimeout(() => {
-        handleSendMessage(initialMessage);
-      }, 1500);
+  const getWelcomeMessage = (tier: UserTier, product?: ProductContext | null): string => {
+    const statusIndicator = apiStatus === 'connected' ? '🟢 **IA Expert Connectée**' : 
+                           apiStatus === 'disconnected' ? '🔴 **IA Expert Déconnectée**' : 
+                           '🟡 **Connexion IA...**';
+
+    if (tier === 'free') {
+      const productText = product ? `J'ai analysé "${product.productName}" !` : 'Bonjour !';
+      const questionText = product ? 'Que voulez-vous savoir ?' : 'Posez vos questions nutrition !';
+      
+      return `🤖 **ECOLOJIA Gratuit - IA Scientifique**\n\n${statusIndicator}\n\n${productText}\n\n📱 **Version Gratuite :**\n• ${userStats.dailyLimit - userStats.dailyUsed}/${userStats.dailyLimit} questions restantes aujourd'hui\n• Analyses alimentaires uniquement\n• IA de base (rapide et précise)\n\n💎 **Passez Premium pour :**\n• Questions illimitées\n• Cosmétiques + Détergents\n• IA Expert Avancée (raisonnement approfondi)\n\n${questionText}`;
     }
-  }, [location.state]);
 
-  // ✅ Auto-scroll optimisé
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [messages, isTyping]);
+    const assistantName = getAssistantName(product);
+    const productText = product ? `Analyse experte de "${product.productName}" !` : 'Accès complet à l\'expertise IA !';
+    
+    return `👑 **ECOLOJIA Premium - ${assistantName}**\n\n${statusIndicator}\n\n${productText}\n\n🚀 **Vos Avantages Premium :**\n• Questions illimitées (${userStats.monthlyUsed} ce mois)\n• IA Expert Avancée (analyses approfondies)\n• Toutes catégories disponibles\n• Service premium sans limitations\n\nComment puis-je vous aider aujourd'hui ?`;
+  };
 
-  // ✅ Gestion envoi message robuste
+  const getAssistantName = (product?: ProductContext | null): string => {
+    if (!product) return 'Assistant Expert';
+    switch (product.category) {
+      case 'cosmetique': return 'Dr. Sophie Laurent (Dermatologue)';
+      case 'detergent': return 'Dr. Thomas Moreau (Éco-expert)';
+      default: return 'Dr. Marie Dubois (Nutritionniste)';
+    }
+  };
+
+  const getSuggestions = (tier: UserTier, product?: ProductContext | null): string[] => {
+    if (tier === 'free') {
+      return product 
+        ? ['Ce produit est-il sain ?', 'Additifs problématiques', 'Upgrade Premium']
+        : ['Classification NOVA', 'Additifs dangereux', 'Upgrade Premium'];
+    }
+
+    if (product?.category === 'cosmetique') {
+      return ['Analyse INCI', 'Perturbateurs endocriniens', 'Conseils peau'];
+    }
+    if (product?.category === 'detergent') {
+      return ['Impact environnemental', 'Biodégradabilité', 'Labels écologiques'];
+    }
+    return ['Analyse nutritionnelle', 'Alternatives saines', 'Impact santé'];
+  };
+
+  // ✅ Gestion envoi message DeepSeek PRODUCTION
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isTyping) return;
 
@@ -435,41 +544,55 @@ Posez-moi vos questions ou cliquez sur les suggestions ! 😊`,
     setIsTyping(true);
 
     try {
-      console.log('💬 Envoi message:', content);
+      console.log('📤 Envoi message à IA Expert Production...');
       
-      const response = await chatService.sendMessage(content, context || undefined);
-      
-      console.log('✅ Réponse reçue:', response);
+      const response = await deepSeekService.sendMessage(
+        content,
+        userTier,
+        userId,
+        context || undefined
+      );
+
+      // Vérifier upgrade prompt
+      if (response.upgradePrompt) {
+        setShowUpgradeModal(true);
+      }
+
+      // Mise à jour statut API si réussi
+      if (apiStatus === 'disconnected') {
+        setApiStatus('connected');
+      }
 
       const aiMessage: ChatMessage = {
         id: `ai_${Date.now()}`,
         type: 'ai',
         content: response.reply,
         timestamp: new Date(),
-        suggestions: response.suggestions
+        suggestions: response.suggestions,
+        cost: response.cost,
+        tokens: response.tokens
       };
 
       setMessages(prev => [...prev, aiMessage]);
+
+      // Mettre à jour stats
+      const newStats = deepSeekService.getUserStats(userId);
+      setUserStats(newStats);
+      
+      console.log('✅ Réponse IA Expert reçue et traitée');
       
     } catch (error) {
-      console.error('❌ Erreur ChatService:', error);
+      console.error('❌ Erreur IA Expert Production:', error);
+      
+      // Marquer API comme déconnectée
+      setApiStatus('disconnected');
       
       const errorMessage: ChatMessage = {
         id: `error_${Date.now()}`,
-        type: 'ai',
-        content: `❌ Désolé, problème technique temporaire.
-
-💡 **Solutions** :
-• Vérifiez votre connexion internet
-• Reformulez avec des mots-clés simples
-• Réessayez dans quelques secondes
-
-En attendant, je peux vous aider avec les bases :
-🔬 Classification NOVA
-⚗️ Additifs alimentaires
-🔄 Alternatives saines`,
+        type: 'system',
+        content: '❌ **Erreur IA Expert**\n\nLe service d\'IA rencontre des difficultés.\n\n🔄 **Actions possibles :**\n• Vérifiez votre connexion internet\n• Réessayez dans quelques instants\n• Contactez le support si le problème persiste\n\n💡 L\'analyse ECOLOJIA de base reste disponible.',
         timestamp: new Date(),
-        suggestions: ["Réessayer", "Expliquer NOVA", "Lister additifs dangereux", "Retour accueil"]
+        suggestions: ['Réessayer', 'Support technique', 'Retour accueil']
       };
 
       setMessages(prev => [...prev, errorMessage]);
@@ -478,141 +601,157 @@ En attendant, je peux vous aider avec les bases :
     }
   };
 
-  // ✅ Gestion suggestions avec anti-spam
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
   const handleSuggestionClick = (suggestion: string) => {
+    if (suggestion === 'Upgrade Premium') {
+      setShowUpgradeModal(true);
+      return;
+    }
+    if (suggestion === 'Support technique') {
+      // TODO: Ouvrir support
+      console.log('Support technique demandé');
+      return;
+    }
+    if (suggestion === 'Retour accueil') {
+      navigate('/');
+      return;
+    }
     if (isTyping) return;
     handleSendMessage(suggestion);
   };
 
-  // ✅ Navigation intelligente
+  const handleUpgrade = () => {
+    // TODO: Intégrer système paiement
+    setUserTier('premium');
+    setShowUpgradeModal(false);
+    console.log('Upgrade vers Premium');
+  };
+
   const handleBack = () => {
-    if (context) {
-      navigate('/search', { state: { fromChat: true } });
-    } else {
-      navigate('/');
-    }
-  };
-
-  const handleSearchProducts = () => {
-    navigate('/search');
-  };
-
-  const handleAnalyzeProduct = () => {
-    navigate('/analyze');
-  };
-
-  // ✅ Reset chat amélioré
-  const handleResetChat = () => {
-    chatService.clearHistory();
-    setMessages([]);
-    setContext(null);
-    chatService.setProductContext(null);
-    
-    const welcomeMessage: ChatMessage = {
-      id: `reset_${Date.now()}`,
-      type: 'ai',
-      content: `🔄 **Chat réinitialisé !**
-
-Je suis de nouveau votre assistant nutritionnel ECOLOJIA.
-Prêt à vous aider sur tous les sujets alimentation et santé !
-
-Comment puis-je vous aider aujourd'hui ? 😊`,
-      timestamp: new Date(),
-      suggestions: chatService.getSuggestedQuestions()
-    };
-    
-    setMessages([welcomeMessage]);
+    navigate(context ? '/search' : '/');
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header amélioré */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+      {/* Header avec tier et statut API */}
+      <div className={`border-b sticky top-0 z-10 shadow-sm ${
+        userTier === 'premium' 
+          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button
               onClick={handleBack}
-              className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors group"
+              className={`flex items-center font-medium transition-colors group ${
+                userTier === 'premium' ? 'text-white hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               <ArrowLeft className="w-5 h-5 mr-2 group-hover:translate-x-[-2px] transition-transform" />
               Retour
             </button>
             
-            <h1 className="text-xl font-bold text-gray-800 flex items-center">
-              <MessageCircle className="w-6 h-6 mr-2 text-green-500" />
-              Assistant Nutritionnel
-              {context && (
-                <span className="ml-2 text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                  NOVA {context.novaGroup || '?'}
+            <div className="text-center">
+              <h1 className={`text-xl font-bold flex items-center ${
+                userTier === 'premium' ? 'text-white' : 'text-gray-800'
+              }`}>
+                {userTier === 'premium' ? (
+                  <Crown className="w-6 h-6 mr-2 text-yellow-300" />
+                ) : (
+                  <MessageCircle className="w-6 h-6 mr-2 text-green-500" />
+                )}
+                {getAssistantName(context)}
+              </h1>
+              
+              {/* Statut IA */}
+              <div className="flex items-center justify-center mt-1">
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  apiStatus === 'connected' ? 'bg-green-400' : 
+                  apiStatus === 'disconnected' ? 'bg-red-400' : 'bg-yellow-400'
+                }`}></div>
+                <span className={`text-xs ${
+                  userTier === 'premium' ? 'text-white/80' : 'text-gray-500'
+                }`}>
+                  IA Expert {apiStatus === 'connected' ? 'Connectée' : 
+                           apiStatus === 'disconnected' ? 'Déconnectée' : 'Connexion...'}
                 </span>
-              )}
-            </h1>
+              </div>
+            </div>
             
-            <div className="flex space-x-1">
-              <button
-                onClick={handleResetChat}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                title="Nouveau chat"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleSearchProducts}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                title="Rechercher des produits"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleAnalyzeProduct}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                title="Analyser un produit"
-              >
-                <Zap className="w-5 h-5" />
-              </button>
+            {/* Stats usage */}
+            <div className="text-right">
+              {userTier === 'free' ? (
+                <div>
+                  <div className={`text-lg font-bold ${
+                    userStats.dailyUsed >= userStats.dailyLimit ? 'text-red-600' : 
+                    userTier === 'premium' ? 'text-white' : 'text-gray-800'
+                  }`}>
+                    {userStats.dailyLimit - userStats.dailyUsed}/{userStats.dailyLimit}
+                  </div>
+                  <div className={`text-xs ${userTier === 'premium' ? 'text-white/70' : 'text-gray-500'}`}>
+                    questions restantes
+                  </div>
+                  {userStats.dailyUsed >= userStats.dailyLimit - 1 && (
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="text-xs text-purple-600 hover:text-purple-700 mt-1"
+                    >
+                      🔓 Upgrade
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div className="text-lg font-bold">{userStats.monthlyUsed}</div>
+                  <div className="text-xs opacity-75">questions ce mois</div>
+                  <div className="text-xs mt-1">Service Premium</div>
+                </div>
+              )}
             </div>
           </div>
+          
+          {/* Contexte produit si présent */}
+          {context && (
+            <div className="mt-3 flex items-center justify-center">
+              <span className={`text-sm px-3 py-1 rounded-full ${
+                userTier === 'premium' 
+                  ? 'bg-white bg-opacity-20 text-white' 
+                  : 'bg-green-100 text-green-700'
+              }`}>
+                📦 {context.productName} • {context.category}
+                {context.healthScore && ` • ${context.healthScore}/100`}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Zone messages avec contexte */}
+      {/* Zone messages */}
       <div className="flex-1 overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 py-6 h-full flex flex-col">
           
-          {/* Contexte produit amélioré */}
-          {context && (
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-4 mb-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="font-bold text-green-800 flex items-center">
-                    📦 Produit analysé
-                    <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                      Active
-                    </span>
-                  </h3>
-                  <p className="text-green-700 font-medium mt-1">{context.productName}</p>
-                  <div className="flex items-center space-x-4 mt-2 text-sm text-green-600">
-                    <span className="flex items-center">
-                      🔬 NOVA {context.novaGroup || '?'}
-                    </span>
-                    <span className="flex items-center">
-                      📊 Score: {context.healthScore || context.score || '?'}/100
-                    </span>
-                    {context.additives && context.additives.length > 0 && (
-                      <span className="flex items-center">
-                        ⚗️ {context.additives.length} additif(s)
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setContext(null)}
-                  className="text-green-600 hover:text-green-800 hover:bg-green-100 p-1 rounded transition-all"
-                  title="Retirer le contexte"
-                >
-                  ✕
-                </button>
+          {/* Alert statut IA si déconnecté */}
+          {apiStatus === 'disconnected' && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-center">
+              <AlertTriangle className="w-5 h-5 text-red-600 mr-3" />
+              <div className="flex-1">
+                <div className="text-red-800 font-medium">IA Expert Déconnectée</div>
+                <div className="text-red-600 text-sm">Les réponses peuvent être limitées. Reconnexion automatique...</div>
               </div>
+              <button
+                onClick={async () => {
+                  setApiStatus('testing');
+                  const isConnected = await deepSeekService.testConnection();
+                  setApiStatus(isConnected ? 'connected' : 'disconnected');
+                }}
+                className="text-red-600 hover:text-red-700 p-1"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -626,51 +765,54 @@ Comment puis-je vous aider aujourd'hui ? 😊`,
                 <div className={`max-w-xs md:max-w-md lg:max-w-2xl ${
                   message.type === 'user' 
                     ? 'bg-green-500 text-white' 
+                    : message.type === 'system'
+                    ? 'bg-red-100 border border-red-200 text-red-800'
+                    : userTier === 'premium'
+                    ? 'bg-purple-50 border border-purple-200'
                     : 'bg-white border border-gray-200'
                 } rounded-2xl px-5 py-4 shadow-sm hover:shadow-md transition-shadow`}>
                   
                   {/* Avatar et nom */}
                   <div className="flex items-center mb-3">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
-                      message.type === 'user' ? 'bg-white/20' : 'bg-green-100'
+                      message.type === 'user' ? 'bg-white/20' : 
+                      userTier === 'premium' ? 'bg-purple-100' : 'bg-green-100'
                     }`}>
                       {message.type === 'user' ? (
                         <User className="w-4 h-4 text-white" />
                       ) : (
-                        <Bot className="w-4 h-4 text-green-600" />
+                        <Bot className={`w-4 h-4 ${userTier === 'premium' ? 'text-purple-600' : 'text-green-600'}`} />
                       )}
                     </div>
                     <span className={`text-sm font-medium ${
-                      message.type === 'user' ? 'text-white/90' : 'text-gray-700'
+                      message.type === 'user' ? 'text-white/90' : 
+                      message.type === 'system' ? 'text-red-700' : 'text-gray-700'
                     }`}>
-                      {message.type === 'user' ? 'Vous' : 'Assistant ECOLOJIA'}
+                      {message.type === 'user' ? 'Vous' : getAssistantName(context)}
                     </span>
                   </div>
 
-                  {/* Contenu message */}
+                  {/* Contenu */}
                   <div className={`text-sm leading-relaxed ${
-                    message.type === 'user' ? 'text-white' : 'text-gray-800'
+                    message.type === 'user' ? 'text-white' : 
+                    message.type === 'system' ? 'text-red-800' : 'text-gray-800'
                   }`}>
-                    {message.content.split('\n').map((line, index) => {
-                      if (line.startsWith('**') && line.endsWith('**')) {
-                        return (
-                          <div key={index} className={`font-bold ${index > 0 ? 'mt-3' : ''}`}>
-                            {line.replace(/\*\*/g, '')}
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={index} className={index > 0 ? 'mt-2' : ''}>
-                          {line}
-                        </div>
-                      );
-                    })}
+                    {message.content.split('\n').map((line, index) => (
+                      <div key={index} className={index > 0 ? 'mt-2' : ''}>
+                        <span dangerouslySetInnerHTML={{ 
+                          __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
+                        }} />
+                      </div>
+                    ))}
                   </div>
+
+                  {/* Métadonnées masquées pour utilisateur */}
+                  {/* Les coûts et tokens sont trackés en arrière-plan mais non affichés */}
 
                   {/* Suggestions */}
                   {message.suggestions && message.suggestions.length > 0 && (
                     <div className="mt-4 space-y-2">
-                      <div className="text-xs font-medium text-green-600 mb-2">
+                      <div className="text-xs font-medium text-gray-600 mb-2">
                         💡 Suggestions :
                       </div>
                       {message.suggestions.map((suggestion, index) => (
@@ -678,7 +820,11 @@ Comment puis-je vous aider aujourd'hui ? 😊`,
                           key={index}
                           onClick={() => handleSuggestionClick(suggestion)}
                           disabled={isTyping}
-                          className="block w-full text-left text-sm bg-green-50 hover:bg-green-100 disabled:bg-gray-100 disabled:text-gray-500 text-green-700 px-3 py-2 rounded-lg transition-all border border-green-200 hover:border-green-300"
+                          className={`block w-full text-left text-sm px-3 py-2 rounded-lg transition-all border ${
+                            suggestion === 'Upgrade Premium'
+                              ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                              : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+                          } disabled:opacity-50`}
                         >
                           {suggestion}
                         </button>
@@ -699,23 +845,35 @@ Comment puis-je vous aider aujourd'hui ? 😊`,
               </div>
             ))}
 
-            {/* Typing indicator amélioré */}
+            {/* Typing indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
+                <div className={`border rounded-2xl px-5 py-4 shadow-sm ${
+                  userTier === 'premium' ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'
+                }`}>
                   <div className="flex items-center mb-2">
-                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-2">
-                      <Bot className="w-4 h-4 text-green-600" />
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
+                      userTier === 'premium' ? 'bg-purple-100' : 'bg-green-100'
+                    }`}>
+                      <Bot className={`w-4 h-4 ${userTier === 'premium' ? 'text-purple-600' : 'text-green-600'}`} />
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Assistant ECOLOJIA</span>
+                    <span className="text-sm font-medium text-gray-700">{getAssistantName(context)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className={`w-2 h-2 rounded-full animate-bounce ${
+                        userTier === 'premium' ? 'bg-purple-400' : 'bg-green-400'
+                      }`}></div>
+                      <div className={`w-2 h-2 rounded-full animate-bounce ${
+                        userTier === 'premium' ? 'bg-purple-400' : 'bg-green-400'
+                      }`} style={{ animationDelay: '0.1s' }}></div>
+                      <div className={`w-2 h-2 rounded-full animate-bounce ${
+                        userTier === 'premium' ? 'bg-purple-400' : 'bg-green-400'
+                      }`} style={{ animationDelay: '0.2s' }}></div>
                     </div>
-                    <span className="ml-3 text-sm text-gray-500">réfléchit...</span>
+                    <span className="ml-3 text-sm text-gray-500">
+                      IA Expert analyse...
+                    </span>
                   </div>
                 </div>
               </div>
@@ -724,28 +882,7 @@ Comment puis-je vous aider aujourd'hui ? 😊`,
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Questions suggérées pour nouveaux utilisateurs */}
-          {messages.filter(m => m.type === 'user').length === 0 && !isTyping && (
-            <div className="mt-6 mb-4">
-              <p className="text-sm text-gray-600 mb-4 text-center font-medium">
-                💡 Questions fréquentes pour commencer :
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {SUGGESTED_QUESTIONS.slice(0, 6).map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestionClick(question)}
-                    disabled={isTyping}
-                    className="text-left text-sm bg-white hover:bg-blue-50 disabled:bg-gray-100 disabled:text-gray-500 border border-gray-200 hover:border-blue-300 px-4 py-3 rounded-xl transition-all duration-200 hover:shadow-sm group"
-                  >
-                    <span className="group-hover:text-blue-700">{question}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Zone de saisie améliorée */}
+          {/* Zone de saisie */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 mt-4 shadow-sm">
             <div className="flex space-x-3">
               <input
@@ -758,31 +895,122 @@ Comment puis-je vous aider aujourd'hui ? 😊`,
                     handleSendMessage(inputValue);
                   }
                 }}
-                placeholder="Posez votre question sur la nutrition, les additifs, NOVA..."
+                placeholder={
+                  userTier === 'free' 
+                    ? `Question alimentaire (${userStats.dailyLimit - userStats.dailyUsed} restantes)...`
+                    : 'Votre question experte...'
+                }
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                disabled={isTyping}
+                disabled={isTyping || (userTier === 'free' && userStats.dailyUsed >= userStats.dailyLimit)}
               />
               <button
                 onClick={() => handleSendMessage(inputValue)}
-                disabled={!inputValue.trim() || isTyping}
-                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-3 rounded-xl transition-all flex items-center hover:shadow-md disabled:cursor-not-allowed"
+                disabled={!inputValue.trim() || isTyping || (userTier === 'free' && userStats.dailyUsed >= userStats.dailyLimit)}
+                className={`px-6 py-3 rounded-xl transition-all flex items-center hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 ${
+                  userTier === 'premium'
+                    ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                }`}
               >
-                <Send className="w-5 h-5" />
+                {isTyping ? (
+                  <Clock className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
               </button>
             </div>
             
             <div className="mt-3 flex items-center justify-between text-xs">
-              <span className="text-gray-500">
-                Appuyez sur Entrée pour envoyer • IA nutritionnelle ECOLOJIA
+              <span className="text-gray-500 flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  apiStatus === 'connected' ? 'bg-green-400' : 
+                  apiStatus === 'disconnected' ? 'bg-red-400' : 'bg-yellow-400'
+                }`}></div>
+                IA Expert ECOLOJIA •
+                {userTier === 'free' && ` ${userStats.dailyUsed}/${userStats.dailyLimit} questions`}
               </span>
-              <span className="text-green-600 font-medium">
-                💬 {messages.length} messages
-                {context && ` • 📦 ${context.productName}`}
-              </span>
+              {userTier === 'free' && (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                >
+                  <Crown className="w-3 h-3" />
+                  Upgrade Premium
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal Upgrade */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full overflow-hidden shadow-2xl">
+                            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6">
+              <div className="text-center">
+                <Crown className="w-16 h-16 text-yellow-300 mx-auto mb-3" />
+                <h2 className="text-2xl font-bold mb-2">Upgrade vers Premium</h2>
+                <p className="text-purple-100">
+                  Débloquez l'IA Expert Avancée
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                  <div className="w-5 h-5 text-green-600">♾️</div>
+                  <div>
+                    <div className="font-medium text-green-800">Questions illimitées</div>
+                    <div className="text-sm text-green-600">Plus de limite quotidienne</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                  <div className="w-5 h-5 text-blue-600">🧠</div>
+                  <div>
+                    <div className="font-medium text-blue-800">IA Expert Avancée</div>
+                    <div className="text-sm text-blue-600">Analyses approfondies et raisonnement complexe</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
+                  <div className="w-5 h-5 text-purple-600">🔬</div>
+                  <div>
+                    <div className="font-medium text-purple-800">Multi-catégories</div>
+                    <div className="text-sm text-purple-600">Alimentaire + Cosmétiques + Détergents</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
+                  <div className="w-5 h-5 text-orange-600">👥</div>
+                  <div>
+                    <div className="font-medium text-orange-800">Assistants Spécialisés</div>
+                    <div className="text-sm text-orange-600">Nutritionniste • Dermatologue • Éco-expert</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Plus tard
+                </button>
+                <button
+                  onClick={handleUpgrade}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 font-medium flex items-center justify-center gap-2"
+                >
+                  <Crown className="w-4 h-4" />
+                  Upgrade
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
