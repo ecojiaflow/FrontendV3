@@ -6,8 +6,8 @@ import { createRoot } from 'react-dom/client';
 import './i18n';
 import './index.css';
 
-// ✅ NOUVEAU : Import des animations CSS pour les états de chargement
-import './styles/animations.css';
+// ❌ SUPPRIMÉ TEMPORAIREMENT : Import des animations CSS
+// import './styles/animations.css';
 
 // Import explicite pour éviter la dépendance circulaire
 import * as AppModule from './App';
