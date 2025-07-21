@@ -1,7 +1,8 @@
 // frontend/src/auth/context/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { authService } from '../services/authService';
 import { User, AuthContextType, LoginRequest, RegisterRequest } from '../types/AuthTypes';
+import { demoService } from '../../services/demoService';
 
 // Création du contexte
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +20,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
+  // Fonction utilitaire pour nettoyer données démo
+  const clearDemoData = useCallback(() => {
+    try {
+      localStorage.removeItem('ecolojia_demo_mode');
+      localStorage.removeItem('ecolojia_demo_user');
+      localStorage.removeItem('ecolojia_demo_token');
+      localStorage.removeItem('ecolojia_demo_history');
+      console.log('🧹 Données démo supprimées');
+    } catch (error) {
+      console.error('❌ Erreur suppression données démo:', error);
+    }
+  }, []);
+
   // Initialisation - vérifier utilisateur déjà connecté OU mode démo
   useEffect(() => {
     const initializeAuth = async () => {
@@ -26,28 +40,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(true);
         
         // ✅ PRIORITÉ 1: Vérifier mode démo d'abord
-        const demoMode = localStorage.getItem('ecolojia_demo_mode');
-        const demoUser = localStorage.getItem('ecolojia_demo_user');
-        const demoToken = localStorage.getItem('ecolojia_demo_token');
-        
-        if (demoMode === 'true' && demoUser && demoToken) {
-          try {
-            console.log('🎭 Mode démo détecté - Chargement utilisateur fictif');
-            const user = JSON.parse(demoUser);
-            
-            // Validation basique structure user demo
-            if (user.id && user.email && user.name && user.tier) {
-              setUser(user);
-              setIsAuthenticated(true);
-              setIsDemoMode(true);
-              console.log('✅ Utilisateur démo initialisé:', user.name);
-              return; // Sortir, pas besoin de vérifier token réel
-            } else {
-              console.warn('⚠️ Structure utilisateur démo invalide');
-              clearDemoData();
-            }
-          } catch (error) {
-            console.error('❌ Erreur parsing utilisateur démo:', error);
+        if (demoService.isDemoActive()) {
+          console.log('🎭 Mode démo détecté');
+          const demoSession = demoService.getCurrentSession();
+          
+          if (demoSession) {
+            setUser(demoSession.user);
+            setIsAuthenticated(true);
+            setIsDemoMode(true);
+            console.log('✅ Utilisateur démo initialisé:', demoSession.user.name);
+            return; // Sortir, pas besoin de vérifier token réel
+          } else {
+            console.warn('⚠️ Session démo invalide');
             clearDemoData();
           }
         }
@@ -95,23 +99,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initializeAuth();
-  }, []);
-
-  // Fonction utilitaire pour nettoyer données démo
-  const clearDemoData = () => {
-    try {
-      localStorage.removeItem('ecolojia_demo_mode');
-      localStorage.removeItem('ecolojia_demo_user');
-      localStorage.removeItem('ecolojia_demo_token');
-      localStorage.removeItem('ecolojia_demo_history');
-      console.log('🧹 Données démo supprimées');
-    } catch (error) {
-      console.error('❌ Erreur suppression données démo:', error);
-    }
-  };
+  }, [clearDemoData]);
 
   // Fonction de connexion (authentification réelle uniquement)
-  const login = async (credentials: LoginRequest): Promise<void> => {
+  const login = useCallback(async (credentials: LoginRequest): Promise<void> => {
     try {
       setError(null);
       setIsLoading(true);
@@ -119,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Si en mode démo, forcer sortie avant connexion réelle
       if (isDemoMode) {
         console.log('🚪 Sortie mode démo pour connexion réelle');
-        clearDemoData();
+        demoService.endDemoSession();
         setIsDemoMode(false);
       }
 
@@ -139,10 +130,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isDemoMode]);
 
   // Fonction d'inscription (authentification réelle uniquement)
-  const register = async (userData: RegisterRequest): Promise<void> => {
+  const register = useCallback(async (userData: RegisterRequest): Promise<void> => {
     try {
       setError(null);
       setIsLoading(true);
@@ -150,7 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Si en mode démo, forcer sortie avant inscription réelle
       if (isDemoMode) {
         console.log('🚪 Sortie mode démo pour inscription réelle');
-        clearDemoData();
+        demoService.endDemoSession();
         setIsDemoMode(false);
       }
 
@@ -164,16 +155,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isDemoMode]);
 
   // Fonction de déconnexion (mode démo ET réel)
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       
       if (isDemoMode) {
         console.log('🚪 Déconnexion mode démo');
-        clearDemoData();
+        demoService.endDemoSession();
       } else {
         console.log('🚪 Déconnexion utilisateur réel');
         try {
@@ -192,18 +183,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       console.log('✅ Déconnexion terminée');
     }
-  };
+  }, [isDemoMode]);
+
+  // ✅ NOUVELLE MÉTHODE DÉMARER SESSION DÉMO
+  const startDemoSession = useCallback(async (tier: 'free' | 'premium' = 'premium'): Promise<void> => {
+    try {
+      console.log(`🎭 Démarrage session démo ${tier}`);
+      
+      // Si déjà connecté (réel), déconnecter d'abord
+      if (isAuthenticated && !isDemoMode) {
+        authService.clearTokens();
+      }
+      
+      // Créer session démo
+      const demoSession = demoService.startDemoSession(tier);
+      
+      // Mettre à jour état
+      setUser(demoSession.user);
+      setIsAuthenticated(true);
+      setIsDemoMode(true);
+      setError(null);
+      
+      console.log('✅ Session démo démarrée:', demoSession.user.name);
+    } catch (error) {
+      console.error('❌ Erreur démarrage session démo:', error);
+      throw new Error('Impossible de démarrer le mode démo');
+    }
+  }, [isAuthenticated, isDemoMode]);
 
   // Actualiser les données utilisateur
-  const refreshUser = async (): Promise<void> => {
+  const refreshUser = useCallback(async (): Promise<void> => {
     try {
       if (isDemoMode) {
-        console.log('🎭 Mode démo - Pas de refresh serveur nécessaire');
-        // En mode démo, re-lire les données locales
-        const demoUser = localStorage.getItem('ecolojia_demo_user');
-        if (demoUser) {
-          const user = JSON.parse(demoUser);
-          setUser(user);
+        console.log('🎭 Mode démo - Refresh des données démo');
+        const demoSession = demoService.getCurrentSession();
+        if (demoSession) {
+          setUser(demoSession.user);
           console.log('✅ Utilisateur démo rafraîchi');
         }
         return;
@@ -220,93 +235,79 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // En cas d'erreur, déconnecter l'utilisateur
       await logout();
     }
-  };
+  }, [isDemoMode, isAuthenticated, logout]);
 
   // Effacer l'erreur
-  const clearError = (): void => {
+  const clearError = useCallback((): void => {
     setError(null);
-  };
+  }, []);
 
   // Vérifier les permissions
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     if (!user) {
       console.log('❌ Pas d\'utilisateur pour vérifier permission:', permission);
       return false;
     }
     
-    // En mode démo, toutes permissions accordées (Premium fictif)
+    // En mode démo, permissions selon tier
     if (isDemoMode) {
-      console.log('🎭 Mode démo - Permission accordée:', permission);
-      return true;
+      console.log(`🎭 Mode démo ${user.tier} - Permission ${permission}`);
+      switch (permission) {
+        case 'unlimited_scans':
+        case 'ai_chat':
+        case 'export_data':
+        case 'advanced_analytics':
+        case 'api_access':
+          return user.tier === 'premium';
+        case 'basic_analysis':
+          return true;
+        default:
+          return false;
+      }
     }
     
     // Logique permissions pour utilisateurs réels
     switch (permission) {
       case 'unlimited_scans':
-        return user.tier === 'premium';
       case 'ai_chat':
-        return user.tier === 'premium';
       case 'export_data':
-        return user.tier === 'premium';
       case 'advanced_analytics':
-        return user.tier === 'premium';
       case 'api_access':
         return user.tier === 'premium';
       case 'basic_analysis':
-        return true; // Tous utilisateurs
+        return true;
       default:
         console.warn('⚠️ Permission inconnue:', permission);
         return false;
     }
-  };
+  }, [user, isDemoMode]);
 
   // Vérifications tier
-  const isFreeTier = (): boolean => {
+  const isFreeTier = useCallback((): boolean => {
     if (!user) return true;
-    if (isDemoMode) return false; // Demo = Premium
     return user.tier === 'free';
-  };
+  }, [user]);
 
-  const isPremiumTier = (): boolean => {
+  const isPremiumTier = useCallback((): boolean => {
     if (!user) return false;
-    if (isDemoMode) return true; // Demo = Premium
     return user.tier === 'premium';
-  };
-
-  // ✅ NOUVELLES MÉTHODES MODE DÉMO
-  const enterDemoMode = (): void => {
-    console.log('🎭 Activation mode démo demandée');
-    // Cette méthode est appelée depuis AuthPage après création données démo
-    setIsDemoMode(true);
-    
-    // Re-déclencher l'initialisation pour charger données démo
-    const demoUser = localStorage.getItem('ecolojia_demo_user');
-    if (demoUser) {
-      try {
-        const user = JSON.parse(demoUser);
-        setUser(user);
-        setIsAuthenticated(true);
-        console.log('✅ Mode démo activé avec utilisateur:', user.name);
-      } catch (error) {
-        console.error('❌ Erreur activation mode démo:', error);
-        clearDemoData();
-      }
-    }
-  };
-
-  const exitDemoMode = async (): Promise<void> => {
-    console.log('🚪 Sortie mode démo demandée');
-    clearDemoData();
-    setUser(null);
-    setIsAuthenticated(false);
-    setIsDemoMode(false);
-    console.log('✅ Sortie mode démo terminée');
-  };
+  }, [user]);
 
   // Utilitaires quotas
-  const getRemainingQuota = (type: 'scans' | 'aiQuestions' | 'exports' | 'apiCalls'): number => {
+  const getRemainingQuota = useCallback((type: 'scans' | 'aiQuestions' | 'exports' | 'apiCalls'): number => {
     if (!user) return 0;
     
+    if (isDemoMode) {
+      const demoSession = demoService.getCurrentSession();
+      if (demoSession) {
+        const quota = demoSession.quotas[type];
+        if (quota.limit === -1) return -1; // Illimité
+        return Math.max(0, quota.limit - quota.used);
+      }
+      return 0;
+    }
+    
+    // Logique quotas réels
     const quota = user.quotas[`${type}PerMonth`] || user.quotas[`${type}PerDay`] || 0;
     const used = user.currentUsage[
       type === 'aiQuestions' ? 'aiQuestionsToday' : 
@@ -317,11 +318,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (quota === -1) return -1; // Illimité
     return Math.max(0, quota - used);
-  };
+  }, [user, isDemoMode]);
 
-  const canPerformAction = (action: 'scan' | 'aiQuestion' | 'export' | 'apiCall'): boolean => {
-    if (isDemoMode) return true; // Demo = tout autorisé
-    
+  const canPerformAction = useCallback((action: 'scan' | 'aiQuestion' | 'export' | 'apiCall'): boolean => {
     const remaining = getRemainingQuota(
       action === 'scan' ? 'scans' :
       action === 'aiQuestion' ? 'aiQuestions' :
@@ -329,21 +328,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
     
     return remaining === -1 || remaining > 0;
-  };
+  }, [getRemainingQuota]);
 
   // Méthodes de debugging
-  const getAuthState = () => ({
+  const getAuthState = useCallback(() => ({
     isAuthenticated,
     isDemoMode,
     userTier: user?.tier || 'none',
     userName: user?.name || 'none',
     hasToken: isDemoMode ? 'demo-token' : !!authService.getToken(),
     tokenExpired: isDemoMode ? false : authService.isTokenExpired()
-  });
+  }), [isAuthenticated, isDemoMode, user]);
 
-  const debugAuth = (): void => {
+  const debugAuth = useCallback((): void => {
     console.log('🔍 État authentification:', getAuthState());
-  };
+  }, [getAuthState]);
 
   // Valeur du contexte
   const contextValue: AuthContextType = {
@@ -364,8 +363,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
     
     // Actions mode démo
-    enterDemoMode,
-    exitDemoMode,
+    startDemoSession,
     
     // Utilitaires permissions
     hasPermission,

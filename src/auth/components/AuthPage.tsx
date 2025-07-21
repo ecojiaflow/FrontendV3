@@ -1,6 +1,6 @@
-// 🔵 FRONTEND - frontend/src/auth/components/AuthPage.tsx
+// frontend/src/auth/components/AuthPage.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { useAuth } from '../hooks/useAuth';
@@ -16,117 +16,73 @@ interface AuthPageProps {
 
 export const AuthPage: React.FC<AuthPageProps> = ({
   defaultMode = 'login',
-  redirectTo = '/',
+  redirectTo = '/dashboard',
   className = ''
 }) => {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [registrationEmail, setRegistrationEmail] = useState('');
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
   
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, startDemoSession } = useAuth();
   const navigate = useNavigate();
 
   // Si déjà connecté, rediriger
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       navigate(redirectTo);
     }
   }, [isAuthenticated, navigate, redirectTo]);
 
-  const handleLoginSuccess = () => {
+  // Handlers pour forms
+  const handleLoginSuccess = useCallback(() => {
     navigate(redirectTo);
-  };
+  }, [navigate, redirectTo]);
 
-  const handleRegisterSuccess = () => {
+  const handleRegisterSuccess = useCallback(() => {
     setMode('success');
-  };
+  }, []);
 
-  const handleSwitchToRegister = () => {
+  const handleSwitchToRegister = useCallback(() => {
     setMode('register');
-  };
+  }, []);
 
-  const handleSwitchToLogin = () => {
+  const handleSwitchToLogin = useCallback(() => {
     setMode('login');
-  };
+  }, []);
 
-  // ✅ NOUVELLE FONCTION MODE DÉMO
-  const handleDemoMode = () => {
-    // Créer utilisateur démo factice dans localStorage
-    const demoUser = {
-      id: 'demo-user-123',
-      email: 'demo@ecolojia.com',
-      name: 'Utilisateur Démo',
-      tier: 'premium', // Premium pour tester toutes les fonctionnalités
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      quotas: {
-        scansPerMonth: -1, // Illimité pour la démo
-        aiQuestionsPerDay: -1, // Illimité pour la démo
-        exportsPerMonth: -1,
-        apiCallsPerMonth: -1
-      },
-      currentUsage: {
-        scansThisMonth: 15,
-        aiQuestionsToday: 3,
-        exportsThisMonth: 2,
-        apiCallsThisMonth: 45
-      },
-      subscription: {
-        id: 'demo-sub-123',
-        status: 'active' as const,
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // +30 jours
-        cancelAtPeriodEnd: false
-      }
-    };
+  // ✅ NOUVELLE FONCTION MODE DÉMO CORRIGÉE
+  const handleDemoMode = useCallback(async (tier: 'free' | 'premium' = 'premium') => {
+    if (!startDemoSession) {
+      console.error('❌ startDemoSession non disponible');
+      alert('Service mode démo temporairement indisponible');
+      return;
+    }
 
-    // Stocker dans localStorage
     try {
-      localStorage.setItem('ecolojia_demo_user', JSON.stringify(demoUser));
-      localStorage.setItem('ecolojia_demo_token', 'demo-token-12345');
-      localStorage.setItem('ecolojia_demo_mode', 'true');
+      setIsDemoLoading(true);
+      console.log(`🎭 Activation mode démo ${tier} demandée`);
       
-      // Simuler quelques données d'historique pour la démo
-      const demoHistory = [
-        {
-          id: 'scan-1',
-          productName: 'Coca-Cola Classic',
-          category: 'food',
-          healthScore: 25,
-          scannedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // -2 jours
-          barcode: '5449000000996'
-        },
-        {
-          id: 'scan-2',
-          productName: 'L\'Oréal Paris Elvive Shampoing',
-          category: 'cosmetics',
-          healthScore: 65,
-          scannedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // -1 jour
-          barcode: '3600523307234'
-        },
-        {
-          id: 'scan-3',
-          productName: 'Ariel Pods Original',
-          category: 'detergents',
-          healthScore: 45,
-          scannedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // -3 heures
-          barcode: '8001841007076'
-        }
-      ];
+      // Utiliser le service intégré dans AuthContext
+      await startDemoSession(tier);
       
-      localStorage.setItem('ecolojia_demo_history', JSON.stringify(demoHistory));
+      console.log('✅ Mode démo activé via AuthContext');
       
-      console.log('✅ Mode démo activé - Données factices créées');
+      // Petite pause pour UX
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Rediriger vers le dashboard
-      navigate('/dashboard');
-      
-      // Optionnel : Reload la page pour que le contexte Auth détecte le changement
-      window.location.reload();
+      // Redirection automatique via useEffect au changement de isAuthenticated
       
     } catch (error) {
       console.error('❌ Erreur activation mode démo:', error);
-      alert('Erreur lors de l\'activation du mode démo');
+      alert('Erreur lors de l\'activation du mode démo. Veuillez réessayer.');
+    } finally {
+      setIsDemoLoading(false);
     }
-  };
+  }, [startDemoSession]);
+
+  // ✅ FONCTIONS POUR LES DEUX TIERS
+  const handleFreeDemoMode = useCallback(() => handleDemoMode('free'), [handleDemoMode]);
+  const handlePremiumDemoMode = useCallback(() => handleDemoMode('premium'), [handleDemoMode]);
 
   if (mode === 'success') {
     return (
@@ -152,48 +108,134 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           </p>
         </div>
 
-        {/* ✅ NOUVEAU BOUTON MODE DÉMO - Position proéminente */}
+        {/* ✅ SECTION MODE DÉMO AMÉLIORÉE */}
         <div className="flex justify-center mb-8">
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-center max-w-md">
-            <div className="text-4xl mb-3">🚀</div>
-            <h3 className="text-xl font-bold text-white mb-2">
-              Tester en Mode Démo
-            </h3>
-            <p className="text-purple-100 text-sm mb-4">
-              Explorez toutes les fonctionnalités sans inscription
-            </p>
-            <button
-              onClick={handleDemoMode}
-              className="w-full py-3 px-6 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
-            >
-              🎯 Lancer la Démo Complète
-            </button>
-            <p className="text-purple-200 text-xs mt-2">
-              • Toutes fonctionnalités Premium • Données factices • Aucune inscription
-            </p>
+          <div className="max-w-4xl w-full">
+            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+              🎭 Tester ECOLOJIA en Mode Démo
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Mode Démo FREE */}
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-6 text-center">
+                <div className="text-4xl mb-3">🆓</div>
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Démo Gratuite
+                </h3>
+                <p className="text-blue-100 text-sm mb-4">
+                  Découvrez les fonctionnalités de base
+                </p>
+                
+                <div className="bg-white bg-opacity-20 rounded-lg p-3 mb-4 text-left">
+                  <div className="text-xs text-blue-100 space-y-1">
+                    <div className="flex items-center">
+                      <span className="text-blue-200 mr-2">✓</span>
+                      <span>25 analyses/mois</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-blue-200 mr-2">✓</span>
+                      <span>IA scientifique complète</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-blue-200 mr-2">✓</span>
+                      <span>Dashboard basique</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-red-300 mr-2">✗</span>
+                      <span>Chat IA premium</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleFreeDemoMode}
+                  disabled={isDemoLoading}
+                  className="w-full py-3 px-6 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDemoLoading ? '⏳ Chargement...' : '🎯 Essayer Version Gratuite'}
+                </button>
+              </div>
+
+              {/* Mode Démo PREMIUM */}
+              <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-6 text-center relative">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+                    ⭐ RECOMMANDÉ
+                  </span>
+                </div>
+                
+                <div className="text-4xl mb-3 mt-2">🚀</div>
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Démo Premium
+                </h3>
+                <p className="text-purple-100 text-sm mb-4">
+                  Explorez toutes les fonctionnalités avancées
+                </p>
+                
+                <div className="bg-white bg-opacity-20 rounded-lg p-3 mb-4 text-left">
+                  <div className="text-xs text-purple-100 space-y-1">
+                    <div className="flex items-center">
+                      <span className="text-purple-200 mr-2">✓</span>
+                      <span>Analyses illimitées</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-purple-200 mr-2">✓</span>
+                      <span>Chat IA DeepSeek personnalisé</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-purple-200 mr-2">✓</span>
+                      <span>Dashboard analytics complet</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-purple-200 mr-2">✓</span>
+                      <span>Export données + API</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handlePremiumDemoMode}
+                  disabled={isDemoLoading}
+                  className="w-full py-3 px-6 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDemoLoading ? '⏳ Chargement...' : '🎯 Essayer Version Premium'}
+                </button>
+              </div>
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-800 text-sm text-center flex items-center justify-center">
+                <span className="text-blue-500 mr-2">💡</span>
+                <span>
+                  <strong>Mode Démo :</strong> Données factices stockées localement • Aucune inscription requise • Exploration complète de l'interface
+                </span>
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Séparateur */}
         <div className="flex items-center justify-center mb-8">
-          <div className="border-t border-gray-300 flex-1"></div>
-          <div className="px-4 text-gray-500 text-sm">ou</div>
-          <div className="border-t border-gray-300 flex-1"></div>
+          <div className="border-t border-gray-300 flex-1 max-w-xs"></div>
+          <div className="px-4 text-gray-500 text-sm">ou créer un compte réel</div>
+          <div className="border-t border-gray-300 flex-1 max-w-xs"></div>
         </div>
 
         {/* Auth Forms */}
         <div className="flex justify-center">
-          {mode === 'login' ? (
-            <LoginForm
-              onSuccess={handleLoginSuccess}
-              onSwitchToRegister={handleSwitchToRegister}
-            />
-          ) : (
-            <RegisterForm
-              onSuccess={handleRegisterSuccess}
-              onSwitchToLogin={handleSwitchToLogin}
-            />
-          )}
+          <div className="max-w-md w-full">
+            {mode === 'login' ? (
+              <LoginForm
+                onSuccess={handleLoginSuccess}
+                onSwitchToRegister={handleSwitchToRegister}
+              />
+            ) : (
+              <RegisterForm
+                onSuccess={handleRegisterSuccess}
+                onSwitchToLogin={handleSwitchToLogin}
+              />
+            )}
+          </div>
         </div>
 
         {/* Benefits Section */}
@@ -206,136 +248,35 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <div className="text-center">
               <div className="text-5xl mb-4">🔬</div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                IA Scientifique
+                IA Scientifique Propriétaire
               </h3>
               <p className="text-gray-600">
                 Analyses basées sur INSERM, ANSES et EFSA. 
-                Classification NOVA, détection ultra-transformation.
+                Classification NOVA, détection ultra-transformation pour tous produits.
               </p>
             </div>
             
             <div className="text-center">
               <div className="text-5xl mb-4">🤖</div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                Expert IA Gratuit
+                Chat IA Expert Premium
               </h3>
               <p className="text-gray-600">
-                5 questions par jour à notre nutritionniste IA. 
-                Conseils personnalisés et alternatives saines.
+                Questions illimitées à notre nutritionniste IA DeepSeek. 
+                Conseils personnalisés et alternatives sur mesure.
               </p>
             </div>
             
             <div className="text-center">
               <div className="text-5xl mb-4">📊</div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                Multi-Catégories
+                Multi-Catégories Unique
               </h3>
               <p className="text-gray-600">
-                Alimentaire, cosmétiques, détergents. 
-                Une seule app pour tous vos produits.
+                Alimentaire, cosmétiques, détergents dans une seule app. 
+                Seule plateforme européenne complète.
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* Demo Features Preview */}
-        <div className="mt-16 max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
-          <h3 className="text-2xl font-bold text-center text-gray-800 mb-8">
-            🎬 Aperçu Mode Démo
-          </h3>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-2xl mr-2">📱</span>
-                Interface Complète
-              </h4>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">✓</span>
-                  <span>Scanner multi-catégories fonctionnel</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">✓</span>
-                  <span>Dashboard analytics avec vraies données</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">✓</span>
-                  <span>Chat IA conversationnel simulé</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">✓</span>
-                  <span>Historique avec analyses factices</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-2xl mr-2">🎯</span>
-                Fonctionnalités Premium
-              </h4>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2 mt-0.5">⭐</span>
-                  <span>Accès illimité toutes fonctions</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2 mt-0.5">⭐</span>
-                  <span>Interface coaching IA avancé</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2 mt-0.5">⭐</span>
-                  <span>Analytics détaillés simulés</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2 mt-0.5">⭐</span>
-                  <span>Export données factices</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm flex items-start">
-              <span className="text-blue-500 mr-2 mt-0.5">💡</span>
-              <span>
-                <strong>Mode Démo :</strong> Toutes les données sont factices et stockées localement. 
-                Aucune information n'est envoyée sur internet. Parfait pour explorer l'interface !
-              </span>
-            </p>
-          </div>
-        </div>
-
-        {/* Trust Indicators */}
-        <div className="mt-16 max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h3 className="text-lg font-semibold text-center text-gray-800 mb-6">
-              🛡️ Vos données sont protégées
-            </h3>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div>
-                <div className="text-2xl mb-2">🔒</div>
-                <div className="text-sm text-gray-600">RGPD</div>
-              </div>
-              <div>
-                <div className="text-2xl mb-2">🇫🇷</div>
-                <div className="text-sm text-gray-600">Français</div>
-              </div>
-              <div>
-                <div className="text-2xl mb-2">🔐</div>
-                <div className="text-sm text-gray-600">Chiffré</div>
-              </div>
-              <div>
-                <div className="text-2xl mb-2">✅</div>
-                <div className="text-sm text-gray-600">Certifié</div>
-              </div>
-            </div>
-            
-            <p className="text-center text-sm text-gray-500 mt-4">
-              Aucune donnée personnelle partagée avec des tiers
-            </p>
           </div>
         </div>
 
@@ -343,17 +284,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <div className="mt-16 text-center">
           <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-lg p-8 text-white">
             <h3 className="text-2xl font-bold mb-4">
-              🌱 Prêt à commencer votre parcours santé ?
+              🌱 Prêt à commencer votre parcours santé consciente ?
             </h3>
             <p className="text-green-100 mb-6">
               Rejoignez des milliers d'utilisateurs qui ont déjà amélioré leur consommation
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
-                onClick={handleDemoMode}
-                className="px-8 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
+                onClick={handlePremiumDemoMode}
+                disabled={isDemoLoading}
+                className="px-8 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 disabled:opacity-50"
               >
-                🎯 Essayer la Démo
+                {isDemoLoading ? '⏳ Chargement...' : '🎯 Essayer Premium Démo'}
               </button>
               <button
                 onClick={() => setMode('register')}
@@ -369,7 +311,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   );
 };
 
-// Success Message Component (inchangé)
+// Success Message Component
 interface SuccessMessageProps {
   email: string;
   onBackToLogin: () => void;

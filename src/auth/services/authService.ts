@@ -6,9 +6,21 @@ import {
   AuthResponse, 
   LoginResponse, 
   RegisterResponse,
-  User,
-  ApiError 
+  User
 } from '../types/AuthTypes';
+
+// ✅ CRÉATION LOCAL DES CLASSES D'ERREURS (évite problèmes import)
+class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public code?: string,
+    public errors?: Record<string, string[]>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
 class AuthService {
   private baseURL: string;
@@ -16,8 +28,8 @@ class AuthService {
   private refreshTokenKey = 'ecolojia_refresh_token';
 
   constructor() {
-    // ✅ CORRECTION: Syntaxe JavaScript correcte et simple
-    this.baseURL = 'http://localhost:3000/api';
+    // ✅ CORRECTION: URL backend ou fallback localhost
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
   }
 
   // ===== AUTHENTICATION METHODS =====
