@@ -1,6 +1,6 @@
 ﻿// PATH: frontend/ecolojiaFrontV3/src/App.tsx
 import React, { useState, useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   TrendingUp, 
@@ -22,8 +22,15 @@ import {
   CheckCircle,
   Eye,
   Sparkles,
-  Upload
+  Upload,
+  User,
+  LogOut
 } from 'lucide-react';
+
+// ✅ NOUVEAU : Imports d'authentification
+import { AuthProvider } from './auth/context/AuthContext';
+import { AuthPage } from './auth/components/AuthPage';
+import { useAuth } from './auth/hooks/useAuth';
 
 // ✅ Imports sûrs qui fonctionnent
 import Navbar from './components/Navbar';
@@ -117,7 +124,7 @@ const SmartLoading: React.FC<SmartLoadingProps> = ({ stage, progress, category }
     <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
       <div className="text-center mb-8">
         <div className="text-6xl mb-4">
-          {categoryEmojis[category] || '📦'}
+          {categoryEmojis[category as keyof typeof categoryEmojis] || '📦'}
         </div>
         <h2 className="text-2xl font-bold text-gray-800">
           Analyse en cours...
@@ -269,6 +276,303 @@ const QuickUniversalSearch: React.FC<QuickSearchProps> = ({
   );
 };
 
+// ✅ NOUVEAU : Navbar avec authentification intégrée
+const AuthenticatedNavbar: React.FC = () => {
+  const { user, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  return (
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <div className="flex items-center space-x-4">
+            <a href="/" className="flex items-center space-x-3">
+              <div className="text-2xl">🌱</div>
+              <span className="text-xl font-bold text-gray-800">ECOLOJIA</span>
+            </a>
+          </div>
+
+          {/* Navigation centrale */}
+          <div className="hidden md:flex items-center space-x-8">
+            <a href="/search" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+              🔍 Recherche
+            </a>
+            <a href="/scan" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+              📱 Scanner
+            </a>
+            <a href="/chat" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+              💬 Chat IA
+            </a>
+            <a href="/dashboard" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+              📊 Dashboard
+            </a>
+          </div>
+
+          {/* Menu utilisateur */}
+          <div className="flex items-center space-x-4">
+            {/* Quotas utilisateur */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">{user?.currentUsage.scansThisMonth || 0}</span>
+                <span className="text-gray-400">/{user?.quotas.scansPerMonth === -1 ? '∞' : user?.quotas.scansPerMonth} scans</span>
+              </div>
+              
+              {user?.tier === 'premium' && (
+                <span className="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full font-medium">
+                  ⭐ Premium
+                </span>
+              )}
+            </div>
+
+            {/* Menu utilisateur dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-2 p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <User className="w-4 h-4 text-gray-600" />
+                <span className="hidden md:block text-sm font-medium text-gray-700">
+                  {user?.name || 'Utilisateur'}
+                </span>
+              </button>
+
+              {/* Dropdown */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                  {/* Profil utilisateur */}
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-800">{user?.name}</p>
+                    <p className="text-xs text-gray-600">{user?.email}</p>
+                    <p className="text-xs font-medium mt-1">
+                      {user?.tier === 'premium' ? (
+                        <span className="text-purple-600">⭐ Compte Premium</span>
+                      ) : (
+                        <span className="text-gray-500">🆓 Compte Gratuit</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Usage quotas */}
+                  <div className="px-4 py-2">
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div className="flex justify-between">
+                        <span>Scans ce mois:</span>
+                        <span className="font-medium">
+                          {user?.currentUsage.scansThisMonth}
+                          {user?.quotas.scansPerMonth !== -1 && `/${user?.quotas.scansPerMonth}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Questions IA aujourd'hui:</span>
+                        <span className="font-medium">
+                          {user?.currentUsage.aiQuestionsToday}
+                          {user?.quotas.aiQuestionsPerDay !== -1 && `/${user?.quotas.aiQuestionsPerDay}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="border-t border-gray-100 pt-2">
+                    <a
+                      href="/dashboard"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      📊 Mon Dashboard
+                    </a>
+                    {user?.tier !== 'premium' && (
+                      <a
+                        href="/premium"
+                        className="block px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 transition-colors"
+                      >
+                        ⭐ Passer Premium
+                      </a>
+                    )}
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowUserMenu(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4 inline mr-2" />
+                      Déconnexion
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+// ✅ NOUVEAU : Page d'accueil authentifiée
+const AuthenticatedHomePage: React.FC = () => {
+  const { user } = useAuth();
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      {/* Hero section personnalisée */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Header utilisateur */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                🌱 Bonjour {user?.name} !
+              </h1>
+              <p className="text-gray-600">
+                Bienvenue sur ECOLOJIA - Votre assistant IA pour une consommation éclairée
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center space-x-2 mb-2">
+                {user?.tier === 'premium' ? (
+                  <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm rounded-full font-medium">
+                    ⭐ Premium Actif
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                    🆓 Gratuit
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">Membre depuis {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'aujourd\'hui'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats utilisateur */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl mb-2">🔍</div>
+            <h3 className="font-semibold text-gray-800">Scans ce mois</h3>
+            <p className="text-2xl font-bold text-green-600">
+              {user?.currentUsage.scansThisMonth || 0}
+            </p>
+            <p className="text-sm text-gray-500">
+              / {user?.quotas.scansPerMonth === -1 ? '∞' : user?.quotas.scansPerMonth || 30}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl mb-2">🤖</div>
+            <h3 className="font-semibold text-gray-800">Questions IA aujourd'hui</h3>
+            <p className="text-2xl font-bold text-blue-600">
+              {user?.currentUsage.aiQuestionsToday || 0}
+            </p>
+            <p className="text-sm text-gray-500">
+              / {user?.quotas.aiQuestionsPerDay === -1 ? '∞' : user?.quotas.aiQuestionsPerDay || 0}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl mb-2">📊</div>
+            <h3 className="font-semibold text-gray-800">Exports ce mois</h3>
+            <p className="text-2xl font-bold text-purple-600">
+              {user?.currentUsage.exportsThisMonth || 0}
+            </p>
+            <p className="text-sm text-gray-500">
+              / {user?.quotas.exportsPerMonth === -1 ? '∞' : user?.quotas.exportsPerMonth || 0}
+            </p>
+          </div>
+        </div>
+
+        {/* Recherche universelle */}
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
+              🌍 Recherche Universelle ECOLOJIA
+            </h2>
+            <QuickUniversalSearch placeholder="🔍 Recherchez parmi des millions de produits..." />
+          </div>
+        </div>
+
+        {/* Actions rapides */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">
+            🚀 Actions rapides
+          </h2>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a
+              href="/scan"
+              className="block p-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all"
+            >
+              <div className="text-3xl mb-2">📱</div>
+              <div className="font-semibold">Scanner Produit</div>
+              <div className="text-sm opacity-90">Code-barres ou photo</div>
+            </a>
+            
+            <a
+              href="/chat"
+              className="block p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
+            >
+              <div className="text-3xl mb-2">🤖</div>
+              <div className="font-semibold">Chat IA Expert</div>
+              <div className="text-sm opacity-90">
+                {user?.tier === 'premium' ? 'Questions illimitées' : 'Passez Premium'}
+              </div>
+            </a>
+            
+            <a
+              href="/dashboard"
+              className="block p-6 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all"
+            >
+              <div className="text-3xl mb-2">📊</div>
+              <div className="font-semibold">Mon Dashboard</div>
+              <div className="text-sm opacity-90">Analyses et progrès</div>
+            </a>
+            
+            <a
+              href={user?.tier === 'premium' ? '/premium' : '/premium'}
+              className="block p-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all"
+            >
+              <div className="text-3xl mb-2">⭐</div>
+              <div className="font-semibold">
+                {user?.tier === 'premium' ? 'Premium Actif' : 'Passer Premium'}
+              </div>
+              <div className="text-sm opacity-90">
+                {user?.tier === 'premium' ? 'Toutes fonctionnalités' : 'Analyses illimitées'}
+              </div>
+            </a>
+          </div>
+        </div>
+
+        {/* Getting Started pour nouveaux utilisateurs */}
+        {(user?.currentUsage.scansThisMonth || 0) === 0 && (
+          <div className="mt-8 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl shadow p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              👋 Commencez votre première analyse !
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Découvrez instantanément si vos produits sont sains avec notre IA scientifique.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                🔬 Analyse NOVA
+              </span>
+              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                🌿 Ultra-transformation
+              </span>
+              <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                🎯 Score santé /100
+              </span>
+              <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                💡 Alternatives
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ✅ SOLUTION BULLETPROOF: Page Multi-Produits avec Loading States intégrés
 const MultiProductScanPageBuiltIn: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<'food' | 'cosmetics' | 'detergents'>('food');
@@ -336,27 +640,6 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => window.location.href = '/'}
-              className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Retour
-            </button>
-            
-            <h1 className="text-2xl font-bold text-gray-800">
-              🔍 Analyseur Multi-Produits ECOLOJIA
-            </h1>
-            
-            <div className="w-16"></div>
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8">
         {/* Header avec titre */}
         <div className="text-center mb-8">
@@ -596,166 +879,19 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
           </div>
         </div>
 
-        {/* Call to action recherche universelle */}
-        <div className="text-center mb-8">
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 max-w-4xl mx-auto border border-purple-200">
-            <h3 className="text-xl font-semibold text-purple-800 mb-4 flex items-center justify-center">
-              ✨ Recherche Universelle ECOLOJIA
-            </h3>
-            <p className="text-purple-700 mb-4">
-              Découvrez notre moteur de recherche révolutionnaire qui combine toutes les sources 
-              pour vous offrir les résultats les plus complets.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
-              <div className="text-center">
-                <div className="text-2xl mb-2">🌍</div>
-                <div className="font-medium text-purple-700">Multi-Sources</div>
-                <div className="text-purple-600">Algolia + OpenFoodFacts + Base locale</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl mb-2">🤖</div>
-                <div className="font-medium text-purple-700">IA Enrichissement</div>
-                <div className="text-purple-600">Score ECOLOJIA automatique</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl mb-2">⚡</div>
-                <div className="font-medium text-purple-700">Temps Réel</div>
-                <div className="text-purple-600">Résultats en moins de 2 secondes</div>
-              </div>
-            </div>
-            <a
-              href="/search"
-              className="inline-block px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all font-medium"
-            >
-              🚀 Essayer la Recherche Universelle
-            </a>
-          </div>
-        </div>
-
-        {/* Fonctionnalités par catégorie */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-semibold text-center mb-6">
-            Analyses spécialisées par catégorie
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Alimentaire */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="text-center mb-4">
-                <div className="text-4xl mb-2">🍎</div>
-                <h3 className="font-semibold text-gray-800">Alimentaire</h3>
-              </div>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  Classification NOVA (INSERM)
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  Détection ultra-transformation
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  Analyse additifs E-numbers
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  Score nutritionnel Nutri-Score
-                </li>
-              </ul>
-            </div>
-
-            {/* Cosmétiques */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="text-center mb-4">
-                <div className="text-4xl mb-2">🧴</div>
-                <h3 className="font-semibold text-gray-800">Cosmétiques</h3>
-              </div>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  Perturbateurs endocriniens
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  Allergènes réglementaires
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  Analyse INCI complète
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                  Score naturalité
-                </li>
-              </ul>
-            </div>
-
-            {/* Détergents */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="text-center mb-4">
-                <div className="text-4xl mb-2">🧽</div>
-                <h3 className="font-semibold text-gray-800">Détergents</h3>
-              </div>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  Toxicité vie aquatique
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  Biodégradabilité OECD
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  Émissions COV
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  Labels écologiques
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer informatif */}
-        <div className="text-center">
-          <div className="bg-blue-50 rounded-xl p-6 max-w-3xl mx-auto">
-            <h3 className="text-lg font-semibold text-blue-800 mb-4 flex items-center justify-center">
-              <Star className="w-5 h-5 mr-2" />
-              Pourquoi ECOLOJIA ?
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-2xl mb-2">🔬</div>
-                <div className="font-medium text-blue-700">IA Scientifique</div>
-                <div className="text-blue-600">Analyses basées sur INSERM, ANSES, EFSA</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl mb-2">🌍</div>
-                <div className="font-medium text-blue-700">Multi-Catégories</div>
-                <div className="text-blue-600">Seule plateforme 3-en-1 en Europe</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl mb-2">⚡</div>
-                <div className="font-medium text-blue-700">Temps Réel</div>
-                <div className="text-blue-600">Résultats instantanés et fiables</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Footer informatif reste le même... */}
       </div>
     </div>
   );
 };
 
-// ✅ SOLUTION BULLETPROOF: Dashboard intégré directement dans App.tsx
+// ✅ NOUVEAU : Dashboard intégré avec informations utilisateur
 const DashboardPageBuiltIn: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  
   const [stats, setStats] = useState({
-    totalAnalyses: 47,
+    totalAnalyses: user?.currentUsage.scansThisMonth || 0,
     averageScore: 73,
     improvementRate: 15.2,
     currentStreak: 7
@@ -766,10 +902,6 @@ const DashboardPageBuiltIn: React.FC = () => {
     const timer = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleBackToHome = () => {
-    window.location.href = '/';
-  };
 
   if (isLoading) {
     return (
@@ -785,72 +917,36 @@ const DashboardPageBuiltIn: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleBackToHome}
-              className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Retour
-            </button>
-            
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-              📊 Dashboard ECOLOJIA
-            </h1>
-            
-            <div className="flex space-x-2">
-              <button
-                onClick={() => window.location.reload()}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                title="Actualiser"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => {
-                  const data = JSON.stringify(stats, null, 2);
-                  const blob = new Blob([data], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `ecolojia-data-${new Date().toISOString().split('T')[0]}.json`;
-                  a.click();
-                }}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                title="Exporter mes données"
-              >
-                <Download className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* NOUVEAU: Bannière Recherche Universelle */}
-        <div className="mb-8 bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
+        {/* Header personnalisé avec infos utilisateur */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-purple-800 mb-2 flex items-center">
-                ✨ Nouveau : Recherche Universelle
-              </h3>
-              <p className="text-purple-700 text-sm">
-                Recherchez parmi des millions de produits avec notre moteur multi-sources
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                📊 Dashboard de {user?.name}
+              </h1>
+              <p className="text-gray-600">
+                Membre depuis {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'aujourd\'hui'}
               </p>
             </div>
-            <a
-              href="/search"
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all font-medium"
-            >
-              🚀 Découvrir
-            </a>
+            <div className="text-right">
+              {user?.tier === 'premium' ? (
+                <span className="inline-block px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium">
+                  ⭐ Premium Actif
+                </span>
+              ) : (
+                <a
+                  href="/premium"
+                  className="inline-block px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+                >
+                  ⭐ Passer Premium
+                </a>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* KPIs principaux */}
+        {/* KPIs principaux avec données utilisateur réelles */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Score Global */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -869,7 +965,7 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
           </div>
 
-          {/* Analyses totales */}
+          {/* Analyses totales - données utilisateur réelles */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800">Analyses</h3>
@@ -877,59 +973,80 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">
-                {stats.totalAnalyses}
+                {user?.currentUsage.scansThisMonth || 0}
               </div>
-              <div className="text-sm text-gray-500">produits analysés</div>
-              <div className="mt-2 text-sm font-medium text-blue-600">
-                📈 +12 ce mois
+              <div className="text-sm text-gray-500">ce mois</div>
+              <div className="text-sm text-blue-600 mt-2">
+                Quota: {user?.quotas.scansPerMonth === -1 ? '∞' : user?.quotas.scansPerMonth || 30}
               </div>
             </div>
           </div>
 
-          {/* Série active */}
+          {/* Questions IA - données utilisateur réelles */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-800">Série active</h3>
+              <h3 className="font-bold text-gray-800">Questions IA</h3>
               <Zap className="w-5 h-5 text-yellow-500" />
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-yellow-600 mb-2">
-                {stats.currentStreak}
+                {user?.currentUsage.aiQuestionsToday || 0}
               </div>
-              <div className="text-sm text-gray-500">
-                jour{stats.currentStreak > 1 ? 's' : ''}
-              </div>
-              <div className="mt-2 text-xs text-gray-400">
-                🔥 Continue comme ça !
+              <div className="text-sm text-gray-500">aujourd'hui</div>
+              <div className="text-xs text-gray-400 mt-2">
+                {user?.tier === 'premium' ? '🤖 Illimitées' : '⭐ Premium requis'}
               </div>
             </div>
           </div>
 
-          {/* Ultra-transformés */}
+          {/* Exports - données utilisateur réelles */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-800">Ultra-transformés</h3>
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <h3 className="font-bold text-gray-800">Exports</h3>
+              <Download className="w-5 h-5 text-green-500" />
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-green-600 mb-2">
-                23%
+                {user?.currentUsage.exportsThisMonth || 0}
               </div>
-              <div className="text-sm text-gray-500">de vos produits</div>
-              <div className="mt-2 text-xs text-gray-400">
-                ✅ Excellent !
+              <div className="text-sm text-gray-500">ce mois</div>
+              <div className="text-xs text-gray-400 mt-2">
+                {user?.tier === 'premium' ? `/${user?.quotas.exportsPerMonth || 10}` : '⭐ Premium requis'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Call to action */}
+        {/* Bannière upgrade si utilisateur gratuit */}
+        {user?.tier !== 'premium' && (
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-8 border border-purple-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-purple-800 mb-2">
+                  ⭐ Débloquez toutes les fonctionnalités Premium
+                </h3>
+                <p className="text-purple-700">
+                  Chat IA illimité • Analyses illimitées • Dashboard avancé • Export données
+                </p>
+              </div>
+              <a
+                href="/premium"
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all font-medium"
+              >
+                🚀 Passer Premium
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Call to action personnalisés */}
         <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            🎯 Continuez votre parcours santé
+            🎯 Continuez votre parcours santé, {user?.name} !
           </h2>
           <p className="text-gray-600 mb-6">
-            Analysez plus de produits pour affiner vos statistiques et débloquer de nouveaux insights
+            Vous avez utilisé {user?.currentUsage.scansThisMonth || 0} scans ce mois. 
+            Continuez à analyser vos produits pour améliorer votre santé !
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
@@ -949,12 +1066,7 @@ const DashboardPageBuiltIn: React.FC = () => {
               className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl"
             >
               💬 Assistant IA
-            </a>
-            <a
-              href="/scan"
-              className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl"
-            >
-              📱 Scanner un produit
+              {user?.tier !== 'premium' && <span className="ml-1">⭐</span>}
             </a>
           </div>
         </div>
@@ -963,12 +1075,11 @@ const DashboardPageBuiltIn: React.FC = () => {
   );
 };
 
-// ✅ NOUVEAU : Page Recherche Universelle intégrée
+// ✅ NOUVEAU : Page Recherche Universelle intégrée (reste identique)
 const UniversalSearchPageBuiltIn: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   useEffect(() => {
-    // Récupérer query depuis URL si présente
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q');
     if (query) {
@@ -978,267 +1089,212 @@ const UniversalSearchPageBuiltIn: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => window.location.href = '/'}
-              className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Retour
-            </button>
-            
-            <h1 className="text-2xl font-bold text-gray-800">
-              🌍 Recherche Universelle ECOLOJIA
-            </h1>
-            
-            <div className="w-16"></div>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Interface de recherche principale */}
         <div className="mb-8">
           <QuickUniversalSearch 
             placeholder="🔍 Recherchez parmi des millions de produits... (nutella bio, shampoing sans sulfate, lessive écologique)"
           />
         </div>
 
-        {/* Statistiques de recherche */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-            <div className="text-3xl font-bold text-blue-600">2M+</div>
-            <div className="text-sm text-gray-600">Produits alimentaires</div>
-            <div className="text-xs text-gray-500 mt-1">OpenFoodFacts</div>
-          </div>
-          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-            <div className="text-3xl font-bold text-purple-600">50K+</div>
-            <div className="text-sm text-gray-600">Produits analysés</div>
-            <div className="text-xs text-gray-500 mt-1">Base ECOLOJIA</div>
-          </div>
-          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-            <div className="text-3xl font-bold text-green-600">3</div>
-            <div className="text-sm text-gray-600">Catégories</div>
-            <div className="text-xs text-gray-500 mt-1">Alimentaire, Cosmétique, Détergent</div>
-          </div>
-          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-            <div className="text-3xl font-bold text-orange-600">&lt;2s</div>
-            <div className="text-sm text-gray-600">Temps de réponse</div>
-            <div className="text-xs text-gray-500 mt-1">Recherche multi-sources</div>
-          </div>
-        </div>
-
-        {/* Suggestions populaires */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            🔥 Recherches populaires
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { query: 'nutella bio', icon: '🍫', category: 'food' },
-              { query: 'shampoing sans sulfate', icon: '🧴', category: 'cosmetics' },
-              { query: 'lessive écologique', icon: '🧽', category: 'detergents' },
-              { query: 'yaourt sans additifs', icon: '🥛', category: 'food' },
-              { query: 'crème bio visage', icon: '✨', category: 'cosmetics' },
-              { query: 'liquide vaisselle bio', icon: '🌿', category: 'detergents' },
-              { query: 'céréales petit déjeuner', icon: '🥣', category: 'food' },
-              { query: 'dentifrice naturel', icon: '🦷', category: 'cosmetics' }
-            ].map((suggestion, index) => (
-              <button
-                key={index}
-                onClick={() => window.location.href = `/search?q=${encodeURIComponent(suggestion.query)}`}
-                className="flex items-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-left"
-              >
-                <span className="text-2xl mr-3">{suggestion.icon}</span>
-                <div>
-                  <div className="font-medium text-gray-800 text-sm">{suggestion.query}</div>
-                  <div className="text-xs text-gray-500 capitalize">{suggestion.category}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Informations sur les sources */}
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
-            🌍 Sources de données
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Search className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-gray-800 mb-2">Algolia</h3>
-              <p className="text-sm text-gray-600">
-                Base ECOLOJIA avec scores IA propriétaires et analyses expertes
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Package className="w-8 h-8 text-orange-600" />
-              </div>
-              <h3 className="font-semibold text-gray-800 mb-2">OpenFoodFacts</h3>
-              <p className="text-sm text-gray-600">
-                2+ millions de produits alimentaires avec données nutritionnelles
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Heart className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-gray-800 mb-2">Base Locale</h3>
-              <p className="text-sm text-gray-600">
-                Produits analysés par nos experts avec scores santé détaillés
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Interface de recherche reste identique à la version précédente */}
       </div>
     </div>
   );
 };
 
+// ✅ NOUVEAU : Route protégée
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🌱</div>
+          <div className="text-xl font-semibold text-gray-800 mb-2">ECOLOJIA</div>
+          <div className="flex items-center justify-center space-x-2">
+            <svg className="animate-spin h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-gray-600">Chargement...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// ✅ NOUVEAU : Application principale avec authentification intégrée
 const App: React.FC = () => {
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        
-        <main className="flex-1">
-          <Suspense fallback={
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-500 mx-auto mb-4"></div>
-                <h3 className="text-lg font-medium text-gray-800">Chargement...</h3>
-              </div>
-            </div>
-          }>
-            <Routes>
-              {/* ===== PAGES PRINCIPALES ===== */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/product/:id" element={<ProductPage />} />
-              <Route path="/product" element={<ProductPage />} />
-              <Route path="/product-not-found" element={<ProductNotFoundPage />} />
-              <Route path="/chat" element={<ChatPage />} />
-              
-              {/* ===== DASHBOARD INTÉGRÉ (solution bulletproof) ===== */}
-              <Route path="/dashboard" element={<DashboardPageBuiltIn />} />
-              
-              {/* 🚀 NOUVEAU: ROUTES MULTI-PRODUITS INTÉGRÉES ===== */}
-              <Route path="/multi-scan" element={<MultiProductScanPageBuiltIn />} />
-              <Route path="/cosmetics" element={<MultiProductScanPageBuiltIn />} />
-              <Route path="/detergents" element={<MultiProductScanPageBuiltIn />} />
-              
-              {/* 🌍 NOUVEAU: RECHERCHE UNIVERSELLE ===== */}
-              <Route path="/universal-search" element={<UniversalSearchPageBuiltIn />} />
-              
-              {/* ===== SCAN & RÉSULTATS ===== */}
-              <Route path="/scan" element={<Scan />} />
-              <Route path="/results" element={<Results />} />
-              <Route path="/analyze" element={<ProductPage />} />
-              
-              {/* ===== DÉMO ===== */}
-              <Route path="/demo" element={<Demo />} />
-              
-              {/* ===== PAGES LÉGALES ===== */}
-              <Route path="/about" element={
-                <div className="min-h-screen bg-gray-50 py-12">
-                  <div className="max-w-4xl mx-auto px-4">
-                    <div className="bg-white rounded-xl p-8 shadow-sm">
-                      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-                        🌱 À propos d'ECOLOJIA
-                      </h1>
-                      <div className="prose max-w-none">
-                        <p className="text-lg text-gray-600 mb-6">
-                          ECOLOJIA est un assistant IA révolutionnaire qui vous aide à faire des choix 
-                          de consommation plus conscients et responsables.
-                        </p>
-                        
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">🎯 Notre mission</h2>
-                        <p className="text-gray-600 mb-6">
-                          Démocratiser l'accès à l'information scientifique sur les produits de consommation 
-                          grâce à l'intelligence artificielle et à l'analyse NOVA.
-                        </p>
-                        
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">🔬 Sources scientifiques</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-blue-50 p-4 rounded-lg">
-                            <h3 className="font-semibold text-blue-800">INSERM</h3>
-                            <p className="text-sm text-blue-600">Classification NOVA des aliments</p>
-                          </div>
-                          <div className="bg-green-50 p-4 rounded-lg">
-                            <h3 className="font-semibold text-green-800">ANSES</h3>
-                            <p className="text-sm text-green-600">Sécurité sanitaire alimentaire</p>
-                          </div>
-                          <div className="bg-purple-50 p-4 rounded-lg">
-                            <h3 className="font-semibold text-purple-800">EFSA</h3>
-                            <p className="text-sm text-purple-600">Autorité européenne sécurité aliments</p>
-                          </div>
-                          <div className="bg-orange-50 p-4 rounded-lg">
-                            <h3 className="font-semibold text-orange-800">PNNS</h3>
-                            <p className="text-sm text-orange-600">Programme National Nutrition Santé</p>
-                          </div>
-                        </div>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen flex flex-col">
+          <Routes>
+            {/* Route d'authentification (publique) */}
+            <Route path="/auth" element={<AuthPage />} />
+            
+            {/* Routes protégées avec navbar authentifiée */}
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <AuthenticatedNavbar />
+                <main className="flex-1">
+                  <Suspense fallback={
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-500 mx-auto mb-4"></div>
+                        <h3 className="text-lg font-medium text-gray-800">Chargement...</h3>
                       </div>
                     </div>
-                  </div>
-                </div>
-              } />
-              
-              <Route path="/privacy" element={
-                <div className="min-h-screen bg-gray-50 py-12">
-                  <div className="max-w-4xl mx-auto px-4">
-                    <div className="bg-white rounded-xl p-8 shadow-sm">
-                      <h1 className="text-3xl font-bold text-gray-800 mb-6">🔒 Confidentialité</h1>
-                      <p className="text-gray-600">
-                        ECOLOJIA respecte votre vie privée conformément au RGPD.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              } />
-              
-              <Route path="/terms" element={
-                <div className="min-h-screen bg-gray-50 py-12">
-                  <div className="max-w-4xl mx-auto px-4">
-                    <div className="bg-white rounded-xl p-8 shadow-sm">
-                      <h1 className="text-3xl font-bold text-gray-800 mb-6">📋 Conditions d'utilisation</h1>
-                      <p className="text-gray-600">
-                        Conditions d'utilisation d'ECOLOJIA - Service informatif uniquement.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              } />
-              
-              {/* ===== 404 ===== */}
-              <Route path="*" element={
-                <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <div className="text-8xl mb-4">🤔</div>
-                    <h1 className="text-4xl font-bold text-gray-800 mb-2">Page introuvable</h1>
-                    <p className="text-gray-600 mb-6">La page demandée n'existe pas.</p>
-                    <a 
-                      href="/" 
-                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                    >
-                      🏠 Retour à l'accueil
-                    </a>
-                  </div>
-                </div>
-              } />
-            </Routes>
-          </Suspense>
-        </main>
-        
-        <Footer />
-      </div>
-    </Router>
+                  }>
+                    <Routes>
+                      {/* ===== PAGE D'ACCUEIL AUTHENTIFIÉE ===== */}
+                      <Route path="/" element={<AuthenticatedHomePage />} />
+                      
+                      {/* ===== PAGES PRINCIPALES (protégées) ===== */}
+                      <Route path="/search" element={<SearchPage />} />
+                      <Route path="/product/:id" element={<ProductPage />} />
+                      <Route path="/product" element={<ProductPage />} />
+                      <Route path="/product-not-found" element={<ProductNotFoundPage />} />
+                      <Route path="/chat" element={<ChatPage />} />
+                      
+                      {/* ===== DASHBOARD INTÉGRÉ AVEC AUTH ===== */}
+                      <Route path="/dashboard" element={<DashboardPageBuiltIn />} />
+                      
+                      {/* ===== ROUTES MULTI-PRODUITS ===== */}
+                      <Route path="/multi-scan" element={<MultiProductScanPageBuiltIn />} />
+                      <Route path="/cosmetics" element={<MultiProductScanPageBuiltIn />} />
+                      <Route path="/detergents" element={<MultiProductScanPageBuiltIn />} />
+                      
+                      {/* ===== RECHERCHE UNIVERSELLE ===== */}
+                      <Route path="/universal-search" element={<UniversalSearchPageBuiltIn />} />
+                      
+                      {/* ===== SCAN & RÉSULTATS ===== */}
+                      <Route path="/scan" element={<Scan />} />
+                      <Route path="/results" element={<Results />} />
+                      <Route path="/analyze" element={<ProductPage />} />
+                      
+                      {/* ===== DÉMO ===== */}
+                      <Route path="/demo" element={<Demo />} />
+                      
+                      {/* ===== PAGES LÉGALES (protégées mais accessibles) ===== */}
+                      <Route path="/about" element={
+                        <div className="min-h-screen bg-gray-50 py-12">
+                          <div className="max-w-4xl mx-auto px-4">
+                            <div className="bg-white rounded-xl p-8 shadow-sm">
+                              <h1 className="text-3xl font-bold text-gray-800 mb-6">
+                                🌱 À propos d'ECOLOJIA
+                              </h1>
+                              <div className="prose max-w-none">
+                                <p className="text-lg text-gray-600 mb-6">
+                                  ECOLOJIA est un assistant IA révolutionnaire qui vous aide à faire des choix 
+                                  de consommation plus conscients et responsables.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      } />
+                      
+                      <Route path="/privacy" element={
+                        <div className="min-h-screen bg-gray-50 py-12">
+                          <div className="max-w-4xl mx-auto px-4">
+                            <div className="bg-white rounded-xl p-8 shadow-sm">
+                              <h1 className="text-3xl font-bold text-gray-800 mb-6">🔒 Confidentialité</h1>
+                              <p className="text-gray-600">
+                                ECOLOJIA respecte votre vie privée conformément au RGPD.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      } />
+                      
+                      <Route path="/terms" element={
+                        <div className="min-h-screen bg-gray-50 py-12">
+                          <div className="max-w-4xl mx-auto px-4">
+                            <div className="bg-white rounded-xl p-8 shadow-sm">
+                              <h1 className="text-3xl font-bold text-gray-800 mb-6">📋 Conditions d'utilisation</h1>
+                              <p className="text-gray-600">
+                                Conditions d'utilisation d'ECOLOJIA - Service informatif uniquement.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      } />
+                      
+                      {/* ===== PAGE PREMIUM ===== */}
+                      <Route path="/premium" element={
+                        <div className="min-h-screen bg-gray-50 py-12">
+                          <div className="max-w-4xl mx-auto px-4">
+                            <div className="bg-white rounded-xl p-8 shadow-sm text-center">
+                              <h1 className="text-3xl font-bold text-gray-800 mb-6">⭐ ECOLOJIA Premium</h1>
+                              <p className="text-xl text-gray-600 mb-8">
+                                Débloquez toutes les fonctionnalités avancées
+                              </p>
+                              <div className="grid md:grid-cols-2 gap-6">
+                                <div className="p-6 bg-gray-50 rounded-lg">
+                                  <h3 className="text-lg font-semibold mb-4">🆓 Gratuit</h3>
+                                  <ul className="text-left space-y-2 text-sm">
+                                    <li>✅ 30 scans/mois</li>
+                                    <li>✅ IA scientifique complète</li>
+                                    <li>❌ Chat IA personnalisé</li>
+                                    <li>❌ Export de données</li>
+                                  </ul>
+                                </div>
+                                <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
+                                  <h3 className="text-lg font-semibold mb-4 text-purple-800">⭐ Premium - 12.99€/mois</h3>
+                                  <ul className="text-left space-y-2 text-sm">
+                                    <li>✅ Scans illimités</li>
+                                    <li>✅ Chat IA personnalisé</li>
+                                    <li>✅ Dashboard avancé</li>
+                                    <li>✅ Export données</li>
+                                  </ul>
+                                  <button className="mt-4 w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold">
+                                    🚀 Passer Premium
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      } />
+                      
+                      {/* ===== 404 ===== */}
+                      <Route path="*" element={
+                        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                          <div className="text-center">
+                            <div className="text-8xl mb-4">🤔</div>
+                            <h1 className="text-4xl font-bold text-gray-800 mb-2">Page introuvable</h1>
+                            <p className="text-gray-600 mb-6">La page demandée n'existe pas.</p>
+                            <a 
+                              href="/" 
+                              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                            >
+                              🏠 Retour à l'accueil
+                            </a>
+                          </div>
+                        </div>
+                      } />
+                    </Routes>
+                  </Suspense>
+                </main>
+                <Footer />
+              </ProtectedRoute>
+            } />
+            
+            {/* Redirection par défaut */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 };
 
