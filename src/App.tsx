@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 // ✅ NOUVEAU : Imports d'authentification
-import { AuthProvider } from './auth/context/AuthContext';
+import { AuthProvider } from 'auth/context/AuthContext'; // ✅ corrigé
 import { AuthPage } from './auth/components/AuthPage';
 import { useAuth } from './auth/hooks/useAuth';
 
