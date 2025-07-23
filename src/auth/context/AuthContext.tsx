@@ -401,4 +401,5 @@ export const useAuth = (): AuthContextType => {
 };
 
 // ✅ EXPORT du contexte par défaut
-export default AuthContext;
+export default AuthContext;/ /   I m p l e m e n t a t i o n   c o m p l e t e d   0 7 / 2 3 / 2 0 2 5   2 1 : 3 4 : 5 9  
+ 
