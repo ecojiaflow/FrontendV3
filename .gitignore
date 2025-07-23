@@ -20,3 +20,6 @@ Thumbs.db
 .temp/
 logs/
 *.log
+
+.env
+.env.local

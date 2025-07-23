@@ -1,4 +1,7 @@
+// =============================
 // PATH: frontend/ecolojiaFrontV3/src/pages/ProductPage.tsx
+// =============================
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { analyzeProduct, reset } from '../services/ai/novaClassifier';
@@ -9,7 +12,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
 // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Import Analytics
- import { useUserAnalytics } from '../hooks/useUserAnalytics';
+import { useUserAnalytics } from '../hooks/useUserAnalytics';
 
 /**
  * ProductPage (Version fonctionnelle sans analytics)
@@ -34,7 +37,7 @@ const predefinedProducts: Record<string, { name: string; ingredients: string }> 
   'nutella-pate-tartiner': {
     name: 'Nutella Pâte à tartiner',
     ingredients:
-      'Sucre, huile de palme, NOISETTES 13%, cacao maigre 7.4%, LAIT écrémé en poudre 6.6%, LACTOSÉRUM en poudre, émulsifiants E322 (lécithines) E471 (mono- et diglycérides d\'acides gras), arôme vanilline'
+      "Sucre, huile de palme, NOISETTES 13%, cacao maigre 7.4%, LAIT écrémé en poudre 6.6%, LACTOSÉRUM en poudre, émulsifiants E322 (lécithines) E471 (mono- et diglycérides d'acides gras), arôme vanilline"
   },
   'galette-riz-bio': {
     name: 'Galette de riz bio',
@@ -43,17 +46,17 @@ const predefinedProducts: Record<string, { name: string; ingredients: string }> 
   'yaourt-nature-bio': {
     name: 'Yaourt Nature Bio',
     ingredients:
-      'LAIT entier pasteurisé issu de l\'agriculture biologique, ferments lactiques (Streptococcus thermophilus, Lactobacillus bulgaricus)'
+      "LAIT entier pasteurisé issu de l'agriculture biologique, ferments lactiques (Streptococcus thermophilus, Lactobacillus bulgaricus)"
   },
   'pain-mie-complet': {
     name: 'Pain de Mie Complet',
     ingredients:
-      'Farine complète de BLÉ, eau, levure, huile de tournesol, sucre, sel, gluten de BLÉ, conservateur E282, émulsifiant E471, agent de traitement de la farine E300'
+      "Farine complète de BLÉ, eau, levure, huile de tournesol, sucre, sel, gluten de BLÉ, conservateur E282, émulsifiant E471, agent de traitement de la farine E300"
   },
   'biscuits-petit-dejeuner': {
     name: 'Biscuits Petit-Déjeuner',
     ingredients:
-      'Céréales 58% (farine de BLÉ, flocons d\'AVOINE 14%), sucre, huile de palme, sirop de glucose-fructose, poudre à lever E500, sel, arômes, vitamines (B1, B6, B9, B12, C, E), colorant E160a, émulsifiant E322'
+      "Céréales 58% (farine de BLÉ, flocons d'AVOINE 14%), sucre, huile de palme, sirop de glucose-fructose, poudre à lever E500, sel, arômes, vitamines (B1, B6, B9, B12, C, E), colorant E160a, émulsifiant E322"
   }
 };
 
@@ -65,7 +68,7 @@ const ProductPage: React.FC = () => {
   const runIdRef = useRef(0);
 
   // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Hook Analytics
-   const { trackScan } = useUserAnalytics();
+  const { trackScan } = useUserAnalytics();
 
   const [productName, setProductName] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -142,7 +145,7 @@ const ProductPage: React.FC = () => {
       setDebugInfo({ source: 'manual_input' });
       setIsInitialized(true);
     }
-  }, [slug, searchParams, location.pathname]);
+  }, [slug, searchParams, location.pathname, isInitialized]);
 
   const performAnalysis = async (name: string, ingr: string, source: string) => {
     if (!name.trim() || !ingr.trim()) {
@@ -172,27 +175,7 @@ const ProductPage: React.FC = () => {
         setData(result);
         setError(null);
 
-        // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: TRACKING ANALYTICS AUTOMATIQUE
-        /*
-        try {
-          trackScan({
-            productName: name,
-            novaGroup: result.novaGroup,
-            healthScore: result.healthScore,
-            ultraTransformLevel: result.novaGroup >= 4 ? 4 : result.novaGroup,
-            additives: result.additives?.detected?.map((a: any) => a.code) || [],
-            ingredients: ingr,
-            analysisSource: 'nova',
-            userRating: undefined,
-            isBookmarked: false
-          });
-          
-          console.log('📊 ProductPage: Analyse trackée dans analytics');
-        } catch (trackError) {
-          console.warn('⚠️ Erreur tracking analytics:', trackError);
-          // Ne pas faire échouer l'analyse si tracking échoue
-        }
-        */
+        // ⏸️ TRACKING ANALYTICS désactivé
         
         setDebugInfo((p: any) => ({
           ...p,
@@ -202,14 +185,13 @@ const ProductPage: React.FC = () => {
           healthScore: result.healthScore,
           additivesCount: result.additives?.total || 0,
           backend: result.source || 'unknown',
-          // tracked: true, // ⏸️ Temporairement désactivé
           ts: Date.now()
         }));
         
         console.log('✅ ProductPage: Analyse réussie');
       } else {
         console.error('❌ ProductPage: Format de résultat invalide', result);
-        throw new Error("Format de résultat invalide");
+        throw new Error('Format de résultat invalide');
       }
       
     } catch (e: any) {
@@ -256,30 +238,9 @@ const ProductPage: React.FC = () => {
       setUltraTransformData(result);
       setShowUltraTransform(true);
 
-      // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: TRACKING ULTRA-TRANSFORMATION
-      /*
-      try {
-        trackScan({
-          productName: productName,
-          novaGroup: result.novaClass || 4,
-          healthScore: 100 - (result.transformationScore || 80),
-          ultraTransformLevel: result.transformationLevel || 4,
-          additives: result.industrialMarkers?.map((m: string) => m.split(':')[1] || m) || [],
-          ingredients: ingredients,
-          analysisSource: 'ultra-transform',
-          userRating: undefined,
-          isBookmarked: false
-        });
-        
-        console.log('📊 Ultra-Transform trackée dans analytics');
-      } catch (trackError) {
-        console.warn('⚠️ Erreur tracking ultra-transform:', trackError);
-      }
-      */
-      
     } catch (error: any) {
       console.error('❌ Erreur Ultra-Transformation:', error);
-      setUltraTransformError(error.message || 'Erreur lors de l\'analyse');
+      setUltraTransformError(error.message || "Erreur lors de l'analyse");
     } finally {
       setUltraTransformLoading(false);
     }
@@ -571,7 +532,7 @@ const ProductPage: React.FC = () => {
                     className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
                   >
                     <span className="text-xl mr-2">🔬</span>
-                    {ultraTransformLoading ? 'Analyse en cours...' : 'Analyser l\'Ultra-Transformation'}
+                    {ultraTransformLoading ? 'Analyse en cours...' : "Analyser l'Ultra-Transformation"}
                   </button>
                   <p className="text-sm text-gray-600 mt-2">
                     Complément de NOVA : évaluation des procédés industriels
@@ -663,7 +624,7 @@ const ProductPage: React.FC = () => {
             </div>
           )}
 
-          {debugInfo && process.env.NODE_ENV === 'development' && (
+          {debugInfo && import.meta.env.DEV && (
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4">🛠️ Debug Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

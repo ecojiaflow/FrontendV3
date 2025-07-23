@@ -1,5 +1,6 @@
+// =============================
 // frontend/src/components/ErrorBoundary.tsx
-// Composant pour capturer et afficher les erreurs React de manière élégante
+// =============================
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
@@ -31,11 +32,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('❌ ErrorBoundary a capturé une erreur:', error, errorInfo);
-    
-    this.setState({
-      error,
-      errorInfo
-    });
+    this.setState({ error, errorInfo });
   }
 
   private handleReload = () => {
@@ -43,11 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleReset = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null
-    });
+    this.setState({ hasError: false, error: null, errorInfo: null });
   };
 
   public render() {
@@ -58,15 +51,11 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="bg-white rounded-3xl shadow-lg border-2 border-red-200 p-8 text-center">
               {/* Icon et titre */}
               <div className="text-6xl mb-6">💥</div>
-              <h1 className="text-3xl font-bold text-red-800 mb-4">
-                Oops ! Une erreur est survenue
-              </h1>
-              <p className="text-red-600 mb-6 text-lg">
-                L'application ECOLOJIA a rencontré un problème inattendu.
-              </p>
+              <h1 className="text-3xl font-bold text-red-800 mb-4">Oops ! Une erreur est survenue</h1>
+              <p className="text-red-600 mb-6 text-lg">L'application ECOLOJIA a rencontré un problème inattendu.</p>
 
               {/* Détails de l'erreur (mode développement) */}
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {import.meta.env.DEV && this.state.error && (
                 <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-left">
                   <h3 className="font-bold text-red-800 mb-2">Détails de l'erreur :</h3>
                   <pre className="text-sm text-red-600 overflow-auto max-h-40">

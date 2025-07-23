@@ -1,266 +1,199 @@
 // frontend/src/auth/services/authService.ts
+import { apiClient } from '../../services/apiClient';
+import { LoginRequest, RegisterRequest, User } from '../types/AuthTypes';
 
-import { 
-  LoginRequest, 
-  RegisterRequest, 
-  AuthResponse, 
-  LoginResponse, 
-  RegisterResponse,
-  User
-} from '../types/AuthTypes';
-
-// ✅ CRÉATION LOCAL DES CLASSES D'ERREURS (évite problèmes import)
-class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public code?: string,
-    public errors?: Record<string, string[]>
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
+interface AuthResponse {
+  success: boolean;
+  user: User;
+  token: string;
+  message?: string;
 }
 
 class AuthService {
-  private baseURL: string;
-  private tokenKey = 'ecolojia_token';
-  private refreshTokenKey = 'ecolojia_refresh_token';
+  private readonly TOKEN_KEY = 'ecolojia_token';
+  private readonly REFRESH_TOKEN_KEY = 'ecolojia_refresh_token';
+  private readonly AUTH_PREFIX = '/api/auth';
 
-  constructor() {
-    // ✅ CORRECTION: URL backend ou fallback localhost
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-  }
-
-  // ===== AUTHENTICATION METHODS =====
-
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
+  // Connexion
+  async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
-      const response = await this.makeRequest<AuthResponse<LoginResponse>>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials)
-      });
-
-      if (response.success && response.data) {
-        // Stocker les tokens
+      const response = await apiClient.post<AuthResponse>(`${this.AUTH_PREFIX}/login`, credentials);
+      
+      if (response.data.success && response.data.token) {
         this.setToken(response.data.token);
-        if (response.data.refreshToken) {
-          this.setRefreshToken(response.data.refreshToken);
-        }
-        
         return response.data;
-      }
-
-      throw new ApiError(response.message || 'Erreur de connexion');
-    } catch (error) {
-      console.error('Login error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async register(userData: RegisterRequest): Promise<RegisterResponse> {
-    try {
-      const response = await this.makeRequest<AuthResponse<RegisterResponse>>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(userData)
-      });
-
-      if (response.success && response.data) {
-        return response.data;
-      }
-
-      throw new ApiError(response.message || 'Erreur lors de l\'inscription');
-    } catch (error) {
-      console.error('Register error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async getProfile(): Promise<User> {
-    try {
-      const response = await this.makeRequest<AuthResponse<{ user: User }>>('/auth/profile', {
-        method: 'GET',
-        headers: this.getAuthHeaders()
-      });
-
-      if (response.success && response.data) {
-        return response.data.user;
-      }
-
-      throw new ApiError('Impossible de récupérer le profil');
-    } catch (error) {
-      console.error('Get profile error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async getCurrentUser(): Promise<User | null> {
-    try {
-      if (!this.getToken() || this.isTokenExpired()) {
-        return null;
       }
       
-      return await this.getProfile();
-    } catch (error) {
-      console.error('Get current user error:', error);
-      return null;
+      throw new Error(response.data.message || 'Erreur de connexion');
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      
+      throw new Error('Erreur de connexion. Vérifiez vos identifiants.');
     }
   }
 
+  // Inscription
+  async register(userData: RegisterRequest): Promise<void> {
+    try {
+      const response = await apiClient.post(`${this.AUTH_PREFIX}/register`, userData);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur lors de l\'inscription');
+      }
+      
+      // Ne pas connecter automatiquement après inscription
+      // L'utilisateur doit vérifier son email d'abord
+    } catch (error: any) {
+      console.error('❌ Register error:', error);
+      
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      
+      if (error.response?.data?.errors) {
+        const firstError = error.response.data.errors[0];
+        throw new Error(firstError.msg || firstError.message || 'Erreur de validation');
+      }
+      
+      throw new Error('Erreur lors de l\'inscription');
+    }
+  }
+
+  // Déconnexion
   async logout(): Promise<void> {
     try {
-      const token = this.getToken();
-      
-      if (token) {
-        // ✅ Tentative de logout côté serveur (non critique)
-        try {
-          await this.makeRequest('/auth/logout', {
-            method: 'POST',
-            headers: this.getAuthHeaders()
-          });
-        } catch (logoutError) {
-          console.warn('Erreur logout serveur (non critique):', logoutError);
-        }
-      }
+      // Appel API pour invalider la session côté serveur
+      await apiClient.post(`${this.AUTH_PREFIX}/logout`);
     } catch (error) {
-      console.error('Logout error:', error);
-      // Continuer même en cas d'erreur pour nettoyer localement
+      console.warn('⚠️ Logout API error (non-critical):', error);
     } finally {
+      // Toujours nettoyer les tokens locaux
       this.clearTokens();
     }
   }
 
-  // ===== TOKEN MANAGEMENT =====
+  // Récupérer le profil utilisateur
+  async getProfile(): Promise<User> {
+    try {
+      const response = await apiClient.get<{ success: boolean; user: User }>(`${this.AUTH_PREFIX}/me`);
+      
+      if (response.data.success && response.data.user) {
+        return response.data.user;
+      }
+      
+      throw new Error('Erreur lors de la récupération du profil');
+    } catch (error: any) {
+      console.error('❌ Get profile error:', error);
+      
+      if (error.response?.status === 401) {
+        this.clearTokens();
+        throw new Error('Session expirée');
+      }
+      
+      throw new Error('Erreur lors de la récupération du profil');
+    }
+  }
+
+  // Renvoyer l'email de vérification
+  async resendVerificationEmail(): Promise<void> {
+    try {
+      const response = await apiClient.post(`${this.AUTH_PREFIX}/resend-verification`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur lors de l\'envoi');
+      }
+    } catch (error: any) {
+      console.error('❌ Resend verification error:', error);
+      throw new Error(error.response?.data?.message || 'Erreur lors de l\'envoi de l\'email');
+    }
+  }
+
+  // Vérifier un email avec token
+  async verifyEmail(token: string): Promise<void> {
+    try {
+      const response = await apiClient.post(`${this.AUTH_PREFIX}/verify-email`, { token });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur de vérification');
+      }
+    } catch (error: any) {
+      console.error('❌ Verify email error:', error);
+      throw new Error(error.response?.data?.message || 'Erreur lors de la vérification');
+    }
+  }
+
+  // Mot de passe oublié
+  async forgotPassword(email: string): Promise<void> {
+    try {
+      const response = await apiClient.post(`${this.AUTH_PREFIX}/forgot-password`, { email });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur lors de la demande');
+      }
+    } catch (error: any) {
+      console.error('❌ Forgot password error:', error);
+      throw new Error(error.response?.data?.message || 'Erreur lors de la demande');
+    }
+  }
+
+  // Réinitialiser le mot de passe
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    try {
+      const response = await apiClient.post(`${this.AUTH_PREFIX}/reset-password`, {
+        token,
+        newPassword
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur lors de la réinitialisation');
+      }
+    } catch (error: any) {
+      console.error('❌ Reset password error:', error);
+      throw new Error(error.response?.data?.message || 'Erreur lors de la réinitialisation');
+    }
+  }
+
+  // Gestion des tokens
+  setToken(token: string): void {
+    localStorage.setItem(this.TOKEN_KEY, token);
+  }
 
   getToken(): string | null {
-    try {
-      return localStorage.getItem(this.tokenKey);
-    } catch {
-      return null;
-    }
-  }
-
-  setToken(token: string): void {
-    try {
-      localStorage.setItem(this.tokenKey, token);
-    } catch (error) {
-      console.error('Erreur sauvegarde token:', error);
-    }
-  }
-
-  getRefreshToken(): string | null {
-    try {
-      return localStorage.getItem(this.refreshTokenKey);
-    } catch {
-      return null;
-    }
-  }
-
-  setRefreshToken(refreshToken: string): void {
-    try {
-      localStorage.setItem(this.refreshTokenKey, refreshToken);
-    } catch (error) {
-      console.error('Erreur sauvegarde refresh token:', error);
-    }
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
   clearTokens(): void {
-    try {
-      localStorage.removeItem(this.tokenKey);
-      localStorage.removeItem(this.refreshTokenKey);
-    } catch (error) {
-      console.error('Erreur suppression tokens:', error);
-    }
+    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 
+  // Vérifier si le token est expiré
   isTokenExpired(): boolean {
     const token = this.getToken();
     if (!token) return true;
 
     try {
+      // Décoder le JWT pour vérifier l'expiration
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      return payload.exp < currentTime;
-    } catch {
+      const expirationTime = payload.exp * 1000; // Convertir en millisecondes
+      
+      return Date.now() >= expirationTime;
+    } catch (error) {
+      console.error('❌ Error checking token expiration:', error);
       return true;
     }
   }
 
+  // Vérifier si l'utilisateur est authentifié
   isAuthenticated(): boolean {
     const token = this.getToken();
     return !!token && !this.isTokenExpired();
-  }
-
-  // ===== PRIVATE METHODS =====
-
-  private async makeRequest<T>(
-    endpoint: string, 
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    
-    const defaultHeaders = {
-      'Content-Type': 'application/json',
-      ...options.headers
-    };
-
-    const config: RequestInit = {
-      ...options,
-      headers: defaultHeaders
-    };
-
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { message: `HTTP ${response.status}` };
-        }
-        
-        throw new ApiError(
-          errorData.message || `HTTP ${response.status}`,
-          response.status,
-          errorData.error
-        );
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      
-      // Erreur réseau ou autre
-      console.error('Erreur réseau:', error);
-      throw new ApiError(
-        'Impossible de contacter le serveur. Vérifiez votre connexion.',
-        0,
-        'NETWORK_ERROR'
-      );
-    }
-  }
-
-  private getAuthHeaders(): Record<string, string> {
-    const token = this.getToken();
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
-
-  private handleError(error: any): ApiError {
-    if (error instanceof ApiError) {
-      return error;
-    }
-
-    if (error instanceof Error) {
-      return new ApiError(error.message);
-    }
-
-    return new ApiError('Une erreur inattendue s\'est produite');
   }
 }
 
 // Export singleton
 export const authService = new AuthService();
-export default authService;
