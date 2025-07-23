@@ -1,10 +1,10 @@
-// frontend/src/auth/context/AuthContext.tsx
+﻿// frontend/src/auth/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { authService } from '../services/authService';
 import { User, AuthContextType, LoginRequest, RegisterRequest } from '../types/AuthTypes';
 import { demoService } from '../../services/demoService';
 
-// Création du contexte
+// CrÃ©ation du contexte
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Interface pour le provider
@@ -12,7 +12,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// ✅ EXPORT PRINCIPAL - AuthProvider
+// âœ… EXPORT PRINCIPAL - AuthProvider
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,64 +20,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // Fonction utilitaire pour nettoyer données démo
+  // Fonction utilitaire pour nettoyer donnÃ©es dÃ©mo
   const clearDemoData = useCallback(() => {
     try {
       localStorage.removeItem('ecolojia_demo_mode');
       localStorage.removeItem('ecolojia_demo_user');
       localStorage.removeItem('ecolojia_demo_token');
       localStorage.removeItem('ecolojia_demo_history');
-      console.log('🧹 Données démo supprimées');
+      console.log('ðŸ§¹ DonnÃ©es dÃ©mo supprimÃ©es');
     } catch (error) {
-      console.error('❌ Erreur suppression données démo:', error);
+      console.error('âŒ Erreur suppression donnÃ©es dÃ©mo:', error);
     }
   }, []);
 
-  // Initialisation - vérifier utilisateur déjà connecté OU mode démo
+  // Initialisation - vÃ©rifier utilisateur dÃ©jÃ  connectÃ© OU mode dÃ©mo
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
         
-        // ✅ PRIORITÉ 1: Vérifier mode démo d'abord
+        // âœ… PRIORITÃ‰ 1: VÃ©rifier mode dÃ©mo d'abord
         if (demoService.isDemoActive()) {
-          console.log('🎭 Mode démo détecté');
+          console.log('ðŸŽ­ Mode dÃ©mo dÃ©tectÃ©');
           const demoSession = demoService.getCurrentSession();
           
           if (demoSession) {
             setUser(demoSession.user);
             setIsAuthenticated(true);
             setIsDemoMode(true);
-            console.log('✅ Utilisateur démo initialisé:', demoSession.user.name);
-            return; // Sortir, pas besoin de vérifier token réel
+            console.log('âœ… Utilisateur dÃ©mo initialisÃ©:', demoSession.user.name);
+            return; // Sortir, pas besoin de vÃ©rifier token rÃ©el
           } else {
-            console.warn('⚠️ Session démo invalide');
+            console.warn('âš ï¸ Session dÃ©mo invalide');
             clearDemoData();
           }
         }
         
-        // ✅ PRIORITÉ 2: Authentification réelle si pas en mode démo
+        // âœ… PRIORITÃ‰ 2: Authentification rÃ©elle si pas en mode dÃ©mo
         const realToken = authService.getToken();
         
         if (realToken && !authService.isTokenExpired()) {
-          console.log('🔐 Token réel détecté - Récupération profil utilisateur');
+          console.log('ðŸ” Token rÃ©el dÃ©tectÃ© - RÃ©cupÃ©ration profil utilisateur');
           try {
             const userData = await authService.getProfile();
             setUser(userData);
             setIsAuthenticated(true);
             setIsDemoMode(false);
-            console.log('✅ Utilisateur réel connecté:', userData.name);
+            console.log('âœ… Utilisateur rÃ©el connectÃ©:', userData.name);
           } catch (profileError) {
-            console.warn('⚠️ Erreur récupération profil - Token probablement invalide');
+            console.warn('âš ï¸ Erreur rÃ©cupÃ©ration profil - Token probablement invalide');
             authService.clearTokens();
             setUser(null);
             setIsAuthenticated(false);
             setIsDemoMode(false);
           }
         } else {
-          // Token invalide/expiré ou absent
+          // Token invalide/expirÃ© ou absent
           if (realToken) {
-            console.log('🕐 Token expiré - Suppression automatique');
+            console.log('ðŸ• Token expirÃ© - Suppression automatique');
             authService.clearTokens();
           }
           setUser(null);
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
       } catch (err) {
-        console.error('❌ Erreur initialisation auth:', err);
+        console.error('âŒ Erreur initialisation auth:', err);
         // En cas d'erreur, reset complet
         authService.clearTokens();
         clearDemoData();
@@ -101,30 +101,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, [clearDemoData]);
 
-  // Fonction de connexion (authentification réelle uniquement)
+  // Fonction de connexion (authentification rÃ©elle uniquement)
   const login = useCallback(async (credentials: LoginRequest): Promise<void> => {
     try {
       setError(null);
       setIsLoading(true);
 
-      // Si en mode démo, forcer sortie avant connexion réelle
+      // Si en mode dÃ©mo, forcer sortie avant connexion rÃ©elle
       if (isDemoMode) {
-        console.log('🚪 Sortie mode démo pour connexion réelle');
+        console.log('ðŸšª Sortie mode dÃ©mo pour connexion rÃ©elle');
         demoService.endDemoSession();
         setIsDemoMode(false);
       }
 
-      console.log('🔐 Tentative connexion:', credentials.email);
+      console.log('ðŸ” Tentative connexion:', credentials.email);
       const response = await authService.login(credentials);
       
       if (response.user) {
         setUser(response.user);
         setIsAuthenticated(true);
         setIsDemoMode(false);
-        console.log('✅ Connexion réussie:', response.user.name);
+        console.log('âœ… Connexion rÃ©ussie:', response.user.name);
       }
     } catch (err: any) {
-      console.error('❌ Erreur connexion:', err);
+      console.error('âŒ Erreur connexion:', err);
       setError(err.message || 'Erreur de connexion');
       throw err;
     } finally {
@@ -132,24 +132,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [isDemoMode]);
 
-  // Fonction d'inscription (authentification réelle uniquement)
+  // Fonction d'inscription (authentification rÃ©elle uniquement)
   const register = useCallback(async (userData: RegisterRequest): Promise<void> => {
     try {
       setError(null);
       setIsLoading(true);
 
-      // Si en mode démo, forcer sortie avant inscription réelle
+      // Si en mode dÃ©mo, forcer sortie avant inscription rÃ©elle
       if (isDemoMode) {
-        console.log('🚪 Sortie mode démo pour inscription réelle');
+        console.log('ðŸšª Sortie mode dÃ©mo pour inscription rÃ©elle');
         demoService.endDemoSession();
         setIsDemoMode(false);
       }
 
-      console.log('📝 Tentative inscription:', userData.email);
+      console.log('ðŸ“ Tentative inscription:', userData.email);
       await authService.register(userData);
-      console.log('✅ Inscription réussie pour:', userData.email);
+      console.log('âœ… Inscription rÃ©ussie pour:', userData.email);
     } catch (err: any) {
-      console.error('❌ Erreur inscription:', err);
+      console.error('âŒ Erreur inscription:', err);
       setError(err.message || 'Erreur lors de l\'inscription');
       throw err;
     } finally {
@@ -157,82 +157,82 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [isDemoMode]);
 
-  // Fonction de déconnexion (mode démo ET réel)
+  // Fonction de dÃ©connexion (mode dÃ©mo ET rÃ©el)
   const logout = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       
       if (isDemoMode) {
-        console.log('🚪 Déconnexion mode démo');
+        console.log('ðŸšª DÃ©connexion mode dÃ©mo');
         demoService.endDemoSession();
       } else {
-        console.log('🚪 Déconnexion utilisateur réel');
+        console.log('ðŸšª DÃ©connexion utilisateur rÃ©el');
         try {
           await authService.logout();
         } catch (err) {
-          console.warn('⚠️ Erreur logout serveur (non critique):', err);
+          console.warn('âš ï¸ Erreur logout serveur (non critique):', err);
         }
       }
     } catch (error) {
-      console.error('❌ Erreur lors de la déconnexion:', error);
+      console.error('âŒ Erreur lors de la dÃ©connexion:', error);
     } finally {
       setUser(null);
       setIsAuthenticated(false);
       setIsDemoMode(false);
       setIsLoading(false);
       setError(null);
-      console.log('✅ Déconnexion terminée');
+      console.log('âœ… DÃ©connexion terminÃ©e');
     }
   }, [isDemoMode]);
 
-  // ✅ NOUVELLE MÉTHODE DÉMARER SESSION DÉMO
+  // âœ… NOUVELLE MÃ‰THODE DÃ‰MARER SESSION DÃ‰MO
   const startDemoSession = useCallback(async (tier: 'free' | 'premium' = 'premium'): Promise<void> => {
     try {
-      console.log(`🎭 Démarrage session démo ${tier}`);
+      console.log(`ðŸŽ­ DÃ©marrage session dÃ©mo ${tier}`);
       
-      // Si déjà connecté (réel), déconnecter d'abord
+      // Si dÃ©jÃ  connectÃ© (rÃ©el), dÃ©connecter d'abord
       if (isAuthenticated && !isDemoMode) {
         authService.clearTokens();
       }
       
-      // Créer session démo
+      // CrÃ©er session dÃ©mo
       const demoSession = demoService.startDemoSession(tier);
       
-      // Mettre à jour état
+      // Mettre Ã  jour Ã©tat
       setUser(demoSession.user);
       setIsAuthenticated(true);
       setIsDemoMode(true);
       setError(null);
       
-      console.log('✅ Session démo démarrée:', demoSession.user.name);
+      console.log('âœ… Session dÃ©mo dÃ©marrÃ©e:', demoSession.user.name);
     } catch (error) {
-      console.error('❌ Erreur démarrage session démo:', error);
-      throw new Error('Impossible de démarrer le mode démo');
+      console.error('âŒ Erreur dÃ©marrage session dÃ©mo:', error);
+      throw new Error('Impossible de dÃ©marrer le mode dÃ©mo');
     }
   }, [isAuthenticated, isDemoMode]);
 
-  // Actualiser les données utilisateur
+  // Actualiser les donnÃ©es utilisateur
   const refreshUser = useCallback(async (): Promise<void> => {
     try {
       if (isDemoMode) {
-        console.log('🎭 Mode démo - Refresh des données démo');
+        console.log('ðŸŽ­ Mode dÃ©mo - Refresh des donnÃ©es dÃ©mo');
         const demoSession = demoService.getCurrentSession();
         if (demoSession) {
           setUser(demoSession.user);
-          console.log('✅ Utilisateur démo rafraîchi');
+          console.log('âœ… Utilisateur dÃ©mo rafraÃ®chi');
         }
         return;
       }
       
       if (isAuthenticated && authService.getToken()) {
-        console.log('🔄 Refresh données utilisateur réel');
+        console.log('ðŸ”„ Refresh donnÃ©es utilisateur rÃ©el');
         const userData = await authService.getProfile();
         setUser(userData);
-        console.log('✅ Données utilisateur rafraîchies');
+        console.log('âœ… DonnÃ©es utilisateur rafraÃ®chies');
       }
     } catch (err) {
-      console.error('❌ Erreur refresh user:', err);
-      // En cas d'erreur, déconnecter l'utilisateur
+      console.error('âŒ Erreur refresh user:', err);
+      // En cas d'erreur, dÃ©connecter l'utilisateur
       await logout();
     }
   }, [isDemoMode, isAuthenticated, logout]);
@@ -242,16 +242,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
-  // Vérifier les permissions
+  // VÃ©rifier les permissions
   const hasPermission = useCallback((permission: string): boolean => {
     if (!user) {
-      console.log('❌ Pas d\'utilisateur pour vérifier permission:', permission);
+      console.log('âŒ Pas d\'utilisateur pour vÃ©rifier permission:', permission);
       return false;
     }
     
-    // En mode démo, permissions selon tier
+    // En mode dÃ©mo, permissions selon tier
     if (isDemoMode) {
-      console.log(`🎭 Mode démo ${user.tier} - Permission ${permission}`);
+      console.log(`ðŸŽ­ Mode dÃ©mo ${user.tier} - Permission ${permission}`);
       switch (permission) {
         case 'unlimited_scans':
         case 'ai_chat':
@@ -266,7 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
     
-    // Logique permissions pour utilisateurs réels
+    // Logique permissions pour utilisateurs rÃ©els
     switch (permission) {
       case 'unlimited_scans':
       case 'ai_chat':
@@ -277,12 +277,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       case 'basic_analysis':
         return true;
       default:
-        console.warn('⚠️ Permission inconnue:', permission);
+        console.warn('âš ï¸ Permission inconnue:', permission);
         return false;
     }
   }, [user, isDemoMode]);
 
-  // Vérifications tier
+  // VÃ©rifications tier
   const isFreeTier = useCallback((): boolean => {
     if (!user) return true;
     return user.tier === 'free';
@@ -301,13 +301,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const demoSession = demoService.getCurrentSession();
       if (demoSession) {
         const quota = demoSession.quotas[type];
-        if (quota.limit === -1) return -1; // Illimité
+        if (quota.limit === -1) return -1; // IllimitÃ©
         return Math.max(0, quota.limit - quota.used);
       }
       return 0;
     }
     
-    // Logique quotas réels
+    // Logique quotas rÃ©els
     const quota = user.quotas[`${type}PerMonth`] || user.quotas[`${type}PerDay`] || 0;
     const used = user.currentUsage[
       type === 'aiQuestions' ? 'aiQuestionsToday' : 
@@ -316,7 +316,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       'apiCallsThisMonth'
     ] || 0;
     
-    if (quota === -1) return -1; // Illimité
+    if (quota === -1) return -1; // IllimitÃ©
     return Math.max(0, quota - used);
   }, [user, isDemoMode]);
 
@@ -330,7 +330,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return remaining === -1 || remaining > 0;
   }, [getRemainingQuota]);
 
-  // Méthodes de debugging
+  // MÃ©thodes de debugging
   const getAuthState = useCallback(() => ({
     isAuthenticated,
     isDemoMode,
@@ -341,18 +341,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }), [isAuthenticated, isDemoMode, user]);
 
   const debugAuth = useCallback((): void => {
-    console.log('🔍 État authentification:', getAuthState());
+    console.log('ðŸ” Ã‰tat authentification:', getAuthState());
   }, [getAuthState]);
 
   // Valeur du contexte
   const contextValue: AuthContextType = {
-    // État de base
+    // Ã‰tat de base
     user,
     isAuthenticated,
     isLoading,
     error,
     
-    // État mode démo
+    // Ã‰tat mode dÃ©mo
     isDemoMode,
     
     // Actions authentification
@@ -362,7 +362,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
     refreshUser,
     
-    // Actions mode démo
+    // Actions mode dÃ©mo
     startDemoSession,
     
     // Utilitaires permissions
@@ -386,20 +386,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-// ✅ EXPORT HOOK personnalisé
+// âœ… EXPORT HOOK personnalisÃ©
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   
   if (!context) {
     throw new Error(
-      'useAuth doit être utilisé à l\'intérieur d\'un AuthProvider. ' +
-      'Assurez-vous que votre composant est wrappé dans <AuthProvider>.'
+      'useAuth doit Ãªtre utilisÃ© Ã  l\'intÃ©rieur d\'un AuthProvider. ' +
+      'Assurez-vous que votre composant est wrappÃ© dans <AuthProvider>.'
     );
   }
   
   return context;
 };
 
-// ✅ EXPORT du contexte par défaut
+// âœ… EXPORT du contexte par dÃ©faut
 export default AuthContext;/ /   I m p l e m e n t a t i o n   c o m p l e t e d   0 7 / 2 3 / 2 0 2 5   2 1 : 3 4 : 5 9  
  
+
