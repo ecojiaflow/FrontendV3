@@ -1,5 +1,5 @@
 ﻿// PATH: frontend/ecolojiaFrontV3/src/App.tsx
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -27,17 +27,16 @@ import {
   LogOut
 } from 'lucide-react';
 
-// ✅ NOUVEAU : Imports d'authentification
-import { AuthProvider } from './auth/context/AuthContext'; // ✅ RELATIF = fonctionne
-
+// ✅ IMPORTS D'AUTHENTIFICATION
+import { AuthProvider } from './auth/context/AuthContext';
 import { AuthPage } from './auth/components/AuthPage';
 import { useAuth } from './auth/hooks/useAuth';
 
-// ✅ Imports sûrs qui fonctionnent
+// ✅ IMPORTS COMPOSANTS STATIQUES
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
-// ✅ Pages principales
+// ✅ PAGES PRINCIPALES (EAGER LOADING)
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import ProductPage from './pages/ProductPage';
@@ -47,7 +46,38 @@ import Results from './pages/Results';
 import Scan from './pages/Scan';
 import Demo from './pages/Demo';
 
-// ✅ NOUVEAU : Hook pour gérer les états de chargement
+// ✅ PAGES LAZY LOADING AVEC FALLBACK
+const UnifiedResultsPage = lazy(() => 
+  import('./pages/UnifiedResultsPage')
+    .then(module => ({ default: module.UnifiedResultsPage || module.default }))
+    .catch(() => ({ default: () => <div className="p-8 text-center">Page UnifiedResults en construction</div> }))
+);
+
+const ManualAnalysisPage = lazy(() => 
+  import('./pages/ManualAnalysisPage')
+    .then(module => ({ default: module.ManualAnalysisPage || module.default }))
+    .catch(() => ({ default: () => <div className="p-8 text-center">Page ManualAnalysis en construction</div> }))
+);
+
+const HistoryPage = lazy(() => 
+  import('./pages/HistoryPage')
+    .then(module => ({ default: module.HistoryPage || module.default }))
+    .catch(() => ({ default: () => <div className="p-8 text-center">Page History en construction</div> }))
+);
+
+const MultiProductScanPage = lazy(() => 
+  import('./pages/MultiProductScanPage')
+    .then(module => ({ default: module.default || module.MultiProductScanPage }))
+    .catch(() => ({ default: () => <MultiProductScanPageBuiltIn /> }))
+);
+
+const DashboardPage = lazy(() => 
+  import('./pages/DashboardPage')
+    .then(module => ({ default: module.default || module.DashboardPage }))
+    .catch(() => ({ default: () => <DashboardPageBuiltIn /> }))
+);
+
+// ✅ HOOK POUR GÉRER LES ÉTATS DE CHARGEMENT
 const useAnalysisProgress = (category: string) => {
   const [stage, setStage] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -76,10 +106,10 @@ const useAnalysisProgress = (category: string) => {
     }
   };
 
-  return { stage, progress, simulateAnalysis };
+  return { stage, progress, simulateAnalysis, stages };
 };
 
-// ✅ NOUVEAU : Composant Loading States intégré
+// ✅ COMPOSANT LOADING STATES INTELLIGENT
 interface SmartLoadingProps {
   stage: number;
   progress: number;
@@ -135,7 +165,6 @@ const SmartLoading: React.FC<SmartLoadingProps> = ({ stage, progress, category }
         </p>
       </div>
 
-      {/* Étapes */}
       <div className="space-y-4 mb-6">
         {stages.map((stageInfo, index) => (
           <div key={index} className="flex items-center">
@@ -161,7 +190,6 @@ const SmartLoading: React.FC<SmartLoadingProps> = ({ stage, progress, category }
         ))}
       </div>
 
-      {/* Barre de progression */}
       <div className="mb-6">
         <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
           <div 
@@ -174,7 +202,6 @@ const SmartLoading: React.FC<SmartLoadingProps> = ({ stage, progress, category }
         </p>
       </div>
 
-      {/* Messages informatifs */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
           💡 <strong>Le saviez-vous ?</strong>
@@ -187,7 +214,7 @@ const SmartLoading: React.FC<SmartLoadingProps> = ({ stage, progress, category }
   );
 };
 
-// ✅ NOUVEAU : Interface de recherche universelle simplifiée intégrée
+// ✅ INTERFACE DE RECHERCHE UNIVERSELLE
 interface QuickSearchProps {
   onSearch?: (query: string) => void;
   placeholder?: string;
@@ -205,12 +232,10 @@ const QuickUniversalSearch: React.FC<QuickSearchProps> = ({
     
     setIsSearching(true);
     
-    // Simulation d'une recherche
     setTimeout(() => {
       if (onSearch) {
         onSearch(query);
       } else {
-        // Redirection par défaut
         window.location.href = `/search?q=${encodeURIComponent(query)}`;
       }
       setIsSearching(false);
@@ -261,7 +286,6 @@ const QuickUniversalSearch: React.FC<QuickSearchProps> = ({
         </div>
       </div>
 
-      {/* Suggestions rapides */}
       <div className="mt-2 flex flex-wrap gap-2">
         {['nutella bio', 'shampoing sans sulfate', 'lessive écologique'].map((suggestion) => (
           <button
@@ -277,7 +301,7 @@ const QuickUniversalSearch: React.FC<QuickSearchProps> = ({
   );
 };
 
-// ✅ NOUVEAU : Navbar avec authentification intégrée
+// ✅ NAVBAR AUTHENTIFIÉE
 const AuthenticatedNavbar: React.FC = () => {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -286,7 +310,6 @@ const AuthenticatedNavbar: React.FC = () => {
     <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <div className="flex items-center space-x-4">
             <a href="/" className="flex items-center space-x-3">
               <div className="text-2xl">🌱</div>
@@ -294,7 +317,6 @@ const AuthenticatedNavbar: React.FC = () => {
             </a>
           </div>
 
-          {/* Navigation centrale */}
           <div className="hidden md:flex items-center space-x-8">
             <a href="/search" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
               🔍 Recherche
@@ -308,15 +330,16 @@ const AuthenticatedNavbar: React.FC = () => {
             <a href="/dashboard" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
               📊 Dashboard
             </a>
+            <a href="/history" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+              📚 Historique
+            </a>
           </div>
 
-          {/* Menu utilisateur */}
           <div className="flex items-center space-x-4">
-            {/* Quotas utilisateur */}
             <div className="hidden lg:flex items-center space-x-4">
               <div className="text-sm text-gray-600">
-                <span className="font-medium">{user?.currentUsage.scansThisMonth || 0}</span>
-                <span className="text-gray-400">/{user?.quotas.scansPerMonth === -1 ? '∞' : user?.quotas.scansPerMonth} scans</span>
+                <span className="font-medium">{user?.currentUsage?.scansThisMonth || 0}</span>
+                <span className="text-gray-400">/{user?.quotas?.scansPerMonth === -1 ? '∞' : user?.quotas?.scansPerMonth || 30} scans</span>
               </div>
               
               {user?.tier === 'premium' && (
@@ -326,7 +349,6 @@ const AuthenticatedNavbar: React.FC = () => {
               )}
             </div>
 
-            {/* Menu utilisateur dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -338,10 +360,8 @@ const AuthenticatedNavbar: React.FC = () => {
                 </span>
               </button>
 
-              {/* Dropdown */}
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
-                  {/* Profil utilisateur */}
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-800">{user?.name}</p>
                     <p className="text-xs text-gray-600">{user?.email}</p>
@@ -354,39 +374,34 @@ const AuthenticatedNavbar: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Usage quotas */}
                   <div className="px-4 py-2">
                     <div className="text-xs text-gray-600 space-y-1">
                       <div className="flex justify-between">
                         <span>Scans ce mois:</span>
                         <span className="font-medium">
-                          {user?.currentUsage.scansThisMonth}
-                          {user?.quotas.scansPerMonth !== -1 && `/${user?.quotas.scansPerMonth}`}
+                          {user?.currentUsage?.scansThisMonth || 0}
+                          {user?.quotas?.scansPerMonth !== -1 && `/${user?.quotas?.scansPerMonth || 30}`}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Questions IA aujourd'hui:</span>
                         <span className="font-medium">
-                          {user?.currentUsage.aiQuestionsToday}
-                          {user?.quotas.aiQuestionsPerDay !== -1 && `/${user?.quotas.aiQuestionsPerDay}`}
+                          {user?.currentUsage?.aiQuestionsToday || 0}
+                          {user?.quotas?.aiQuestionsPerDay !== -1 && `/${user?.quotas?.aiQuestionsPerDay || 0}`}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="border-t border-gray-100 pt-2">
-                    <a
-                      href="/dashboard"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
+                    <a href="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                       📊 Mon Dashboard
                     </a>
+                    <a href="/history" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                      📚 Mon Historique
+                    </a>
                     {user?.tier !== 'premium' && (
-                      <a
-                        href="/premium"
-                        className="block px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 transition-colors"
-                      >
+                      <a href="/premium" className="block px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 transition-colors">
                         ⭐ Passer Premium
                       </a>
                     )}
@@ -411,15 +426,13 @@ const AuthenticatedNavbar: React.FC = () => {
   );
 };
 
-// ✅ NOUVEAU : Page d'accueil authentifiée
+// ✅ PAGE D'ACCUEIL AUTHENTIFIÉE
 const AuthenticatedHomePage: React.FC = () => {
   const { user } = useAuth();
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      {/* Hero section personnalisée */}
       <div className="container mx-auto px-4 py-8">
-        {/* Header utilisateur */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -447,16 +460,15 @@ const AuthenticatedHomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats utilisateur */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <div className="text-3xl mb-2">🔍</div>
             <h3 className="font-semibold text-gray-800">Scans ce mois</h3>
             <p className="text-2xl font-bold text-green-600">
-              {user?.currentUsage.scansThisMonth || 0}
+              {user?.currentUsage?.scansThisMonth || 0}
             </p>
             <p className="text-sm text-gray-500">
-              / {user?.quotas.scansPerMonth === -1 ? '∞' : user?.quotas.scansPerMonth || 30}
+              / {user?.quotas?.scansPerMonth === -1 ? '∞' : user?.quotas?.scansPerMonth || 30}
             </p>
           </div>
 
@@ -464,10 +476,10 @@ const AuthenticatedHomePage: React.FC = () => {
             <div className="text-3xl mb-2">🤖</div>
             <h3 className="font-semibold text-gray-800">Questions IA aujourd'hui</h3>
             <p className="text-2xl font-bold text-blue-600">
-              {user?.currentUsage.aiQuestionsToday || 0}
+              {user?.currentUsage?.aiQuestionsToday || 0}
             </p>
             <p className="text-sm text-gray-500">
-              / {user?.quotas.aiQuestionsPerDay === -1 ? '∞' : user?.quotas.aiQuestionsPerDay || 0}
+              / {user?.quotas?.aiQuestionsPerDay === -1 ? '∞' : user?.quotas?.aiQuestionsPerDay || 0}
             </p>
           </div>
 
@@ -475,15 +487,14 @@ const AuthenticatedHomePage: React.FC = () => {
             <div className="text-3xl mb-2">📊</div>
             <h3 className="font-semibold text-gray-800">Exports ce mois</h3>
             <p className="text-2xl font-bold text-purple-600">
-              {user?.currentUsage.exportsThisMonth || 0}
+              {user?.currentUsage?.exportsThisMonth || 0}
             </p>
             <p className="text-sm text-gray-500">
-              / {user?.quotas.exportsPerMonth === -1 ? '∞' : user?.quotas.exportsPerMonth || 0}
+              / {user?.quotas?.exportsPerMonth === -1 ? '∞' : user?.quotas?.exportsPerMonth || 0}
             </p>
           </div>
         </div>
 
-        {/* Recherche universelle */}
         <div className="mb-8">
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
@@ -493,26 +504,19 @@ const AuthenticatedHomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Actions rapides */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-6">
             🚀 Actions rapides
           </h2>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <a
-              href="/scan"
-              className="block p-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all"
-            >
+            <a href="/scan" className="block p-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all">
               <div className="text-3xl mb-2">📱</div>
               <div className="font-semibold">Scanner Produit</div>
               <div className="text-sm opacity-90">Code-barres ou photo</div>
             </a>
             
-            <a
-              href="/chat"
-              className="block p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
-            >
+            <a href="/chat" className="block p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">
               <div className="text-3xl mb-2">🤖</div>
               <div className="font-semibold">Chat IA Expert</div>
               <div className="text-sm opacity-90">
@@ -520,32 +524,21 @@ const AuthenticatedHomePage: React.FC = () => {
               </div>
             </a>
             
-            <a
-              href="/dashboard"
-              className="block p-6 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all"
-            >
+            <a href="/dashboard" className="block p-6 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all">
               <div className="text-3xl mb-2">📊</div>
               <div className="font-semibold">Mon Dashboard</div>
               <div className="text-sm opacity-90">Analyses et progrès</div>
             </a>
             
-            <a
-              href={user?.tier === 'premium' ? '/premium' : '/premium'}
-              className="block p-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all"
-            >
-              <div className="text-3xl mb-2">⭐</div>
-              <div className="font-semibold">
-                {user?.tier === 'premium' ? 'Premium Actif' : 'Passer Premium'}
-              </div>
-              <div className="text-sm opacity-90">
-                {user?.tier === 'premium' ? 'Toutes fonctionnalités' : 'Analyses illimitées'}
-              </div>
+            <a href="/history" className="block p-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all">
+              <div className="text-3xl mb-2">📚</div>
+              <div className="font-semibold">Mon Historique</div>
+              <div className="text-sm opacity-90">Toutes mes analyses</div>
             </a>
           </div>
         </div>
 
-        {/* Getting Started pour nouveaux utilisateurs */}
-        {(user?.currentUsage.scansThisMonth || 0) === 0 && (
+        {(user?.currentUsage?.scansThisMonth || 0) === 0 && (
           <div className="mt-8 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl shadow p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">
               👋 Commencez votre première analyse !
@@ -574,13 +567,12 @@ const AuthenticatedHomePage: React.FC = () => {
   );
 };
 
-// ✅ SOLUTION BULLETPROOF: Page Multi-Produits avec Loading States intégrés
+// ✅ PAGE MULTI-PRODUITS AVEC LOADING STATES (FALLBACK)
 const MultiProductScanPageBuiltIn: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<'food' | 'cosmetics' | 'detergents'>('food');
   const [scanMode, setScanMode] = useState<'barcode' | 'manual' | 'search'>('search');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  // ✅ NOUVEAU : Hook pour gérer les états de chargement
   const { stage, progress, simulateAnalysis } = useAnalysisProgress(selectedCategory);
 
   const categories = [
@@ -607,15 +599,12 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
     }
   ];
 
-  // ✅ NOUVEAU : Fonction d'analyse avec états de chargement
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     
     try {
-      // Démarrer la simulation d'analyse avec états
       await simulateAnalysis();
       
-      // Après l'analyse, rediriger vers les résultats
       setTimeout(() => {
         window.location.href = '/search';
       }, 1000);
@@ -626,7 +615,6 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
     }
   };
 
-  // ✅ NOUVEAU : Si en cours d'analyse, afficher les états de chargement
   if (isAnalyzing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -642,7 +630,6 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header avec titre */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
             Analysez tous vos produits du quotidien
@@ -653,14 +640,12 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
           </p>
         </div>
 
-        {/* ✅ NOUVEAU : Recherche universelle intégrée */}
         <div className="max-w-2xl mx-auto mb-8">
           <QuickUniversalSearch 
             placeholder={`🔍 Rechercher un produit ${selectedCategory === 'food' ? 'alimentaire' : selectedCategory === 'cosmetics' ? 'cosmétique' : 'détergent'}...`}
           />
         </div>
 
-        {/* Sélecteur de catégorie */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-center mb-6">
             Choisissez la catégorie de produit
@@ -709,197 +694,24 @@ const MultiProductScanPageBuiltIn: React.FC = () => {
             ))}
           </div>
         </div>
-
-        {/* Mode de scan */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-center mb-4">
-            Comment souhaitez-vous analyser le produit ?
-          </h2>
-          
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={() => setScanMode('search')}
-              className={`mode-btn flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                scanMode === 'search'
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <span>🔍</span>
-              <span>Recherche Universelle</span>
-            </button>
-
-            <button
-              onClick={() => setScanMode('barcode')}
-              className={`mode-btn flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                scanMode === 'barcode'
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <span>📷</span>
-              <span>Scanner Code-barres</span>
-            </button>
-            
-            <button
-              onClick={() => setScanMode('manual')}
-              className={`mode-btn flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                scanMode === 'manual'
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <span>✏️</span>
-              <span>Saisie Manuelle</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Interface principale */}
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            {scanMode === 'search' ? (
-              <div className="space-y-4">
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    🌍 Recherche Universelle ECOLOJIA
-                  </h3>
-                  <p className="text-gray-600">
-                    Recherche dans toutes nos bases : Algolia + OpenFoodFacts + Base locale
-                  </p>
-                </div>
-                
-                <QuickUniversalSearch 
-                  placeholder={`Rechercher parmi des millions de produits ${selectedCategory}...`}
-                  onSearch={(query) => {
-                    window.location.href = `/search?q=${encodeURIComponent(query)}&category=${selectedCategory}`;
-                  }}
-                />
-                
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-green-800 mb-2">
-                    🚀 Recherche Multi-Sources
-                  </h4>
-                  <ul className="text-sm text-green-700 space-y-1">
-                    <li>• <strong>Algolia :</strong> Base ECOLOJIA avec scores IA</li>
-                    <li>• <strong>OpenFoodFacts :</strong> 2M+ produits alimentaires</li>
-                    <li>• <strong>Base locale :</strong> Produits analysés par nos experts</li>
-                    <li>• <strong>Enrichissement IA :</strong> Score ECOLOJIA automatique</li>
-                  </ul>
-                </div>
-              </div>
-            ) : scanMode === 'barcode' ? (
-              <div className="space-y-4">
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Scanner le Code-barres
-                  </h3>
-                  <p className="text-gray-600">
-                    Pointez votre caméra vers le code-barres du produit
-                  </p>
-                </div>
-                
-                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                  <div className="text-6xl mb-4">📱</div>
-                  <p className="text-gray-600 mb-4">Scanner de code-barres universel</p>
-                  <button
-                    onClick={() => window.location.href = '/scan'}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
-                  >
-                    Activer le scanner
-                  </button>
-                </div>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    💡 <strong>Nouveau :</strong> Notre scanner détecte automatiquement la catégorie 
-                    et enrichit les données avec OpenFoodFacts si nécessaire.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Saisie Manuelle
-                  </h3>
-                  <p className="text-gray-600">
-                    Entrez les informations du produit manuellement
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nom du produit
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Shampoing doux, Lessive écologique..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Marque (optionnel)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: L'Oréal, Ariel, Danone..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {selectedCategory === 'food' ? 'Liste des ingrédients' :
-                     selectedCategory === 'cosmetics' ? 'Liste INCI' :
-                     'Composition'}
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder={
-                      selectedCategory === 'food' 
-                        ? 'Ex: eau, farine de blé, sucre, levure...'
-                        : selectedCategory === 'cosmetics'
-                        ? 'Ex: aqua, sodium lauryl sulfate, parfum...'
-                        : 'Ex: tensioactifs anioniques, phosphates...'
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <button
-                  onClick={handleAnalyze}
-                  className="w-full py-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium text-lg"
-                >
-                  🔬 Analyser le produit
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer informatif reste le même... */}
       </div>
     </div>
   );
 };
 
-// ✅ NOUVEAU : Dashboard intégré avec informations utilisateur
+// ✅ DASHBOARD AVEC INFOS UTILISATEUR (FALLBACK)
 const DashboardPageBuiltIn: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   
-  const [stats, setStats] = useState({
-    totalAnalyses: user?.currentUsage.scansThisMonth || 0,
+  const [stats] = useState({
+    totalAnalyses: user?.currentUsage?.scansThisMonth || 0,
     averageScore: 73,
     improvementRate: 15.2,
     currentStreak: 7
   });
 
   useEffect(() => {
-    // Simulation du chargement
     const timer = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
@@ -919,7 +731,6 @@ const DashboardPageBuiltIn: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header personnalisé avec infos utilisateur */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -936,10 +747,7 @@ const DashboardPageBuiltIn: React.FC = () => {
                   ⭐ Premium Actif
                 </span>
               ) : (
-                <a
-                  href="/premium"
-                  className="inline-block px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:shadow-lg transition-all"
-                >
+                <a href="/premium" className="inline-block px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:shadow-lg transition-all">
                   ⭐ Passer Premium
                 </a>
               )}
@@ -947,9 +755,7 @@ const DashboardPageBuiltIn: React.FC = () => {
           </div>
         </div>
 
-        {/* KPIs principaux avec données utilisateur réelles */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Score Global */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800">Score Santé</h3>
@@ -966,7 +772,6 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
           </div>
 
-          {/* Analyses totales - données utilisateur réelles */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800">Analyses</h3>
@@ -974,16 +779,15 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">
-                {user?.currentUsage.scansThisMonth || 0}
+                {user?.currentUsage?.scansThisMonth || 0}
               </div>
               <div className="text-sm text-gray-500">ce mois</div>
               <div className="text-sm text-blue-600 mt-2">
-                Quota: {user?.quotas.scansPerMonth === -1 ? '∞' : user?.quotas.scansPerMonth || 30}
+                Quota: {user?.quotas?.scansPerMonth === -1 ? '∞' : user?.quotas?.scansPerMonth || 30}
               </div>
             </div>
           </div>
 
-          {/* Questions IA - données utilisateur réelles */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800">Questions IA</h3>
@@ -991,7 +795,7 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-yellow-600 mb-2">
-                {user?.currentUsage.aiQuestionsToday || 0}
+                {user?.currentUsage?.aiQuestionsToday || 0}
               </div>
               <div className="text-sm text-gray-500">aujourd'hui</div>
               <div className="text-xs text-gray-400 mt-2">
@@ -1000,7 +804,6 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
           </div>
 
-          {/* Exports - données utilisateur réelles */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800">Exports</h3>
@@ -1008,17 +811,16 @@ const DashboardPageBuiltIn: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-green-600 mb-2">
-                {user?.currentUsage.exportsThisMonth || 0}
+                {user?.currentUsage?.exportsThisMonth || 0}
               </div>
               <div className="text-sm text-gray-500">ce mois</div>
               <div className="text-xs text-gray-400 mt-2">
-                {user?.tier === 'premium' ? `/${user?.quotas.exportsPerMonth || 10}` : '⭐ Premium requis'}
+                {user?.tier === 'premium' ? `/${user?.quotas?.exportsPerMonth || 10}` : '⭐ Premium requis'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bannière upgrade si utilisateur gratuit */}
         {user?.tier !== 'premium' && (
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-8 border border-purple-200">
             <div className="flex items-center justify-between">
@@ -1030,42 +832,29 @@ const DashboardPageBuiltIn: React.FC = () => {
                   Chat IA illimité • Analyses illimitées • Dashboard avancé • Export données
                 </p>
               </div>
-              <a
-                href="/premium"
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all font-medium"
-              >
+              <a href="/premium" className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all font-medium">
                 🚀 Passer Premium
               </a>
             </div>
           </div>
         )}
 
-        {/* Call to action personnalisés */}
         <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             🎯 Continuez votre parcours santé, {user?.name} !
           </h2>
           <p className="text-gray-600 mb-6">
-            Vous avez utilisé {user?.currentUsage.scansThisMonth || 0} scans ce mois. 
+            Vous avez utilisé {user?.currentUsage?.scansThisMonth || 0} scans ce mois. 
             Continuez à analyser vos produits pour améliorer votre santé !
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <a
-              href="/search"
-              className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl"
-            >
+            <a href="/search" className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl">
               🔍 Recherche Universelle
             </a>
-            <a
-              href="/multi-scan"
-              className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl"
-            >
+            <a href="/multi-scan" className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl">
               ✨ Multi-Produits
             </a>
-            <a
-              href="/chat"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl"
-            >
+            <a href="/chat" className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl">
               💬 Assistant IA
               {user?.tier !== 'premium' && <span className="ml-1">⭐</span>}
             </a>
@@ -1076,34 +865,7 @@ const DashboardPageBuiltIn: React.FC = () => {
   );
 };
 
-// ✅ NOUVEAU : Page Recherche Universelle intégrée (reste identique)
-const UniversalSearchPageBuiltIn: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const query = urlParams.get('q');
-    if (query) {
-      setSearchQuery(query);
-    }
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <QuickUniversalSearch 
-            placeholder="🔍 Recherchez parmi des millions de produits... (nutella bio, shampoing sans sulfate, lessive écologique)"
-          />
-        </div>
-
-        {/* Interface de recherche reste identique à la version précédente */}
-      </div>
-    </div>
-  );
-};
-
-// ✅ NOUVEAU : Route protégée
+// ✅ ROUTE PROTÉGÉE
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -1132,7 +894,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-// ✅ NOUVEAU : Application principale avec authentification intégrée
+// ✅ APPLICATION PRINCIPALE
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -1166,26 +928,27 @@ const App: React.FC = () => {
                       <Route path="/product-not-found" element={<ProductNotFoundPage />} />
                       <Route path="/chat" element={<ChatPage />} />
                       
-                      {/* ===== DASHBOARD INTÉGRÉ AVEC AUTH ===== */}
-                      <Route path="/dashboard" element={<DashboardPageBuiltIn />} />
+                      {/* ===== NOUVELLES ROUTES AJOUTÉES ===== */}
+                      <Route path="/results" element={<UnifiedResultsPage />} />
+                      <Route path="/analyze/manual" element={<ManualAnalysisPage />} />
+                      <Route path="/history" element={<HistoryPage />} />
+                      
+                      {/* ===== DASHBOARD ===== */}
+                      <Route path="/dashboard" element={<DashboardPage />} />
                       
                       {/* ===== ROUTES MULTI-PRODUITS ===== */}
-                      <Route path="/multi-scan" element={<MultiProductScanPageBuiltIn />} />
-                      <Route path="/cosmetics" element={<MultiProductScanPageBuiltIn />} />
-                      <Route path="/detergents" element={<MultiProductScanPageBuiltIn />} />
-                      
-                      {/* ===== RECHERCHE UNIVERSELLE ===== */}
-                      <Route path="/universal-search" element={<UniversalSearchPageBuiltIn />} />
+                      <Route path="/multi-scan" element={<MultiProductScanPage />} />
+                      <Route path="/cosmetics" element={<MultiProductScanPage />} />
+                      <Route path="/detergents" element={<MultiProductScanPage />} />
                       
                       {/* ===== SCAN & RÉSULTATS ===== */}
                       <Route path="/scan" element={<Scan />} />
-                      <Route path="/results" element={<Results />} />
                       <Route path="/analyze" element={<ProductPage />} />
                       
                       {/* ===== DÉMO ===== */}
                       <Route path="/demo" element={<Demo />} />
                       
-                      {/* ===== PAGES LÉGALES (protégées mais accessibles) ===== */}
+                      {/* ===== PAGES LÉGALES ===== */}
                       <Route path="/about" element={
                         <div className="min-h-screen bg-gray-50 py-12">
                           <div className="max-w-4xl mx-auto px-4">
@@ -1274,10 +1037,7 @@ const App: React.FC = () => {
                             <div className="text-8xl mb-4">🤔</div>
                             <h1 className="text-4xl font-bold text-gray-800 mb-2">Page introuvable</h1>
                             <p className="text-gray-600 mb-6">La page demandée n'existe pas.</p>
-                            <a 
-                              href="/" 
-                              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                            >
+                            <a href="/" className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
                               🏠 Retour à l'accueil
                             </a>
                           </div>
