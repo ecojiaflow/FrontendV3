@@ -1,91 +1,71 @@
-// frontend/ecolojiaFrontV3/src/services/apiClient.ts
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+// frontend/src/services/apiClient.ts
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-/**
- * ✅ Base URL depuis Vite (import.meta.env) avec fallback
- */
-const API_BASE_URL =
-  (import.meta as any)?.env?.VITE_API_URL ??
-  (window as any)?.__ENV?.VITE_API_URL ??
-  'https://ecolojia-backend-working.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-/**
- * ✅ Création d'une instance Axios
- */
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
-});
+class ApiClient {
+  private client: AxiosInstance;
 
-/**
- * ✅ Intercepteur requêtes : ajoute le bon token
- */
-apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
-    const token = localStorage.getItem('ecolojia_token');
-    const demoToken = localStorage.getItem('ecolojia_demo_token');
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_URL,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
 
-    // Heuristique simple : si l'URL contient "demo", utiliser le token démo
-    if (demoToken && config.url?.includes('demo')) {
-      config.headers = { ...config.headers, Authorization: `Bearer ${demoToken}` };
-    } else if (token) {
-      config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
-    }
+    // Request interceptor pour ajouter le token
+    this.client.interceptors.request.use(
+      (config: InternalAxiosRequestConfig) => {
+        const token = localStorage.getItem('ecolojia_token');
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
 
-    if (import.meta.env.DEV) {
-      console.log(`🚀 ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-/**
- * ✅ Intercepteur réponses : gestion des erreurs et 401
- */
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error: AxiosError<any>) => {
-    if (error.response) {
-      const status = error.response.status;
-
-      if (status === 401) {
-        // Tokens réels invalides → purge & redirection (sauf mode démo)
-        const isDemoMode = localStorage.getItem('ecolojia_demo_mode') === 'true';
-        localStorage.removeItem('ecolojia_token');
-        localStorage.removeItem('ecolojia_refresh_token');
-
-        if (!isDemoMode) {
-          // éviter boucle infinie si déjà sur /auth
-          if (window.location.pathname !== '/auth') {
-            window.location.href = '/auth';
+    // Response interceptor pour gérer les erreurs
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          // Token expiré ou invalide
+          localStorage.removeItem('ecolojia_token');
+          localStorage.removeItem('ecolojia_refresh_token');
+          
+          // Rediriger vers login si pas déjà sur la page login
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
           }
         }
-      } else if (status === 403) {
-        console.error('🚫 Accès interdit (403)');
-      } else if (status === 404) {
-        console.error('🔎 Ressource non trouvée (404)');
-      } else if (status >= 500) {
-        console.error('💥 Erreur serveur (>=500)');
+        return Promise.reject(error);
       }
-    } else if (error.request) {
-      console.error('📡 Pas de réponse du serveur');
-    } else {
-      console.error('⚙️ Erreur configuration requête:', error.message);
-    }
-
-    return Promise.reject(error);
+    );
   }
-);
 
-/**
- * ✅ Utilitaire : est-ce qu'un token réel est présent ?
- */
-export const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem('ecolojia_token');
-  return Boolean(token);
-};
+  get(url: string, config?: any) {
+    return this.client.get(url, config);
+  }
 
-export default apiClient;
+  post(url: string, data?: any, config?: any) {
+    return this.client.post(url, data, config);
+  }
+
+  put(url: string, data?: any, config?: any) {
+    return this.client.put(url, data, config);
+  }
+
+  delete(url: string, config?: any) {
+    return this.client.delete(url, config);
+  }
+
+  patch(url: string, data?: any, config?: any) {
+    return this.client.patch(url, data, config);
+  }
+}
+
+export const apiClient = new ApiClient();
