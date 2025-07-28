@@ -1,26 +1,35 @@
 // frontend/src/services/apiClient.ts
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_CONFIG } from '../config/api.config';
 
 class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
+    // Utilise la configuration automatique
+    const baseURL = API_CONFIG.getCurrentApiUrl();
+    
     this.client = axios.create({
-      baseURL: API_URL,
+      baseURL,
+      timeout: API_CONFIG.TIMEOUT,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     });
 
-    // Request interceptor pour ajouter le token
+    // Intercepteur pour ajouter le token
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
         const token = localStorage.getItem('ecolojia_token');
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Log en développement
+        if (API_CONFIG.isDevelopment) {
+          console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
+        }
+        
         return config;
       },
       (error) => {
@@ -28,44 +37,59 @@ class ApiClient {
       }
     );
 
-    // Response interceptor pour gérer les erreurs
+    // Intercepteur pour gérer les erreurs
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        return response;
+      },
       async (error) => {
+        // Log les erreurs en développement
+        if (API_CONFIG.isDevelopment) {
+          console.error('❌ API Error:', error.response?.status, error.response?.data);
+        }
+
+        // Gestion token expiré
         if (error.response?.status === 401) {
-          // Token expiré ou invalide
           localStorage.removeItem('ecolojia_token');
           localStorage.removeItem('ecolojia_refresh_token');
-          
-          // Rediriger vers login si pas déjà sur la page login
-          if (!window.location.pathname.includes('/login')) {
-            window.location.href = '/login';
-          }
+          window.location.href = '/auth';
         }
+
         return Promise.reject(error);
       }
     );
   }
 
-  get(url: string, config?: any) {
-    return this.client.get(url, config);
+  // Méthode pour changer dynamiquement l'URL (utile pour les tests)
+  updateBaseURL(newURL: string) {
+    this.client.defaults.baseURL = newURL;
+    console.log('🔄 API URL mise à jour:', newURL);
   }
 
-  post(url: string, data?: any, config?: any) {
-    return this.client.post(url, data, config);
+  // Méthodes HTTP
+  get<T = any>(url: string, config?: any) {
+    return this.client.get<T>(url, config);
   }
 
-  put(url: string, data?: any, config?: any) {
-    return this.client.put(url, data, config);
+  post<T = any>(url: string, data?: any, config?: any) {
+    return this.client.post<T>(url, data, config);
   }
 
-  delete(url: string, config?: any) {
-    return this.client.delete(url, config);
+  put<T = any>(url: string, data?: any, config?: any) {
+    return this.client.put<T>(url, data, config);
   }
 
-  patch(url: string, data?: any, config?: any) {
-    return this.client.patch(url, data, config);
+  patch<T = any>(url: string, data?: any, config?: any) {
+    return this.client.patch<T>(url, data, config);
+  }
+
+  delete<T = any>(url: string, config?: any) {
+    return this.client.delete<T>(url, config);
   }
 }
 
+// Export une instance unique
 export const apiClient = new ApiClient();
+
+// Export aussi la configuration pour debug
+export { API_CONFIG };
