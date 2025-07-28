@@ -316,3 +316,5 @@ export const CommunityComparison: React.FC = () => {
     </div>
   );
 };
+export default CommunityComparison;
+// EOF
