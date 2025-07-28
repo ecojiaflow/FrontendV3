@@ -1,4 +1,4 @@
-// frontend/ecolojiaFrontV3/src/pages/DashboardPage.jsx
+// frontend/ecolojiaFrontV3/src/pages/DashboardPage.tsx
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -14,8 +14,8 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Line, Doughnut, Bar } from 'react-chartjs-2';
-import dashboardService from '../services/dashboard.service';
+import { Line, Doughnut } from 'react-chartjs-2';
+import dashboardService from '../services/dashboard.service.js';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Enregistrement des composants Chart.js
@@ -32,10 +32,33 @@ ChartJS.register(
   Filler
 );
 
-const DashboardPage = () => {
-  const [stats, setStats] = useState(null);
+interface AnalysisData {
+  _id: string;
+  productName: string;
+  score: number;
+  category: string;
+  date: string;
+}
+
+interface Stats {
+  totalScans: number;
+  healthScoreAverage: number;
+  categoryBreakdown: {
+    food: number;
+    cosmetics: number;
+    detergents: number;
+  };
+  recentAnalyses: AnalysisData[];
+  weeklyTrend: Array<{
+    day: string;
+    scans: number;
+  }>;
+}
+
+const DashboardPage: React.FC = () => {
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -47,9 +70,9 @@ const DashboardPage = () => {
       setError(null);
       const data = await dashboardService.getStats();
       setStats(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching dashboard stats:', err);
-      setError(err.message);
+      setError(err.message || 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
