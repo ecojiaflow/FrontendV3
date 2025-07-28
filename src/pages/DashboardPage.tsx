@@ -15,7 +15,7 @@ import {
   Filler
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
-import dashboardService from '../services/dashboard.service.js';
+import { dashboardService } from '../services/dashboardService';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Enregistrement des composants Chart.js
