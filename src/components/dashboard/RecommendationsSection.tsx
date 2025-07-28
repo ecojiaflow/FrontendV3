@@ -247,5 +247,8 @@ export const RecommendationsSection: React.FC = () => {
         </div>
       )}
     </div>
-  );
+   );
 };
+
+export default RecommendationsSection;
+// EOF
