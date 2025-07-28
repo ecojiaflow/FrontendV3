@@ -345,3 +345,7 @@ export const WeeklySummary: React.FC = () => {
     </div>
   );
 };
+
+// ✅ À ajouter à la toute fin :
+export default WeeklySummary;
+// EOF
