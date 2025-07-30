@@ -13,11 +13,14 @@ import UltraTransformResults from '../components/UltraTransformResults';
 import { ultraTransformService } from '../services/ai/ultraTransformService';
 // ⏸️ TEMPORAIREMENT DÉSACTIVÉ: Import Analytics
 import { useUserAnalytics } from '../hooks/useUserAnalytics';
+// ✅ NOUVEAU : Import du composant AffiliateButton
+import AffiliateButton from '../components/AffiliateButton';
 
 /**
- * ProductPage (Version fonctionnelle sans analytics)
+ * ProductPage (Version fonctionnelle avec affiliation)
  * - Affiche l'analyse NOVA d'un produit
  * - Analyse Ultra-Transformation complémentaire
+ * - ✅ NOUVEAU : Bouton d'affiliation intégré
  * - Backend activé avec fallback local
  * - ⏸️ Analytics temporairement désactivés pour build
  * - Gestion d'erreur améliorée
@@ -523,6 +526,16 @@ const ProductPage: React.FC = () => {
             <div className="transition-all duration-500 ease-in-out">
               <NovaResults result={data} loading={false} />
               
+              {/* ✅ NOUVEAU : Bouton d'affiliation après les résultats NOVA */}
+              <div className="mt-6">
+                <AffiliateButton 
+                  productId={data.productId || data._id || slug || 'unknown'}
+                  productName={data.productName || productName}
+                  source="product_page"
+                  className="w-full"
+                />
+              </div>
+              
               {/* BOUTON ULTRA-TRANSFORMATION */}
               {!ultraTransformLoading && !showUltraTransform && (
                 <div className="mt-6 text-center">
@@ -550,6 +563,19 @@ const ProductPage: React.FC = () => {
                   />
                 </div>
               )}
+
+              {/* ✅ NOUVEAU : Section dédiée "Acheter ce produit" */}
+              <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">🛒 Acheter ce produit</h3>
+                <AffiliateButton 
+                  productId={data.productId || data._id || slug || 'unknown'}
+                  productName={data.productName || productName}
+                  source="product_page"
+                />
+                <p className="text-sm text-gray-600 mt-3 text-center">
+                  En achetant via nos partenaires éco-responsables, vous soutenez ECOLOJIA
+                </p>
+              </div>
 
               {/* QUE FAIRE MAINTENANT - VERSION FONCTIONNELLE */}
               <div className="mt-6 bg-white rounded-lg shadow-md p-6">
@@ -647,6 +673,7 @@ const ProductPage: React.FC = () => {
                     <li>• <strong>Backend:</strong> {debugInfo.backend || 'N/A'}</li>
                     <li>• <strong>Analytics:</strong> ⏸️ Temporairement désactivé</li>
                     <li>• <strong>Ultra-Transform:</strong> {showUltraTransform ? '✅ Analysé' : '⏸️ Non lancé'}</li>
+                    <li>• <strong>Affiliation:</strong> ✅ Bouton intégré</li>
                   </ul>
                 </div>
               </div>
@@ -682,6 +709,7 @@ const ProductPage: React.FC = () => {
                   <li>• <strong>Fallback :</strong> Intelligence artificielle locale</li>
                   <li>• <strong>Base additifs :</strong> 25+ additifs avec évaluation risques</li>
                   <li>• <strong>Confiance :</strong> 70-95% selon les données</li>
+                  <li>• <strong>✅ NOUVEAU :</strong> <span className="text-green-600 font-medium">Affiliation intégrée</span></li>
                 </ul>
               </div>
               <div>
@@ -695,12 +723,13 @@ const ProductPage: React.FC = () => {
                   <li>• Matrice de naturalité</li>
                   <li>• Score holistique combiné</li>
                   <li>• Chat IA nutritionnel intégré</li>
+                  <li>• <span className="text-green-600 font-medium">✅ Système d'affiliation</span></li>
                 </ul>
               </div>
             </div>
             <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-green-700 text-sm">
-                <strong>🎯 Version Fonctionnelle :</strong> Toutes les analyses NOVA et Ultra-Transformation opérationnelles ! 
+                <strong>🎯 Version Complète :</strong> Toutes les analyses NOVA, Ultra-Transformation et système d'affiliation opérationnels ! 
                 Dashboard Analytics sera réactivé prochainement.
               </p>
             </div>

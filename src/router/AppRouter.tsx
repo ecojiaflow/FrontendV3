@@ -10,6 +10,7 @@ import MultiCategoriesPage from '../pages/MultiCategoriesPage';
 import ProductPage from '../pages/ProductPage';
 import SearchPage from '../pages/SearchPage';
 import AdminDashboard from '../pages/AdminDashboard';
+import TestAffiliate from '../pages/TestAffiliate';
 
 const AppRouter: React.FC = () => {
   return (
@@ -24,13 +25,16 @@ const AppRouter: React.FC = () => {
           
           {/* Page produit */}
           <Route path="/product" element={<ProductPage />} />
-          <Route path="/product/:slug" element={<ProductPage />} /> {/* ✅ Fixé ici */}
+          <Route path="/product/:slug" element={<ProductPage />} />
           
           {/* Page recherche Algolia */}
           <Route path="/search" element={<SearchPage />} />
           
-          {/* Page admin (optionnelle) */}
+          {/* Page admin */}
           <Route path="/admin" element={<AdminDashboard />} />
+          
+          {/* Page de test affiliation */}
+          <Route path="/test-affiliate" element={<TestAffiliate />} />
           
           {/* Redirection des routes non trouvées */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -41,4 +45,3 @@ const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
-// EOF

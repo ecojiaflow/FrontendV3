@@ -44,6 +44,7 @@ import ProductNotFoundPage from './pages/ProductNotFoundPage';
 import ChatPage from './pages/ChatPage';
 import Results from './pages/Results';
 import Scan from './pages/Scan';
+import TestAffiliate from './pages/TestAffiliate';
 import Demo from './pages/Demo';
 
 // ✅ PAGES LAZY LOADING AVEC FALLBACK
@@ -947,6 +948,8 @@ const App: React.FC = () => {
                       
                       {/* ===== DÉMO ===== */}
                       <Route path="/demo" element={<Demo />} />
+                      {/* ===== ROUTE TEST AFFILIATE ===== */}
+                      <Route path="/test-affiliate" element={<TestAffiliate />} />
                       
                       {/* ===== PAGES LÉGALES ===== */}
                       <Route path="/about" element={
