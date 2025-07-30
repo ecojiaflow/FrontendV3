@@ -1,46 +1,69 @@
 // frontend/src/config/api.config.ts
 
-// Configuration intelligente qui détecte automatiquement l'environnement
-const getApiUrl = () => {
-  // Si on est en localhost, utiliser le backend local
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    console.log('🏠 Mode développement détecté - Utilisation du backend local');
-    return 'http://localhost:3000/api';
-  }
-  
-  // Sinon, utiliser le backend de production
-  console.log('🌐 Mode production détecté - Utilisation du backend Render');
-  return 'https://ecolojia-backend-working.onrender.com/api';
-};
-
-// Vérifier d'abord VITE_API_URL dans l'environnement
-const apiUrl = import.meta.env.VITE_API_URL || getApiUrl();
-
+// Configuration API avec auto-détection
 export const API_CONFIG = {
-  // URL de l'API qui s'adapte automatiquement
-  API_URL: apiUrl,
+  // Développement local
+  DEVELOPMENT_URL: 'http://localhost:5001',
   
-  // Autres configurations
-  TIMEOUT: 30000,
-  RETRY_ATTEMPTS: 3,
+  // Production (votre backend Render)
+  PRODUCTION_URL: 'https://ecolojia-backend.onrender.com',
   
-  // Helper pour savoir si on est en dev
-  isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+  // Timeout par défaut
+  TIMEOUT: 30000, // 30 secondes pour Render qui peut être lent au démarrage
   
-  // Helper pour obtenir l'URL actuelle
-  getCurrentApiUrl: () => {
-    console.log('📡 API URL active:', apiUrl);
-    return apiUrl;
+  // Environnement
+  isDevelopment: import.meta.env.MODE === 'development',
+  isProduction: import.meta.env.MODE === 'production',
+  
+  // Méthode pour obtenir l'URL courante
+  getCurrentApiUrl(): string {
+    // D'abord vérifier les variables d'environnement
+    if (import.meta.env.VITE_API_URL) {
+      console.log('🔗 Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+      return import.meta.env.VITE_API_URL;
+    }
+    
+    // Sinon, utiliser la config par défaut selon l'environnement
+    const url = this.isDevelopment ? this.DEVELOPMENT_URL : this.PRODUCTION_URL;
+    console.log('🔗 Using default URL:', url, '(env:', import.meta.env.MODE, ')');
+    return url;
+  },
+  
+  // Endpoints principaux
+  ENDPOINTS: {
+    // Auth
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
+    REFRESH: '/auth/refresh',
+    LOGOUT: '/auth/logout',
+    
+    // Dashboard
+    DASHBOARD_STATS: '/dashboard/stats',
+    DASHBOARD_EXPORT: '/dashboard/export',
+    
+    // Products
+    PRODUCTS_SEARCH: '/products/search',
+    PRODUCTS_SCAN: '/products/scan',
+    PRODUCTS_ANALYZE: '/products/analyze',
+    
+    // User
+    USER_PROFILE: '/user/profile',
+    USER_PREFERENCES: '/user/preferences',
+    USER_HISTORY: '/user/history',
+    
+    // AI
+    AI_CHAT: '/ai/chat',
+    AI_ANALYZE: '/ai/analyze',
   }
 };
 
-// Log au chargement
-console.log('🔧 Configuration API chargée:', {
-  hostname: window.location.hostname,
-  isDev: API_CONFIG.isDevelopment,
-  apiUrl: API_CONFIG.API_URL,
-  envUrl: import.meta.env.VITE_API_URL
-});
+// Helper pour construire les URLs complètes
+export function buildApiUrl(endpoint: string): string {
+  const baseUrl = API_CONFIG.getCurrentApiUrl();
+  // S'assurer qu'il n'y a pas de double slash
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${baseUrl}/api${cleanEndpoint}`;
+}
 
-// Export par défaut de l'URL
-export const API_URL = API_CONFIG.API_URL;
+// Export pour utilisation directe
+export default API_CONFIG;
